@@ -54,4 +54,18 @@ $routes->group('api/v1', ['filter' => ['cors', 'firebaseauth', 'throttle']], sta
     $routes->post('areas', 'AreasController::crear');
     $routes->patch('areas/(:num)', 'AreasController::editar/$1');
     $routes->options('areas/(:num)', 'AreasController::editar/$1');
+
+    // Calendario, resumen, recordatorios (lectura) y configuración (Tarea 8 / S1.7).
+    $routes->get('calendario', 'CalendarioController::index');
+    $routes->options('calendario', 'CalendarioController::index');
+    $routes->get('resumen', 'ResumenController::index');
+    $routes->options('resumen', 'ResumenController::index');
+
+    $routes->get('recordatorios/proximos', 'RecordatoriosController::proximos');
+    $routes->options('recordatorios/proximos', 'RecordatoriosController::proximos');
+    $routes->get('recordatorios/historial', 'RecordatoriosController::historial');
+    $routes->options('recordatorios/historial', 'RecordatoriosController::historial');
+    $routes->get('configuracion/recordatorios', 'RecordatoriosController::getConfig');
+    $routes->put('configuracion/recordatorios', 'RecordatoriosController::putConfig');
+    $routes->options('configuracion/recordatorios', 'RecordatoriosController::putConfig');
 });
