@@ -67,3 +67,13 @@
 #--------------------------------------------------------------------
 
 # logger.threshold = 4
+
+#--------------------------------------------------------------------
+# Panel de Acuerdos — Fase 2 (S1.3: Filters de borde)
+#--------------------------------------------------------------------
+
+# Firebase (ADR-002) — verificación de ID tokens
+# FIREBASE_PROJECT_ID = ''
+
+# CORS — lista blanca separada por comas, sin wildcard (doc 04 §A05)
+# CORS_ALLOWED_ORIGINS = 'http://localhost:5173'

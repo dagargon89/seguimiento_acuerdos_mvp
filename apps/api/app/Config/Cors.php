@@ -28,6 +28,10 @@ class Cors extends BaseConfig
         /**
          * Origins for the `Access-Control-Allow-Origin` header.
          *
+         * Se deja vacío a propósito: la lista blanca real se puebla en
+         * allowedOriginsPatterns (ver __construct) para evitar un caso especial
+         * del filtro Cors nativo con exactamente 1 origen — ver ese comentario.
+         *
          * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
          *
          * E.g.:
@@ -38,6 +42,11 @@ class Cors extends BaseConfig
 
         /**
          * Origin regex patterns for the `Access-Control-Allow-Origin` header.
+         *
+         * Lista blanca real (CORS_ALLOWED_ORIGINS en .env, coma-separado; dev:
+         * http://localhost:5173), poblada en __construct con cada origen
+         * escapado como patrón literal exacto. Sin wildcard '*' (doc 04 §A05):
+         * un origen no listado no recibe ningún header Access-Control-*.
          *
          * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
          *
@@ -68,7 +77,7 @@ class Cors extends BaseConfig
          *
          * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Headers
          */
-        'allowedHeaders' => [],
+        'allowedHeaders' => ['Authorization', 'Content-Type'],
 
         /**
          * Set headers to expose.
@@ -93,7 +102,7 @@ class Cors extends BaseConfig
          *
          * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Methods
          */
-        'allowedMethods' => [],
+        'allowedMethods' => ['GET', 'POST', 'PATCH', 'PUT', 'OPTIONS'],
 
         /**
          * Set how many seconds the results of a preflight request can be cached.
@@ -102,4 +111,30 @@ class Cors extends BaseConfig
          */
         'maxAge' => 7200,
     ];
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        // CORS_ALLOWED_ORIGINS en .env, coma-separado (dev: http://localhost:5173).
+        // Sin wildcard '*' (doc 04 §A05): un origen no listado no recibe ningún
+        // header Access-Control-*.
+        //
+        // Se usa allowedOriginsPatterns (no allowedOrigins) a propósito: el
+        // filtro Cors nativo de CI4 4.7 (system/HTTP/Cors.php::setAllowOrigin)
+        // tiene un caso especial cuando allowedOrigins tiene EXACTAMENTE 1
+        // elemento — refleja ese origen SIEMPRE, sin comparar contra el header
+        // `Origin` real de la request entrante. Con un solo dominio de SPA en
+        // dev (http://localhost:5173) eso violaría OW-04 (un origen no listado
+        // no debe recibir Access-Control-Allow-Origin). La rama de
+        // allowedOriginsPatterns sí compara siempre con preg_match, sin ese
+        // atajo, así que se usa aquí con cada origen escapado como patrón
+        // literal exacto.
+        $origenes = (string) (env('CORS_ALLOWED_ORIGINS') ?? 'http://localhost:5173');
+
+        $this->default['allowedOriginsPatterns'] = array_values(array_filter(array_map(
+            static fn (string $origen): string => preg_quote(trim($origen), '#'),
+            explode(',', $origenes),
+        )));
+    }
 }

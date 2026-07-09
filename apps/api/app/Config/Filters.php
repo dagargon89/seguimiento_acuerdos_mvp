@@ -2,6 +2,9 @@
 
 namespace Config;
 
+use App\Filters\FirebaseAuthFilter;
+use App\Filters\SecurityHeadersFilter;
+use App\Filters\ThrottleFilter;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
@@ -34,6 +37,9 @@ class Filters extends BaseFilters
         'forcehttps'    => ForceHTTPS::class,
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
+        'firebaseauth'  => FirebaseAuthFilter::class,
+        'throttle'      => ThrottleFilter::class,
+        'secheaders'    => SecurityHeadersFilter::class,
     ];
 
     /**
@@ -75,6 +81,10 @@ class Filters extends BaseFilters
             // 'honeypot',
             // 'csrf',
             // 'invalidchars',
+            // secheaders va PRIMERO: escribe en el response compartido antes de
+            // que firebaseauth/throttle puedan cortar el ciclo con un 401/403/429
+            // (CI4 no corre los `after` cuando un `before` hace short-circuit).
+            'secheaders',
         ],
         'after' => [
             // 'honeypot',
