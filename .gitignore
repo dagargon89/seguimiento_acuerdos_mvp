@@ -1,0 +1,17 @@
+# Secretos y entorno
+.env
+*.env.local
+# Claves de service account de Google (nunca en repo — regla №10 CLAUDE.md)
+*service-account*.json
+credentials/
+# Dependencias y builds
+node_modules/
+vendor/
+dist/
+# CI4 runtime (Fase 2)
+apps/api/writable/cache/*
+apps/api/writable/logs/*
+apps/api/writable/session/*
+apps/api/writable/debugbar/*
+# SO / editor
+.DS_Store

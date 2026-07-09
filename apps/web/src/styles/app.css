@@ -1,0 +1,62 @@
+/* Entrada de estilos · Panel de Acuerdos (Participa Juárez)
+   1) Tailwind 4  2) Tokens del design system (doc 08, 1:1 con el demo aprobado)
+   3) CSS de componentes heredado del demo (fidelidad pixel-perfect) */
+@import 'tailwindcss';
+
+@import './tokens/colors.css';
+@import './tokens/typography.css';
+@import './tokens/spacing.css';
+@import './tokens/base.css';
+@import './legacy-demo.css';
+
+/* Tokens expuestos a utilidades Tailwind (doc 08 §7) */
+@theme {
+  --color-pj-purple-50: #faf3fb;
+  --color-pj-purple-100: #f3e8f4;
+  --color-pj-purple-200: #e5c9e7;
+  --color-pj-purple-300: #cc99cf;
+  --color-pj-purple-400: #b066b7;
+  --color-pj-purple-500: #8b3093;
+  --color-pj-purple-600: #6a1d72;
+  --color-pj-purple-700: #53155a;
+  --color-pj-purple-800: #471151;
+  --color-pj-purple-900: #3a0d41;
+  --color-pj-lime-50: #fbfde8;
+  --color-pj-lime-100: #f6fac8;
+  --color-pj-lime-200: #eef69e;
+  --color-pj-lime-300: #e5f27a;
+  --color-pj-lime-400: #dbec57;
+  --color-pj-lime-500: #c8da4a;
+  --color-pj-lime-600: #afc23a;
+  --color-pj-neutral-50: #f9f9f9;
+  --color-pj-neutral-100: #f2f2f2;
+  --color-pj-neutral-200: #e0e0e0;
+  --color-pj-neutral-300: #c4c4c4;
+  --color-pj-neutral-400: #9e9e9e;
+  --color-pj-neutral-500: #737373;
+  --color-pj-neutral-600: #595959;
+  --color-pj-neutral-700: #404040;
+  --color-pj-neutral-800: #2d2d2d;
+  --color-pj-neutral-900: #1a1a1a;
+  --color-status-success: #2e7d50;
+  --color-status-warning: #b45309;
+  --color-status-error: #c0392b;
+  --color-status-success-bg: #e8f5ee;
+  --color-status-warning-bg: #fef3c7;
+  --color-status-error-bg: #fdecea;
+  --font-display: 'Fredoka', 'Nunito', sans-serif;
+  --font-body: 'Montserrat', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Focus visible global (doc 08 §3) */
+:focus-visible {
+  outline: 2px solid var(--pj-purple-500);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

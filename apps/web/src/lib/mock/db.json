@@ -1,0 +1,97 @@
+{
+  "_meta": {
+    "descripcion": "Espejo exacto del DDL del doc 03 (una clave por tabla). Fechas fijas relativas al día de referencia; api.mock.ts las re-basa a 'hoy' en memoria (H-06). Datos 100% ficticios, dominio @demo.test (H-05).",
+    "fecha_referencia": "2026-07-08",
+    "ddl_version": "1.0"
+  },
+  "areas": [
+    { "id": 1, "nombre": "Coordinación operativa", "activa": true, "created_at": "2026-06-01 09:00:00", "updated_at": null },
+    { "id": 2, "nombre": "Participación y vinculación", "activa": true, "created_at": "2026-06-01 09:00:00", "updated_at": null }
+  ],
+  "usuarios": [
+    { "id": 1, "firebase_uid": "fb-demo-direccion-001", "nombre": "Diana Dirección", "email": "direccion@demo.test", "rol": "direccion", "area_id": null, "activo": true, "created_at": "2026-06-01 09:00:00", "updated_at": null },
+    { "id": 2, "firebase_uid": "fb-demo-coord-001", "nombre": "Carla Coordinadora", "email": "coordinacion.operativa@demo.test", "rol": "coordinador", "area_id": 1, "activo": true, "created_at": "2026-06-01 09:05:00", "updated_at": null },
+    { "id": 3, "firebase_uid": "fb-demo-coord-002", "nombre": "Camilo Coordinador", "email": "coordinacion.vinculacion@demo.test", "rol": "coordinador", "area_id": 2, "activo": true, "created_at": "2026-06-01 09:06:00", "updated_at": null },
+    { "id": 4, "firebase_uid": "fb-demo-resp-001", "nombre": "Rita Responsable", "email": "responsable.uno@demo.test", "rol": "responsable", "area_id": null, "activo": true, "created_at": "2026-06-01 09:10:00", "updated_at": null },
+    { "id": 5, "firebase_uid": "fb-demo-resp-002", "nombre": "Rafael Responsable", "email": "responsable.dos@demo.test", "rol": "responsable", "area_id": null, "activo": true, "created_at": "2026-06-01 09:11:00", "updated_at": null },
+    { "id": 6, "firebase_uid": "fb-demo-resp-003", "nombre": "Rosa Responsable", "email": "responsable.tres@demo.test", "rol": "responsable", "area_id": null, "activo": true, "created_at": "2026-06-01 09:12:00", "updated_at": null },
+    { "id": 7, "firebase_uid": null, "nombre": "Bruno Baja", "email": "persona.baja@demo.test", "rol": "responsable", "area_id": null, "activo": false, "created_at": "2026-06-01 09:15:00", "updated_at": "2026-06-20 12:00:00" }
+  ],
+  "reuniones": [
+    { "id": 1, "nombre": "Reunión de dirección · 17 de junio", "fecha": "2026-06-17", "created_at": "2026-06-17 09:00:00" },
+    { "id": 2, "nombre": "Reunión de dirección · 24 de junio", "fecha": "2026-06-24", "created_at": "2026-06-24 09:00:00" },
+    { "id": 3, "nombre": "Reunión de dirección · 1 de julio", "fecha": "2026-07-01", "created_at": "2026-07-01 09:00:00" }
+  ],
+  "acuerdos": [
+    { "id": 1, "reunion_id": 1, "area_id": 1, "tema": "Formato de minutas", "accion": "Cerrar el Formato de Reunión Operativa y compartirlo con todo el equipo", "responsable_id": 2, "capturado_por_id": 2, "fecha_compromiso": "2026-06-26", "estado": "concluido", "enlace": "https://drive.demo.test/formato-reunion-operativa", "observaciones": "Versión final validada por dirección.", "recordatorio_dias": null, "concluido_por_id": 1, "concluido_at": "2026-06-29 10:00:00", "created_at": "2026-06-17 10:05:00", "updated_at": "2026-06-29 10:00:00" },
+    { "id": 2, "reunion_id": 1, "area_id": 1, "tema": "Panel de seguimiento", "accion": "Preparar la propuesta técnica del panel de acuerdos y recordatorios", "responsable_id": 3, "capturado_por_id": 2, "fecha_compromiso": "2026-07-05", "estado": "concluido", "enlace": "https://drive.demo.test/propuesta-panel", "observaciones": "Documento con las tres rutas técnicas.", "recordatorio_dias": null, "concluido_por_id": 1, "concluido_at": "2026-07-06 09:30:00", "created_at": "2026-06-17 10:06:00", "updated_at": "2026-07-06 09:30:00" },
+    { "id": 3, "reunion_id": 1, "area_id": 1, "tema": "Panel de seguimiento", "accion": "Cotizar horas de desarrollo para la opción de plataforma a medida", "responsable_id": 4, "capturado_por_id": 3, "fecha_compromiso": "2026-07-06", "estado": "vencido", "enlace": null, "observaciones": "A la espera de respuesta de dos proveedores.", "recordatorio_dias": null, "concluido_por_id": null, "concluido_at": null, "created_at": "2026-06-17 10:07:00", "updated_at": "2026-07-07 07:00:00" },
+    { "id": 4, "reunion_id": 2, "area_id": 1, "tema": "Tablero de metas", "accion": "Actualizar el avance del tablero de metas estratégicas del segundo trimestre", "responsable_id": 5, "capturado_por_id": 2, "fecha_compromiso": "2026-07-09", "estado": "en_proceso", "enlace": "https://tableros.demo.test/metas", "observaciones": null, "recordatorio_dias": [5, 1], "concluido_por_id": null, "concluido_at": null, "created_at": "2026-06-24 09:40:00", "updated_at": null },
+    { "id": 5, "reunion_id": 2, "area_id": 2, "tema": "Juárez Territorio Vivo", "accion": "Subir evidencias fotográficas de la jornada comunitaria al Drive compartido", "responsable_id": 6, "capturado_por_id": 3, "fecha_compromiso": "2026-07-11", "estado": "en_proceso", "enlace": "https://drive.demo.test/jtv-evidencias", "observaciones": null, "recordatorio_dias": null, "concluido_por_id": null, "concluido_at": null, "created_at": "2026-06-24 09:41:00", "updated_at": null },
+    { "id": 6, "reunion_id": 2, "area_id": 2, "tema": "Vinculación", "accion": "Agendar reunión con la mesa de seguridad ciudadana", "responsable_id": 3, "capturado_por_id": 3, "fecha_compromiso": "2026-07-14", "estado": "en_proceso", "enlace": null, "observaciones": "Proponer la semana del taller como fecha tentativa.", "recordatorio_dias": null, "concluido_por_id": null, "concluido_at": null, "created_at": "2026-06-24 09:42:00", "updated_at": null },
+    { "id": 7, "reunion_id": 2, "area_id": 2, "tema": "Comunicación", "accion": "Publicar la convocatoria del taller de presupuesto participativo", "responsable_id": 6, "capturado_por_id": 6, "fecha_compromiso": "2026-07-16", "estado": "en_proceso", "enlace": null, "observaciones": "Diseño en revisión con el área de comunicación.", "recordatorio_dias": null, "concluido_por_id": null, "concluido_at": null, "created_at": "2026-06-24 09:43:00", "updated_at": null },
+    { "id": 8, "reunion_id": 3, "area_id": 1, "tema": null, "accion": "Capacitar a las y los responsables de captura en el nuevo formato", "responsable_id": 2, "capturado_por_id": 2, "fecha_compromiso": "2026-07-18", "estado": "en_proceso", "enlace": null, "observaciones": null, "recordatorio_dias": null, "concluido_por_id": null, "concluido_at": null, "created_at": "2026-07-01 09:30:00", "updated_at": null },
+    { "id": 9, "reunion_id": 3, "area_id": 1, "tema": "Informe semestral", "accion": "Integrar los datos de participación al informe enero–junio", "responsable_id": 4, "capturado_por_id": 4, "fecha_compromiso": "2026-07-22", "estado": "en_proceso", "enlace": null, "observaciones": "Fecha reprogramada por carga del informe.", "recordatorio_dias": null, "concluido_por_id": null, "concluido_at": null, "created_at": "2026-07-01 09:31:00", "updated_at": "2026-07-04 11:00:00" },
+    { "id": 10, "reunion_id": 3, "area_id": 1, "tema": "Panel de seguimiento", "accion": "Cargar los acuerdos históricos de junio al panel piloto", "responsable_id": 5, "capturado_por_id": 5, "fecha_compromiso": "2026-07-07", "estado": "vencido", "enlace": null, "observaciones": "Faltan los acuerdos de la sesión del 10 de junio.", "recordatorio_dias": null, "concluido_por_id": null, "concluido_at": null, "created_at": "2026-07-01 09:32:00", "updated_at": "2026-07-08 07:00:00" }
+  ],
+  "acuerdo_corresponsables": [
+    { "acuerdo_id": 3, "usuario_id": 5, "created_at": "2026-06-17 10:07:00" },
+    { "acuerdo_id": 4, "usuario_id": 4, "created_at": "2026-06-24 09:40:00" },
+    { "acuerdo_id": 4, "usuario_id": 6, "created_at": "2026-06-24 09:40:00" },
+    { "acuerdo_id": 7, "usuario_id": 4, "created_at": "2026-06-24 09:43:00" }
+  ],
+  "avances": [
+    { "id": 1, "acuerdo_id": 1, "usuario_id": 2, "tipo": "avance", "descripcion": "Versión final del formato lista para revisión de dirección.", "nueva_fecha": null, "created_at": "2026-06-25 13:00:00" },
+    { "id": 2, "acuerdo_id": 1, "usuario_id": 1, "tipo": "validacion", "descripcion": "Validado en checklist: el formato ya se compartió con todo el equipo.", "nueva_fecha": null, "created_at": "2026-06-29 10:00:00" },
+    { "id": 3, "acuerdo_id": 3, "usuario_id": 4, "tipo": "avance", "descripcion": "Se solicitó cotización a dos proveedores; seguimos en espera de respuesta.", "nueva_fecha": null, "created_at": "2026-07-03 12:20:00" },
+    { "id": 4, "acuerdo_id": 4, "usuario_id": 5, "tipo": "avance", "descripcion": "Actualizado el 60% de los indicadores del tablero.", "nueva_fecha": null, "created_at": "2026-07-06 16:45:00" },
+    { "id": 5, "acuerdo_id": 9, "usuario_id": 4, "tipo": "reprogramacion", "descripcion": "Se recorre la entrega por la carga del informe semestral.", "nueva_fecha": "2026-07-22", "created_at": "2026-07-04 11:00:00" },
+    { "id": 6, "acuerdo_id": 2, "usuario_id": 1, "tipo": "validacion", "descripcion": "Documento entregado y presentado en la reunión de dirección.", "nueva_fecha": null, "created_at": "2026-07-06 09:30:00" },
+    { "id": 7, "acuerdo_id": 10, "usuario_id": 5, "tipo": "avance", "descripcion": "Cargadas las semanas 1 y 2 de junio; faltan los acuerdos de la sesión del 10.", "nueva_fecha": null, "created_at": "2026-07-06 18:10:00" }
+  ],
+  "configuracion": [
+    {
+      "clave": "recordatorios_default",
+      "valor": {
+        "dias_antes": [7, 3, 1],
+        "dia_compromiso": true,
+        "vencido_cada_dias": 3,
+        "vencido_max_repeticiones": 5,
+        "resumen_frecuencia": "semanal"
+      },
+      "updated_at": null
+    }
+  ],
+  "recordatorios_enviados": [
+    { "id": 1, "acuerdo_id": 4, "usuario_id": 5, "tipo": "previo", "programado_para": "2026-07-04", "enviado_at": "2026-07-04 09:00:12", "estado": "enviado", "gmail_message_id": "msg-demo-0001", "error": null },
+    { "id": 2, "acuerdo_id": 4, "usuario_id": 4, "tipo": "previo", "programado_para": "2026-07-04", "enviado_at": "2026-07-04 09:00:13", "estado": "enviado", "gmail_message_id": "msg-demo-0002", "error": null },
+    { "id": 3, "acuerdo_id": 4, "usuario_id": 6, "tipo": "previo", "programado_para": "2026-07-04", "enviado_at": "2026-07-04 09:00:14", "estado": "enviado", "gmail_message_id": "msg-demo-0003", "error": null },
+    { "id": 4, "acuerdo_id": 3, "usuario_id": 4, "tipo": "previo", "programado_para": "2026-07-05", "enviado_at": "2026-07-05 09:00:05", "estado": "enviado", "gmail_message_id": "msg-demo-0004", "error": null },
+    { "id": 5, "acuerdo_id": 3, "usuario_id": 4, "tipo": "dia", "programado_para": "2026-07-06", "enviado_at": "2026-07-06 09:00:04", "estado": "enviado", "gmail_message_id": "msg-demo-0005", "error": null },
+    { "id": 6, "acuerdo_id": 3, "usuario_id": 5, "tipo": "dia", "programado_para": "2026-07-06", "enviado_at": "2026-07-06 09:00:06", "estado": "enviado", "gmail_message_id": "msg-demo-0006", "error": null },
+    { "id": 7, "acuerdo_id": 3, "usuario_id": 4, "tipo": "vencido", "programado_para": "2026-07-07", "enviado_at": null, "estado": "fallido", "gmail_message_id": null, "error": "Gmail API: userRateLimitExceeded (reintento programado)" },
+    { "id": 8, "acuerdo_id": 10, "usuario_id": 5, "tipo": "dia", "programado_para": "2026-07-07", "enviado_at": "2026-07-07 09:00:02", "estado": "enviado", "gmail_message_id": "msg-demo-0007", "error": null },
+    { "id": 9, "acuerdo_id": null, "usuario_id": 1, "tipo": "resumen", "programado_para": "2026-07-06", "enviado_at": "2026-07-06 09:05:00", "estado": "enviado", "gmail_message_id": "msg-demo-0008", "error": null }
+  ],
+  "google_sync": [
+    { "id": 1, "acuerdo_id": 1, "calendar_event_id": "evt-demo-0001", "estado": "sincronizado", "intentos": 1, "synced_at": "2026-06-29 10:01:00", "error": null },
+    { "id": 2, "acuerdo_id": 2, "calendar_event_id": "evt-demo-0002", "estado": "sincronizado", "intentos": 1, "synced_at": "2026-07-06 09:31:00", "error": null },
+    { "id": 3, "acuerdo_id": 3, "calendar_event_id": "evt-demo-0003", "estado": "sincronizado", "intentos": 1, "synced_at": "2026-06-17 10:10:00", "error": null },
+    { "id": 4, "acuerdo_id": 4, "calendar_event_id": "evt-demo-0004", "estado": "sincronizado", "intentos": 1, "synced_at": "2026-06-24 09:45:00", "error": null },
+    { "id": 5, "acuerdo_id": 5, "calendar_event_id": "evt-demo-0005", "estado": "sincronizado", "intentos": 1, "synced_at": "2026-06-24 09:45:01", "error": null },
+    { "id": 6, "acuerdo_id": 6, "calendar_event_id": "evt-demo-0006", "estado": "sincronizado", "intentos": 1, "synced_at": "2026-06-24 09:45:02", "error": null },
+    { "id": 7, "acuerdo_id": 7, "calendar_event_id": "evt-demo-0007", "estado": "sincronizado", "intentos": 1, "synced_at": "2026-06-24 09:45:03", "error": null },
+    { "id": 8, "acuerdo_id": 8, "calendar_event_id": null, "estado": "pendiente", "intentos": 0, "synced_at": null, "error": null },
+    { "id": 9, "acuerdo_id": 9, "calendar_event_id": "evt-demo-0009", "estado": "sincronizado", "intentos": 1, "synced_at": "2026-07-04 11:02:00", "error": null },
+    { "id": 10, "acuerdo_id": 10, "calendar_event_id": null, "estado": "error", "intentos": 2, "synced_at": null, "error": "Calendar API: 403 insufficientPermissions" }
+  ],
+  "usuario_google_tokens": [],
+  "auditoria": [
+    { "id": 1, "usuario_id": 2, "accion": "login", "entidad": "usuario", "entidad_id": 2, "detalle": null, "ip": "10.0.0.21", "created_at": "2026-07-08 08:55:00" },
+    { "id": 2, "usuario_id": 1, "accion": "concluir", "entidad": "acuerdo", "entidad_id": 1, "detalle": { "nota": "Formato compartido con todo el equipo." }, "ip": "10.0.0.10", "created_at": "2026-06-29 10:00:00" },
+    { "id": 3, "usuario_id": 1, "accion": "concluir", "entidad": "acuerdo", "entidad_id": 2, "detalle": { "nota": "Documento presentado en la reunión." }, "ip": "10.0.0.10", "created_at": "2026-07-06 09:30:00" },
+    { "id": 4, "usuario_id": null, "accion": "marcar_vencido", "entidad": "acuerdo", "entidad_id": 3, "detalle": { "job": "recordatorios:procesar" }, "ip": null, "created_at": "2026-07-07 07:00:00" },
+    { "id": 5, "usuario_id": null, "accion": "marcar_vencido", "entidad": "acuerdo", "entidad_id": 10, "detalle": { "job": "recordatorios:procesar" }, "ip": null, "created_at": "2026-07-08 07:00:00" },
+    { "id": 6, "usuario_id": 1, "accion": "baja_usuario", "entidad": "usuario", "entidad_id": 7, "detalle": { "motivo": "Fin de colaboración" }, "ip": "10.0.0.10", "created_at": "2026-06-20 12:00:00" }
+  ]
+}

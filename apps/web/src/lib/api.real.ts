@@ -1,0 +1,89 @@
+/**
+ * Implementación real del contrato ApiClient contra la API CI4 (doc 05).
+ * Se completa/activa en Fase 2 (`VITE_USE_MOCK=false`); la firma es idéntica
+ * a la del mock — las pantallas no cambian (Demo-First v2).
+ * El ID token lo provee el SDK de Firebase (ADR-002) vía `setTokenProvider`.
+ */
+import type { ApiClient } from './api';
+import type {
+  Acuerdo, AcuerdoDetalle, AltaUsuario, Area, CalendarioMes, ChecklistItem,
+  ConfigRecordatorios, EdicionAcuerdo, EdicionUsuario, FiltrosAcuerdos,
+  LoteCaptura, NuevoAvance, Paginado, RecordatorioVista, Resumen, Sesion, Usuario,
+} from './types';
+
+const BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
+
+type TokenProvider = () => Promise<string>;
+let obtenerToken: TokenProvider = async () => {
+  throw new Error('Configura el proveedor de token de Firebase (setTokenProvider) antes de usar api.real');
+};
+
+export function setTokenProvider(fn: TokenProvider): void {
+  obtenerToken = fn;
+}
+
+async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const token = await obtenerToken();
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const json = (await res.json().catch(() => null)) as unknown;
+  if (!res.ok) {
+    // El backend responde {error, mensaje, campos?} (doc 05 §1)
+    throw Object.assign(new Error('api_error'), { status: res.status, ...(json as object) });
+  }
+  return json as T;
+}
+
+const qs = (params: Record<string, string | number | boolean | undefined>): string => {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== '') p.set(k, String(v));
+  const s = p.toString();
+  return s ? `?${s}` : '';
+};
+
+export const realClient: ApiClient = {
+  getMe: () => req<Sesion>('GET', '/me'),
+
+  listAcuerdos: (f: FiltrosAcuerdos) =>
+    req<Paginado<Acuerdo>>('GET', `/acuerdos${qs({
+      estado: f.estado, responsable_id: f.responsable_id, q: f.q,
+      desde: f.desde, hasta: f.hasta, page: f.page, per_page: f.per_page,
+    })}`),
+  getAcuerdo: async (id) => (await req<{ data: AcuerdoDetalle }>('GET', `/acuerdos/${id}`)).data,
+  capturarLote: async (lote: LoteCaptura) =>
+    (await req<{ data: Acuerdo[] }>('POST', '/acuerdos/lote', lote)).data,
+  editarAcuerdo: async (id, cambios: EdicionAcuerdo) =>
+    (await req<{ data: Acuerdo }>('PATCH', `/acuerdos/${id}`, cambios)).data,
+  setCorresponsables: async (id, usuarioIds) =>
+    (await req<{ data: AcuerdoDetalle }>('PUT', `/acuerdos/${id}/corresponsables`, { usuarios_ids: usuarioIds })).data,
+  registrarAvance: async (id, avance: NuevoAvance) =>
+    (await req<{ data: AcuerdoDetalle }>('POST', `/acuerdos/${id}/avances`, avance)).data,
+  concluirAcuerdo: async (id, nota) =>
+    (await req<{ data: Acuerdo }>('PATCH', `/acuerdos/${id}/concluir`, { nota })).data,
+  reabrirAcuerdo: async (id, nota) =>
+    (await req<{ data: Acuerdo }>('PATCH', `/acuerdos/${id}/reabrir`, { nota })).data,
+
+  listRecordatoriosProximos: async () =>
+    (await req<{ data: RecordatorioVista[] }>('GET', '/recordatorios/proximos')).data,
+  listRecordatoriosHistorial: async () =>
+    (await req<{ data: RecordatorioVista[] }>('GET', '/recordatorios/historial')).data,
+  getConfigRecordatorios: () => req<ConfigRecordatorios>('GET', '/configuracion/recordatorios'),
+  setConfigRecordatorios: (config) => req<ConfigRecordatorios>('PUT', '/configuracion/recordatorios', config),
+
+  getChecklist: async () => (await req<{ data: ChecklistItem[] }>('GET', '/checklist')).data,
+  getCalendario: (mes, incluirConcluidos) =>
+    req<CalendarioMes>('GET', `/calendario${qs({ mes, incluir_concluidos: incluirConcluidos })}`),
+  getResumen: () => req<Resumen>('GET', '/resumen'),
+
+  listUsuarios: async () => (await req<{ data: Usuario[] }>('GET', '/usuarios')).data,
+  crearUsuario: async (alta: AltaUsuario) => (await req<{ data: Usuario }>('POST', '/usuarios', alta)).data,
+  editarUsuario: async (id, cambios: EdicionUsuario) =>
+    (await req<{ data: Usuario }>('PATCH', `/usuarios/${id}`, cambios)).data,
+  listAreas: async () => (await req<{ data: Area[] }>('GET', '/areas')).data,
+};
