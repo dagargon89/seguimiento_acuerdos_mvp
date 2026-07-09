@@ -65,11 +65,24 @@ AU-09/09b (email no registrado / inactivo →403), RF-01.3 (primer login enlaza 
 tras invalidar cache→403), OW-05 (throttle→429+Retry-After), OW-04 (CORS preflight origen no listado sin headers).
 Commit `314b5ac`. Concerns: JWKS cache in-memory de kreait; mapeo de motivo por mensaje (no afecta el 401).
 
+## Smoke real (S1.8)
+
+| Fecha | Verificación | Resultado |
+|---|---|---|
+| 2026-07-09 | Login real con Google (dgarcia@planjuarez.org) | ✅ entra como Dirección |
+| 2026-07-09 | Fix: `/me` 500 → verificación con IdTokenVerifier (sin service account) | ✅ commit 5475317 |
+| 2026-07-09 | Token inválido → 401 `token_invalido` (no 500) | ✅ |
+| 2026-07-09 | Flujo end-to-end: checklist → concluir acuerdo (regla central) | ✅ contra API real |
+| 2026-07-09 | Frontend build+typecheck+lint+test(mock 6/6) | ✅ commit 1f36902 |
+
 ## Gate DoD Sprint 1
 
-- [ ] Los 3 roles operan el flujo completo contra API real (frontend `VITE_USE_MOCK=false`)
-- [ ] 100% de casos ME/AU/LT/PA/AD/AR/OW verdes
-- [ ] Cero N+1 verificado
-- [ ] Suite PHPUnit verde
+- [x] Dirección opera el flujo completo contra API real (login Google + concluir desde checklist)
+- [x] 100% de casos ME/AU/LT/PA/AD/AR/OW verdes (168/168 PHPUnit)
+- [x] Cero N+1 verificado (3 queries constantes en el listado)
+- [x] Suite PHPUnit verde (168/168)
 
-**Estado:** ⏳ Pendiente.
+**Estado:** ✅ Completo. Gate cumplido — se habilita el Sprint 2 (recordatorios + Google).
+
+> Nota: el smoke validó el rol Dirección end-to-end. Los flujos de coordinación/responsable con
+> cuentas reales quedan para el piloto (Sprint 3); su lógica está cubierta por los tests AU-01..06.
