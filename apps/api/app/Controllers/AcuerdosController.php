@@ -26,8 +26,11 @@ use Config\Database;
 /**
  * GET /acuerdos, GET /acuerdos/{id} (doc 05 §2.2) — LECTURA (Tarea 5).
  * POST /acuerdos/lote, PATCH /acuerdos/{id}, PUT .../corresponsables,
- * POST .../avances — ESCRITURA (Tarea 6, S1.5). `concluir`/`reabrir` quedan
- * para una tarea posterior (solo Dirección).
+ * POST .../avances — ESCRITURA (Tarea 6, S1.5).
+ * PATCH .../concluir, PATCH .../reabrir, GET /checklist — CONCLUSIÓN/
+ * REAPERTURA + checklist de validación (Tarea 7, S1.6). Regla central:
+ * **solo Dirección concluye/reabre** (403 + auditoría del intento para otros
+ * roles).
  */
 class AcuerdosController extends BaseController
 {
@@ -565,6 +568,255 @@ class AcuerdosController extends BaseController
     }
 
     /**
+     * PATCH /acuerdos/{id}/concluir (doc 05 §2.2, RF-06) — **SOLO Dirección**
+     * (regla central de CLAUDE.md). Cualquier otro rol → 403 **y se audita el
+     * intento** (doc 05 §4: "los 403 de concluir/reabrir también se auditan").
+     * Efecto: estado='concluido', concluido_por_id/at (respeta el CHECK del
+     * DDL), avance `tipo='validacion'` con la nota, google_sync → pendiente.
+     * Todo en transacción. `estado` nunca se acepta del cliente.
+     */
+    public function concluir(string $id): ResponseInterface
+    {
+        $actor = service('usuarioActual')->obtener();
+        $hoy   = $this->hoy();
+
+        $fila = (new AcuerdoModel())->builderConJoins($hoy)->where('acuerdos.id', (int) $id)->get()->getFirstRow('array');
+        if ($fila === null) {
+            return $this->noEncontrado();
+        }
+
+        // Solo Dirección concluye. El 403 de un no-Dirección se AUDITA (intento de abuso).
+        if ($actor['rol'] !== 'direccion') {
+            (new AuditoriaModel())->registrar(
+                (int) $actor['id'],
+                'intento_concluir',
+                'acuerdo',
+                (int) $id,
+                ['rol' => $actor['rol'], 'resultado' => 'denegado'],
+                $this->request->getIPAddress(),
+            );
+
+            return $this->sinPermiso('Solo Dirección puede concluir un acuerdo.');
+        }
+
+        if ($fila['estado'] === 'concluido') {
+            return $this->conflictoEstado('El acuerdo ya está concluido.');
+        }
+
+        $body = $this->cuerpoJson();
+        if ($body === null) {
+            return $this->errorValidacion('El cuerpo debe ser JSON.');
+        }
+        $camposDesconocidos = $this->camposDesconocidos($body, ['nota']);
+        if ($camposDesconocidos !== []) {
+            return $this->errorCampoNoPermitido($camposDesconocidos);
+        }
+
+        // Contrato (api.mock.ts): la nota de conclusión es opcional; si viene vacía
+        // se usa un texto por defecto para el avance de validación.
+        $notaCruda = $body['nota'] ?? null;
+        $nota      = is_string($notaCruda) ? trim($notaCruda) : '';
+        $descripcionAvance = $nota !== '' ? $nota : 'Validado desde el checklist.';
+
+        $db = Database::connect();
+        $db->transException(true)->transStart();
+
+        (new AcuerdoModel())->update((int) $id, [
+            'estado'           => 'concluido',
+            'concluido_por_id' => (int) $actor['id'],
+            'concluido_at'     => Time::now()->toDateTimeString(),
+        ]);
+        (new AvanceModel())->insert([
+            'acuerdo_id'  => (int) $id,
+            'usuario_id'  => (int) $actor['id'],
+            'tipo'        => 'validacion',
+            'descripcion' => $descripcionAvance,
+            'nueva_fecha' => null,
+        ]);
+        (new GoogleSyncModel())->marcarPendientePorAcuerdo((int) $id);
+        (new AuditoriaModel())->registrar((int) $actor['id'], 'concluir', 'acuerdo', (int) $id, ['nota' => $nota], $this->request->getIPAddress());
+
+        $db->transComplete();
+
+        if (! $db->transStatus()) {
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo concluir el acuerdo.']);
+        }
+
+        return $this->response->setJSON(['data' => $this->cargarAcuerdoCompleto((int) $id, $hoy)->aArray()]);
+    }
+
+    /**
+     * PATCH /acuerdos/{id}/reabrir (doc 05 §2.2, RF-06) — **SOLO Dirección**.
+     * Cualquier otro rol → 403 + auditoría del intento. Solo desde `concluido`
+     * (si no → 409); `nota` obligatoria (vacía → 422). Efecto:
+     * estado='en_proceso', limpia concluido_por_id/at (respeta el CHECK), avance
+     * `tipo='reapertura'`, google_sync → pendiente. El vencimiento se recalcula
+     * por lectura (estado derivado): si la fecha ya pasó, se leerá `vencido`.
+     */
+    public function reabrir(string $id): ResponseInterface
+    {
+        $actor = service('usuarioActual')->obtener();
+        $hoy   = $this->hoy();
+
+        $fila = (new AcuerdoModel())->builderConJoins($hoy)->where('acuerdos.id', (int) $id)->get()->getFirstRow('array');
+        if ($fila === null) {
+            return $this->noEncontrado();
+        }
+
+        if ($actor['rol'] !== 'direccion') {
+            (new AuditoriaModel())->registrar(
+                (int) $actor['id'],
+                'intento_reabrir',
+                'acuerdo',
+                (int) $id,
+                ['rol' => $actor['rol'], 'resultado' => 'denegado'],
+                $this->request->getIPAddress(),
+            );
+
+            return $this->sinPermiso('Solo Dirección puede reabrir un acuerdo.');
+        }
+
+        if ($fila['estado'] !== 'concluido') {
+            return $this->conflictoEstado('Solo se reabre un acuerdo concluido.');
+        }
+
+        $body = $this->cuerpoJson();
+        if ($body === null) {
+            return $this->errorValidacion('El cuerpo debe ser JSON.');
+        }
+        $camposDesconocidos = $this->camposDesconocidos($body, ['nota']);
+        if ($camposDesconocidos !== []) {
+            return $this->errorCampoNoPermitido($camposDesconocidos);
+        }
+
+        $notaCruda = $body['nota'] ?? null;
+        $nota      = is_string($notaCruda) ? trim($notaCruda) : '';
+        if ($nota === '') {
+            return $this->errorValidacion('La nota de reapertura es obligatoria.', ['nota' => 'Requerida']);
+        }
+
+        $db = Database::connect();
+        $db->transException(true)->transStart();
+
+        // estado='en_proceso': el estado derivado en lectura (estadoDerivadoExpr)
+        // lo mostrará como 'vencido' si la fecha ya pasó — no lo persistimos aquí.
+        (new AcuerdoModel())->update((int) $id, [
+            'estado'           => 'en_proceso',
+            'concluido_por_id' => null,
+            'concluido_at'     => null,
+        ]);
+        (new AvanceModel())->insert([
+            'acuerdo_id'  => (int) $id,
+            'usuario_id'  => (int) $actor['id'],
+            'tipo'        => 'reapertura',
+            'descripcion' => $nota,
+            'nueva_fecha' => null,
+        ]);
+        (new GoogleSyncModel())->marcarPendientePorAcuerdo((int) $id);
+        (new AuditoriaModel())->registrar((int) $actor['id'], 'reabrir', 'acuerdo', (int) $id, ['nota' => $nota], $this->request->getIPAddress());
+
+        $db->transComplete();
+
+        if (! $db->transStatus()) {
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo reabrir el acuerdo.']);
+        }
+
+        return $this->response->setJSON(['data' => $this->cargarAcuerdoCompleto((int) $id, $hoy)->aArray()]);
+    }
+
+    /**
+     * GET /checklist (doc 05 §2.4, RF-06) — **SOLO Dirección**. Lista los
+     * acuerdos ABIERTOS (en_proceso + vencido; NO concluidos), priorizados:
+     * vencidos primero, luego por `fecha_compromiso` ASC. Cada item lleva el
+     * acuerdo (forma `Acuerdo`), `total_avances` y `ultimo_avance` (o null).
+     * Sin N+1: corresponsables y avances se agregan con `whereIn` sobre la lista
+     * de ids.
+     */
+    public function checklist(): ResponseInterface
+    {
+        $actor = service('usuarioActual')->obtener();
+        if ($actor['rol'] !== 'direccion') {
+            return $this->sinPermiso('El checklist de validación es solo para Dirección.');
+        }
+
+        $hoy        = $this->hoy();
+        $estadoExpr = AcuerdoModel::estadoDerivadoExpr($hoy);
+
+        // Solo abiertos; orden: vencidos primero (0), luego por fecha ASC.
+        $filas = (new AcuerdoModel())->builderConJoins($hoy)
+            ->where("({$estadoExpr}) IN ('en_proceso','vencido')", null, false)
+            ->orderBy("CASE WHEN ({$estadoExpr}) = 'vencido' THEN 0 ELSE 1 END", 'ASC', false)
+            ->orderBy('acuerdos.fecha_compromiso', 'ASC')
+            ->orderBy('acuerdos.id', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $ids = array_map(static fn (array $f) => (int) $f['id'], $filas);
+
+        $corresponsablesPorAcuerdo = $this->cargarCorresponsables($ids);
+        [$totalPorAcuerdo, $ultimoPorAcuerdo] = $this->agregarAvances($ids);
+
+        $data = [];
+        foreach ($filas as $f) {
+            $aid     = (int) $f['id'];
+            $acuerdo = Acuerdo::desdeFilaJoin($f, $corresponsablesPorAcuerdo[$aid] ?? []);
+            $ultimo  = $ultimoPorAcuerdo[$aid] ?? null;
+
+            $data[] = [
+                'acuerdo'       => $acuerdo->aArray(),
+                'total_avances' => $totalPorAcuerdo[$aid] ?? 0,
+                'ultimo_avance' => $ultimo === null ? null : $ultimo->aArray(),
+            ];
+        }
+
+        return $this->response->setJSON(['data' => $data]);
+    }
+
+    /**
+     * Agrega los avances de un conjunto de acuerdos en UNA sola query (cero
+     * N+1): devuelve [total_por_acuerdo, ultimo_avance_por_acuerdo]. El "último"
+     * es el más reciente por (created_at, id) descendente.
+     *
+     * @param int[] $acuerdoIds
+     *
+     * @return array{0: array<int, int>, 1: array<int, Avance>}
+     */
+    private function agregarAvances(array $acuerdoIds): array
+    {
+        if ($acuerdoIds === []) {
+            return [[], []];
+        }
+
+        $filas = (new AvanceModel())
+            ->whereIn('acuerdo_id', $acuerdoIds)
+            ->orderBy('created_at', 'DESC')
+            ->orderBy('id', 'DESC')
+            ->findAll();
+
+        $porAcuerdo = [];
+        foreach ($filas as $f) {
+            $porAcuerdo[(int) $f['acuerdo_id']][] = $f;
+        }
+
+        // Hidrata los usuarios de TODOS los avances con un solo whereIn.
+        $avancesHidratados = $this->hidratarAvances($filas);
+        $hidratadoPorId    = [];
+        foreach ($avancesHidratados as $a) {
+            $hidratadoPorId[$a->id] = $a;
+        }
+
+        $total  = [];
+        $ultimo = [];
+        foreach ($porAcuerdo as $aid => $lista) {
+            $total[$aid]  = count($lista);
+            $primero      = $lista[0]; // ya viene ordenado DESC → el más reciente.
+            $ultimo[$aid] = $hidratadoPorId[(int) $primero['id']];
+        }
+
+        return [$total, $ultimo];
+    }
+
+    /**
      * Carga corresponsables de TODA la página en UNA sola query (`whereIn`
      * agrupado) — evita el N+1 de resolverlos acuerdo por acuerdo.
      *
@@ -635,6 +887,12 @@ class AcuerdosController extends BaseController
     private function sinPermiso(string $mensaje): ResponseInterface
     {
         return $this->response->setStatusCode(403)->setJSON(['error' => 'sin_permiso', 'mensaje' => $mensaje]);
+    }
+
+    /** 409 conflicto de estado (doc 05 §1): concluir un concluido, reabrir un no-concluido, etc. */
+    private function conflictoEstado(string $mensaje): ResponseInterface
+    {
+        return $this->response->setStatusCode(409)->setJSON(['error' => 'estado_invalido', 'mensaje' => $mensaje]);
     }
 
     /** @param array<string, string> $campos */

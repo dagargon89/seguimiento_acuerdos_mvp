@@ -31,9 +31,27 @@ $routes->group('api/v1', ['filter' => ['cors', 'firebaseauth', 'throttle']], sta
     $routes->post('acuerdos/(:num)/avances', 'AcuerdosController::avances/$1');
     $routes->options('acuerdos/(:num)/avances', 'AcuerdosController::avances/$1');
 
+    // Conclusión / reapertura (Tarea 7 / S1.6) — solo Dirección (403 + auditoría para otros roles).
+    $routes->patch('acuerdos/(:num)/concluir', 'AcuerdosController::concluir/$1');
+    $routes->options('acuerdos/(:num)/concluir', 'AcuerdosController::concluir/$1');
+    $routes->patch('acuerdos/(:num)/reabrir', 'AcuerdosController::reabrir/$1');
+    $routes->options('acuerdos/(:num)/reabrir', 'AcuerdosController::reabrir/$1');
+
+    // Checklist de validación (Tarea 7 / S1.6) — solo Dirección.
+    $routes->get('checklist', 'AcuerdosController::checklist');
+    $routes->options('checklist', 'AcuerdosController::checklist');
+
     $routes->get('usuarios', 'UsuariosController::index');
     $routes->options('usuarios', 'UsuariosController::index');
+    // Alta/edición de usuarios (Tarea 7 / S1.6) — solo Dirección.
+    $routes->post('usuarios', 'UsuariosController::crear');
+    $routes->patch('usuarios/(:num)', 'UsuariosController::editar/$1');
+    $routes->options('usuarios/(:num)', 'UsuariosController::editar/$1');
 
     $routes->get('areas', 'AreasController::index');
     $routes->options('areas', 'AreasController::index');
+    // Alta/edición de áreas (Tarea 7 / S1.6, ADR-004) — solo Dirección.
+    $routes->post('areas', 'AreasController::crear');
+    $routes->patch('areas/(:num)', 'AreasController::editar/$1');
+    $routes->options('areas/(:num)', 'AreasController::editar/$1');
 });
