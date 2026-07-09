@@ -1,7 +1,6 @@
 /**
  * Implementación real del contrato ApiClient contra la API CI4 (doc 05).
- * Se completa/activa en Fase 2 (`VITE_USE_MOCK=false`); la firma es idéntica
- * a la del mock — las pantallas no cambian (Demo-First v2).
+ * Único cliente de datos del frontend desde S3.3 (real-only).
  * El ID token lo provee el SDK de Firebase (ADR-002) vía `setTokenProvider`.
  */
 import type { ApiClient } from './api';

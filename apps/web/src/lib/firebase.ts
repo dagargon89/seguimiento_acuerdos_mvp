@@ -1,5 +1,5 @@
 /**
- * SDK de Firebase Auth (ADR-002). Se usa solo cuando VITE_USE_MOCK=false.
+ * SDK de Firebase Auth (ADR-002).
  * Config íntegramente por variables de entorno (VITE_FIREBASE_*), nada hardcodeado.
  * NO se inicializa Analytics (evita dependencias extra en Node/test).
  */

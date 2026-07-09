@@ -1,11 +1,11 @@
 /**
- * Shell de la aplicación: sesión demo, topbar 1:1 con el demo vanilla,
+ * Shell de la aplicación: sesión Firebase, topbar 1:1 con el demo vanilla,
  * rutas react-router y toast global.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, sesionDemo, setTokenProvider, USA_MOCK } from './lib';
+import { api, setTokenProvider } from './lib';
 import type { Sesion } from './lib';
 import { auth, loginEmailPassword, loginGoogle, logoutFirebase, onAuthStateChanged } from './lib/firebase';
 import { fmtL, hoyISO } from './lib/fechas';
@@ -30,7 +30,7 @@ export default function App() {
 
 function AppContent() {
   const [sesion, setSesion] = useState<Sesion | null>(null);
-  const [cargandoSesion, setCargandoSesion] = useState(!USA_MOCK);
+  const [cargandoSesion, setCargandoSesion] = useState(true);
   const [errorAcceso, setErrorAcceso] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -39,19 +39,13 @@ function AppContent() {
     () => () => {
       queryClient.clear();
       setSesion(null);
-      if (USA_MOCK) {
-        sesionDemo.logout();
-      } else {
-        void logoutFirebase();
-      }
+      void logoutFirebase();
     },
     [queryClient],
   );
 
-  // Cableado de Firebase Auth (ADR-002): solo activo cuando USA_MOCK === false.
+  // Cableado de Firebase Auth (ADR-002).
   useEffect(() => {
-    if (USA_MOCK) return;
-
     setTokenProvider(async () => (await auth.currentUser?.getIdToken()) ?? '');
 
     const unsubscribe = onAuthStateChanged(auth, (usuarioFirebase) => {
@@ -85,7 +79,7 @@ function AppContent() {
 
   const contexto = useMemo(() => ({ sesion, setSesion, logout }), [sesion, logout]);
 
-  if (!USA_MOCK && cargandoSesion) {
+  if (cargandoSesion) {
     return (
       <SessionContext.Provider value={contexto}>
         <div className="login-wrap" />

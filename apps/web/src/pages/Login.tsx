@@ -1,16 +1,11 @@
 /**
- * Login demo 1:1 con renderLogin() del demo: selector de cuentas.
- * En producción (USA_MOCK=false) esta misma tarjeta muestra el login real de
- * Firebase Auth (Google + email/password), ADR-002. El resto del flujo
- * (resolver la sesión con GET /me) lo maneja App vía onAuthStateChanged.
+ * Login real con Firebase Auth (Google + email/password), ADR-002. El resto
+ * del flujo (resolver la sesión con GET /me) lo maneja App vía
+ * onAuthStateChanged. Diseño 1:1 con el demo aprobado.
  */
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { api, sesionDemo, USA_MOCK } from '../lib';
-import { ROL_LABEL, mensajeError } from '../components/EstadoHelpers';
-import { Avatar } from '../components/Avatar';
-import { useSesion } from '../components/SessionContext';
-import { useToast } from '../components/Toast';
+import { mensajeError } from '../components/EstadoHelpers';
 
 interface LoginProps {
   errorAcceso?: string | null;
@@ -34,56 +29,13 @@ export function Login({ errorAcceso = null, onLoginGoogle, onLoginEmailPassword 
           Inicia sesión con tu cuenta. Cada rol ve un panel distinto: la dirección ve todo, una coordinación ve su
           área y cada responsable ve solo sus compromisos.
         </p>
-        {USA_MOCK ? (
-          <LoginDemo />
-        ) : (
-          <LoginReal
-            errorAcceso={errorAcceso}
-            onLoginGoogle={onLoginGoogle!}
-            onLoginEmailPassword={onLoginEmailPassword!}
-          />
-        )}
+        <LoginReal
+          errorAcceso={errorAcceso}
+          onLoginGoogle={onLoginGoogle!}
+          onLoginEmailPassword={onLoginEmailPassword!}
+        />
       </div>
     </div>
-  );
-}
-
-/** Selector de cuentas demo (comportamiento actual, sin cambios). */
-function LoginDemo() {
-  const { setSesion } = useSesion();
-  const { toast } = useToast();
-  const [entrando, setEntrando] = useState(false);
-  const cuentas = sesionDemo.cuentas();
-
-  const entrar = async (id: number) => {
-    if (entrando) return;
-    setEntrando(true);
-    try {
-      sesionDemo.login(id);
-      const s = await api.getMe();
-      setSesion(s);
-    } catch (e) {
-      toast(mensajeError(e), 'error');
-      setEntrando(false);
-    }
-  };
-
-  return (
-    <>
-      {cuentas.map((u) => (
-        <button key={u.id} type="button" className="login-user" onClick={() => void entrar(u.id)} disabled={entrando}>
-          <Avatar nombre={u.nombre} size="md" />
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600 }}>{u.nombre}</span>
-            <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-muted)' }}>{u.email}</span>
-          </span>
-          <span className={`rol-chip rol-chip--${u.rol}`}>{ROL_LABEL[u.rol]}</span>
-        </button>
-      ))}
-      <p style={{ fontSize: 11.5, color: 'var(--text-muted)', textAlign: 'center', margin: '16px 0 0' }}>
-        Demo: selecciona una cuenta (en producción será Firebase).
-      </p>
-    </>
   );
 }
 
