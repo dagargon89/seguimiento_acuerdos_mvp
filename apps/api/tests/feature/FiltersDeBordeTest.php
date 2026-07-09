@@ -13,9 +13,9 @@ use Tests\Support\FakeTokenVerifier;
 
 /**
  * Filters de borde del backend (S1.3): FirebaseAuthFilter, ThrottleFilter, CORS,
- * SecurityHeadersFilter. Usa el grupo protegido real (api/v1 + _auth_smoke,
- * TODO(tarea-5): retirar) y un FakeTokenVerifier inyectado vía
- * Services::injectMock — sin red ni tokens reales de Firebase.
+ * SecurityHeadersFilter. Usa el grupo protegido real (api/v1 + GET /me, el
+ * endpoint de lectura más simple de la Tarea 5) y un FakeTokenVerifier
+ * inyectado vía Services::injectMock — sin red ni tokens reales de Firebase.
  *
  * Los IDs de caso entre paréntesis referencian el doc 06 (plan de pruebas).
  *
@@ -52,7 +52,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
 
     public function testAU08aSinHeaderAuthorizationDevuelve401TokenFaltante(): void
     {
-        $resultado = $this->get('api/v1/_auth_smoke');
+        $resultado = $this->get('api/v1/me');
 
         $resultado->assertStatus(401);
         $resultado->assertJSONExact(['error' => 'token_faltante', 'mensaje' => 'Falta el encabezado Authorization: Bearer <token>.']);
@@ -62,7 +62,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
     {
         $this->fake->rechaza('expirado');
 
-        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-expirado'])->get('api/v1/_auth_smoke');
+        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-expirado'])->get('api/v1/me');
 
         $resultado->assertStatus(401);
         $resultado->assertJSONExact(['error' => 'token_invalido', 'mensaje' => 'El token de sesión no es válido o expiró.']);
@@ -72,7 +72,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
     {
         $this->fake->rechaza('firma');
 
-        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-firma-mala'])->get('api/v1/_auth_smoke');
+        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-firma-mala'])->get('api/v1/me');
 
         $resultado->assertStatus(401);
         $resultado->assertJSONExact(['error' => 'token_invalido', 'mensaje' => 'El token de sesión no es válido o expiró.']);
@@ -84,7 +84,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
     {
         $this->fake->rechaza('aud');
 
-        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-otro-proyecto'])->get('api/v1/_auth_smoke');
+        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-otro-proyecto'])->get('api/v1/me');
 
         $resultado->assertStatus(401);
         $resultado->assertJSONExact(['error' => 'token_invalido', 'mensaje' => 'El token de sesión no es válido o expiró.']);
@@ -96,7 +96,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
     {
         $this->fake->exito('fb-uid-desconocido', 'nadie@demo.test', true);
 
-        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/_auth_smoke');
+        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/me');
 
         $resultado->assertStatus(403);
         $resultado->assertJSONExact(['error' => 'usuario_no_registrado', 'mensaje' => 'Esta cuenta no tiene acceso al panel.']);
@@ -111,7 +111,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
 
         $this->fake->exito('fb-demo-baja-001', 'persona.baja@demo.test', true);
 
-        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/_auth_smoke');
+        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/me');
 
         $resultado->assertStatus(403);
         $resultado->assertJSONExact(['error' => 'usuario_no_registrado', 'mensaje' => 'Esta cuenta no tiene acceso al panel.']);
@@ -128,12 +128,12 @@ final class FiltersDeBordeTest extends CIUnitTestCase
 
         $this->fake->exito('fb-uid-nuevo-primer-login', 'responsable.uno@demo.test', true);
 
-        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/_auth_smoke');
+        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/me');
 
         $resultado->assertStatus(200);
         $resultado->assertJSON();
         $cuerpo = json_decode($resultado->response()->getJSON(), true);
-        $this->assertSame(4, (int) $cuerpo['data']['usuario']['id']);
+        $this->assertSame(4, (int) $cuerpo['usuario']['id']);
 
         $fila = Database::connect()->table('usuarios')->where('id', 4)->get()->getRowArray();
         $this->assertSame('fb-uid-nuevo-primer-login', $fila['firebase_uid']);
@@ -149,7 +149,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
         // Usuario id=4 ya tiene firebase_uid en el seed (login normal, no primero).
         $this->fake->exito('fb-demo-resp-001', 'responsable.uno@demo.test', true);
 
-        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/_auth_smoke');
+        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/me');
 
         $resultado->assertStatus(200);
     }
@@ -161,7 +161,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
         $this->fake->exito('fb-demo-resp-001', 'responsable.uno@demo.test', true);
 
         // Primera request: usuario activo, 200, y queda cacheado 60s.
-        $primera = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/_auth_smoke');
+        $primera = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/me');
         $primera->assertStatus(200);
 
         // Dirección desactiva al usuario e invalida su cache (lo que hará el
@@ -169,7 +169,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
         Database::connect()->table('usuarios')->where('id', 4)->update(['activo' => 0]);
         AuthCache::invalidar(4);
 
-        $segunda = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/_auth_smoke');
+        $segunda = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/me');
         $segunda->assertStatus(403);
         $segunda->assertJSONExact(['error' => 'usuario_no_registrado', 'mensaje' => 'Esta cuenta no tiene acceso al panel.']);
     }
@@ -180,12 +180,12 @@ final class FiltersDeBordeTest extends CIUnitTestCase
         // el cache explícitamente, la baja tarda hasta el TTL en tener efecto.
         $this->fake->exito('fb-demo-resp-001', 'responsable.uno@demo.test', true);
 
-        $primera = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/_auth_smoke');
+        $primera = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/me');
         $primera->assertStatus(200);
 
         Database::connect()->table('usuarios')->where('id', 4)->update(['activo' => 0]);
 
-        $segunda = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/_auth_smoke');
+        $segunda = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/me');
         $segunda->assertStatus(200);
     }
 
@@ -201,7 +201,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
         $cache->save('throttler_rl.usuario.4', 0, 60);
         $cache->save('throttler_rl.usuario.4Time', time(), 60);
 
-        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/_auth_smoke');
+        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-valido'])->get('api/v1/me');
 
         $resultado->assertStatus(429);
         $resultado->assertJSONExact(['error' => 'rate_limit', 'mensaje' => 'Demasiadas solicitudes. Intenta de nuevo más tarde.']);
@@ -216,7 +216,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
         $resultado = $this->withHeaders([
             'Origin'                        => 'http://origen-no-permitido.example',
             'Access-Control-Request-Method' => 'GET',
-        ])->options('api/v1/_auth_smoke');
+        ])->options('api/v1/me');
 
         $resultado->assertHeaderMissing('Access-Control-Allow-Origin');
     }
@@ -226,7 +226,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
         $resultado = $this->withHeaders([
             'Origin'                        => 'http://localhost:5173',
             'Access-Control-Request-Method' => 'GET',
-        ])->options('api/v1/_auth_smoke');
+        ])->options('api/v1/me');
 
         $resultado->assertHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
     }
@@ -237,7 +237,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
         $resultado = $this->withHeaders([
             'Origin'                        => 'http://localhost:5173',
             'Access-Control-Request-Method' => 'GET',
-        ])->options('api/v1/_auth_smoke');
+        ])->options('api/v1/me');
 
         $this->assertNotSame(401, $resultado->response()->getStatusCode());
     }
@@ -246,7 +246,7 @@ final class FiltersDeBordeTest extends CIUnitTestCase
 
     public function testHeadersDeSeguridadPresentesInclusoEnRespuesta401(): void
     {
-        $resultado = $this->get('api/v1/_auth_smoke');
+        $resultado = $this->get('api/v1/me');
 
         $resultado->assertStatus(401);
         $resultado->assertHeader('X-Content-Type-Options', 'nosniff');

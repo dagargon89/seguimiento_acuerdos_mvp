@@ -31,7 +31,20 @@ administración de usuarios/áreas, y conmutación del frontend a API real.
 
 ## Suites ejecutadas
 
-(se registran conforme se implementan)
+| Fecha | Tarea | Comando | Resultado |
+|---|---|---|---|
+| 2026-07-09 | S1.3 Filters de borde | `cd apps/api && vendor/bin/phpunit` | ✅ 43/43 (116 aserciones) |
+| 2026-07-09 | S1.4 Endpoints de lectura | `cd apps/api && vendor/bin/phpunit` | ✅ 64/64 (193 aserciones) |
+
+S1.4 (`AcuerdosLecturaTest`, commit pendiente): AU-01/02/03 (visibilidad + 404 ajeno), PA-01..05b
+(oculta concluidos, filtro estado, búsqueda q, stats, vencido derivado en TZ), `/me` sin envoltura,
+detalle acuerdo 4 (corresponsables + override + recordatorios), y **cero N+1** (3 queries constantes
+verificadas con carga creciente). Formas de respuesta contrastadas contra `api.real.ts`: OK.
+
+Cubierto por `FiltersDeBordeTest` + `KreaitTokenVerifierTest`: AU-08a/b/c (401), OW-07 (aud ajeno→401),
+AU-09/09b (email no registrado / inactivo →403), RF-01.3 (primer login enlaza uid), AU-10 (desactivado
+tras invalidar cache→403), OW-05 (throttle→429+Retry-After), OW-04 (CORS preflight origen no listado sin headers).
+Commit `314b5ac`. Concerns: JWKS cache in-memory de kreait; mapeo de motivo por mensaje (no afecta el 401).
 
 ## Gate DoD Sprint 1
 
