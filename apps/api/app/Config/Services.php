@@ -5,6 +5,11 @@ namespace Config;
 use App\Libraries\Auth\KreaitTokenVerifier;
 use App\Libraries\Auth\TokenVerifierInterface;
 use App\Libraries\Auth\UsuarioActual;
+use App\Libraries\Correo\Mailer;
+use App\Libraries\Correo\NoopMailer;
+use App\Libraries\Google\CalendarSync;
+use App\Libraries\Google\NoopCalendarSync;
+use App\Services\RecordatorioService;
 use CodeIgniter\Config\BaseService;
 use Kreait\Firebase\JWT\IdTokenVerifier;
 
@@ -57,5 +62,51 @@ class Services extends BaseService
         }
 
         return new UsuarioActual();
+    }
+
+    /**
+     * Mailer transaccional (RF-08.4). Binding por defecto: NoopMailer (no envía,
+     * sin credenciales). La impl real GmailMailer llega en S2.2. En tests se
+     * sustituye con FakeMailer vía Services::injectMock('mailer', $fake).
+     */
+    public static function mailer(bool $getShared = true): Mailer
+    {
+        if ($getShared) {
+            return static::getSharedInstance('mailer');
+        }
+
+        return new NoopMailer();
+    }
+
+    /**
+     * Sincronizador de Google Calendar (RF-09). Binding por defecto:
+     * NoopCalendarSync (no sincroniza, sin credenciales). La impl real
+     * GoogleCalendarSync llega en S2.3. En tests se sustituye vía
+     * Services::injectMock('calendarSync', $fake).
+     */
+    public static function calendarSync(bool $getShared = true): CalendarSync
+    {
+        if ($getShared) {
+            return static::getSharedInstance('calendarSync');
+        }
+
+        return new NoopCalendarSync();
+    }
+
+    /**
+     * Servicio orquestador del job `recordatorios:procesar` (S2.1). Se resuelve
+     * SIEMPRE fresco (no shared) para tomar los bindings actuales de
+     * mailer/calendarSync (incluidos los mocks inyectados en tests).
+     */
+    public static function recordatorioService(bool $getShared = true): RecordatorioService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('recordatorioService');
+        }
+
+        return new RecordatorioService(
+            static::mailer(),
+            static::calendarSync(),
+        );
     }
 }
