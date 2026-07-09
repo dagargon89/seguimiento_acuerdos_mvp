@@ -22,6 +22,15 @@ $routes->group('api/v1', ['filter' => ['cors', 'firebaseauth', 'throttle']], sta
     $routes->get('acuerdos/(:num)', 'AcuerdosController::show/$1');
     $routes->options('acuerdos/(:num)', 'AcuerdosController::show/$1');
 
+    // Endpoints de ESCRITURA (Tarea 6 / S1.5).
+    $routes->post('acuerdos/lote', 'AcuerdosController::lote');
+    $routes->options('acuerdos/lote', 'AcuerdosController::lote');
+    $routes->patch('acuerdos/(:num)', 'AcuerdosController::update/$1');
+    $routes->put('acuerdos/(:num)/corresponsables', 'AcuerdosController::corresponsables/$1');
+    $routes->options('acuerdos/(:num)/corresponsables', 'AcuerdosController::corresponsables/$1');
+    $routes->post('acuerdos/(:num)/avances', 'AcuerdosController::avances/$1');
+    $routes->options('acuerdos/(:num)/avances', 'AcuerdosController::avances/$1');
+
     $routes->get('usuarios', 'UsuariosController::index');
     $routes->options('usuarios', 'UsuariosController::index');
 

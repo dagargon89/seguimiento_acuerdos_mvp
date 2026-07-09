@@ -7,10 +7,16 @@ use App\Entities\AcuerdoDetalle;
 use App\Entities\Avance;
 use App\Entities\UsuarioRef;
 use App\Libraries\Recordatorios\Programador;
+use App\Models\AcuerdoCorresponsableModel;
 use App\Models\AcuerdoModel;
+use App\Models\AreaModel;
+use App\Models\AuditoriaModel;
 use App\Models\AvanceModel;
 use App\Models\ConfiguracionModel;
+use App\Models\GoogleSyncModel;
 use App\Models\RecordatorioEnviadoModel;
+use App\Models\ReunionModel;
+use App\Models\UsuarioModel;
 use App\Policies\VisibilidadAcuerdos;
 use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -18,12 +24,27 @@ use CodeIgniter\I18n\Time;
 use Config\Database;
 
 /**
- * GET /acuerdos, GET /acuerdos/{id} (doc 05 §2.2) — endpoints de LECTURA.
- * La escritura (lote, editar, corresponsables, avances, concluir, reabrir)
- * se implementa en la Tarea 6.
+ * GET /acuerdos, GET /acuerdos/{id} (doc 05 §2.2) — LECTURA (Tarea 5).
+ * POST /acuerdos/lote, PATCH /acuerdos/{id}, PUT .../corresponsables,
+ * POST .../avances — ESCRITURA (Tarea 6, S1.5). `concluir`/`reabrir` quedan
+ * para una tarea posterior (solo Dirección).
  */
 class AcuerdosController extends BaseController
 {
+    /** Campos que SÍ acepta `NuevoAcuerdo` (doc 05 §2.2 / types.ts) — cualquier otro → 422 (OW-08). */
+    private const CAMPOS_NUEVO_ACUERDO = [
+        'tema', 'accion', 'responsable_id', 'corresponsables_ids', 'area_id',
+        'fecha_compromiso', 'enlace', 'observaciones', 'recordatorio_dias',
+    ];
+
+    /** Campos que SÍ acepta `EdicionAcuerdo` (opcionales) — cualquier otro → 422 (`campo_no_permitido`/OW-08). */
+    private const CAMPOS_EDICION_ACUERDO = [
+        'tema', 'accion', 'responsable_id', 'area_id', 'enlace', 'observaciones', 'recordatorio_dias',
+    ];
+
+    /** Campos que SÍ acepta `NuevoAvance`. */
+    private const CAMPOS_NUEVO_AVANCE = ['descripcion', 'nueva_fecha'];
+
     private const PER_PAGE_DEFAULT = 50;
     private const PER_PAGE_MAX     = 200;
 
@@ -175,6 +196,375 @@ class AcuerdosController extends BaseController
     }
 
     /**
+     * POST /acuerdos/lote (doc 05 §2.2, RF-02) — captura transaccional de 1..N
+     * acuerdos. Cualquier usuario activo. Todo-o-nada (regla №8 de CLAUDE.md):
+     * si UN renglón es inválido no se persiste nada (ni reunión, ni acuerdos,
+     * ni corresponsables, ni google_sync).
+     */
+    public function lote(): ResponseInterface
+    {
+        $actor = service('usuarioActual')->obtener();
+        $body  = $this->cuerpoJson();
+        if ($body === null) {
+            return $this->errorValidacion('El cuerpo debe ser JSON.');
+        }
+
+        $camposDesconocidos = $this->camposDesconocidos($body, ['reunion', 'acuerdos']);
+        if ($camposDesconocidos !== []) {
+            return $this->errorCampoNoPermitido($camposDesconocidos);
+        }
+
+        $reunion = $body['reunion'] ?? null;
+        if (! is_array($reunion) || ! is_string($reunion['nombre'] ?? null) || trim((string) $reunion['nombre']) === ''
+            || ! is_string($reunion['fecha'] ?? null) || ! $this->esFechaValida((string) $reunion['fecha'])) {
+            return $this->errorValidacion('El lote no se guardó: hay acuerdos incompletos.', ['reunion' => 'Nombre y fecha (YYYY-MM-DD) son requeridos']);
+        }
+
+        $acuerdos = $body['acuerdos'] ?? null;
+        if (! is_array($acuerdos) || $acuerdos === [] || ! array_is_list($acuerdos)) {
+            return $this->errorValidacion('El lote está vacío.');
+        }
+
+        $hoy = $this->hoy();
+        $usuariosActivos = $this->idsUsuariosActivos();
+        $areasActivas    = $this->idsAreasActivas();
+
+        $campos = [];
+        foreach ($acuerdos as $i => $n) {
+            if (! is_array($n)) {
+                $campos["acuerdos.{$i}"] = 'Debe ser un objeto';
+
+                continue;
+            }
+
+            $extra = $this->camposDesconocidos($n, self::CAMPOS_NUEVO_ACUERDO);
+            if ($extra !== []) {
+                return $this->errorCampoNoPermitido(array_map(static fn (string $c) => "acuerdos.{$i}.{$c}", $extra));
+            }
+            if (array_key_exists('estado', $n)) {
+                return $this->errorCampoNoPermitido(["acuerdos.{$i}.estado"]);
+            }
+
+            $this->validarNuevoAcuerdo($i, $n, $campos, $hoy, $usuariosActivos, $areasActivas);
+        }
+
+        if ($campos !== []) {
+            return $this->errorValidacion('El lote no se guardó: hay acuerdos incompletos.', $campos);
+        }
+
+        $db = Database::connect();
+        $db->transException(true)->transStart();
+
+        $reunionId = (new ReunionModel())->obtenerOCrear(trim((string) $reunion['nombre']), (string) $reunion['fecha']);
+
+        $idsCreados = [];
+        foreach ($acuerdos as $n) {
+            $idsCreados[] = $this->insertarAcuerdo($reunionId, $n, (int) $actor['id']);
+        }
+
+        $db->transComplete();
+
+        if (! $db->transStatus()) {
+            return $this->response->setStatusCode(500)->setJSON([
+                'error'   => 'error_interno',
+                'mensaje' => 'No se pudo guardar el lote. Intenta de nuevo.',
+            ]);
+        }
+
+        $data = array_map(fn (int $id) => $this->cargarAcuerdoCompleto($id, $hoy)->aArray(), $idsCreados);
+
+        return $this->response->setStatusCode(201)->setJSON(['data' => $data]);
+    }
+
+    /**
+     * PATCH /acuerdos/{id} (doc 05 §2.2) — Dirección o coordinación del área
+     * del acuerdo. Campos estructurales opcionales; `estado` nunca se acepta
+     * (422 `campo_no_permitido`, regla №5 de CLAUDE.md).
+     */
+    public function update(string $id): ResponseInterface
+    {
+        $actor = service('usuarioActual')->obtener();
+        $hoy   = $this->hoy();
+
+        $acuerdoModel = new AcuerdoModel();
+        $builder      = $acuerdoModel->builderConJoins($hoy)->where('acuerdos.id', (int) $id);
+        $fila         = $builder->get()->getFirstRow('array');
+        if ($fila === null) {
+            return $this->noEncontrado();
+        }
+
+        $db                = Database::connect();
+        $esCorresponsable  = $db->table('acuerdo_corresponsables')
+            ->where('acuerdo_id', (int) $id)->where('usuario_id', (int) $actor['id'])->countAllResults() > 0;
+        if (! VisibilidadAcuerdos::puedeVer($actor, $fila, $esCorresponsable)) {
+            return $this->noEncontrado();
+        }
+
+        if (! $this->puedeEditarEstructura($actor, $fila)) {
+            return $this->sinPermiso('No puedes editar este acuerdo.');
+        }
+
+        $body = $this->cuerpoJson();
+        if ($body === null) {
+            return $this->errorValidacion('El cuerpo debe ser JSON.');
+        }
+
+        if (array_key_exists('estado', $body)) {
+            return $this->errorCampoNoPermitido(['estado']);
+        }
+
+        $camposDesconocidos = $this->camposDesconocidos($body, self::CAMPOS_EDICION_ACUERDO);
+        if ($camposDesconocidos !== []) {
+            return $this->errorCampoNoPermitido($camposDesconocidos);
+        }
+
+        $usuariosActivos = $this->idsUsuariosActivos();
+        $areasActivas    = $this->idsAreasActivas();
+        $campos          = [];
+
+        if (array_key_exists('accion', $body) && (! is_string($body['accion']) || trim($body['accion']) === '')) {
+            $campos['accion'] = 'Requerido';
+        }
+        if (array_key_exists('responsable_id', $body) && ! in_array((int) $body['responsable_id'], $usuariosActivos, true)) {
+            $campos['responsable_id'] = 'Usuario inactivo o inexistente';
+        }
+        if (array_key_exists('area_id', $body) && ! in_array((int) $body['area_id'], $areasActivas, true)) {
+            $campos['area_id'] = 'Área inactiva o inexistente';
+        }
+        if (array_key_exists('enlace', $body) && $body['enlace'] !== null && ! $this->esEnlaceValido($body['enlace'])) {
+            $campos['enlace'] = 'Debe ser una URL http(s)';
+        }
+        if (array_key_exists('recordatorio_dias', $body) && ! $this->esRecordatorioDiasValido($body['recordatorio_dias'])) {
+            $campos['recordatorio_dias'] = 'Cada aviso debe estar entre 0 y 30 días';
+        }
+
+        // Corresponsable ≠ responsable: si se cambia el responsable, valida contra los corresponsables actuales.
+        if (array_key_exists('responsable_id', $body)) {
+            $corresponsablesActuales = array_map(static fn (array $c) => (int) $c['usuario_id'],
+                $db->table('acuerdo_corresponsables')->where('acuerdo_id', (int) $id)->get()->getResultArray());
+            if (in_array((int) $body['responsable_id'], $corresponsablesActuales, true)) {
+                $campos['responsable_id'] = 'El responsable no puede ser corresponsable';
+            }
+        }
+
+        if ($campos !== []) {
+            return $this->errorValidacion('Revisa los campos del acuerdo.', $campos);
+        }
+
+        $update = [];
+        foreach (self::CAMPOS_EDICION_ACUERDO as $campo) {
+            if (! array_key_exists($campo, $body)) {
+                continue;
+            }
+            $update[$campo] = match ($campo) {
+                'tema', 'enlace', 'observaciones' => $body[$campo] === null ? null : (trim((string) $body[$campo]) !== '' ? trim((string) $body[$campo]) : null),
+                'accion' => trim((string) $body['accion']),
+                'responsable_id', 'area_id' => (int) $body[$campo],
+                // Columna JSON: el Query Builder no serializa arrays PHP automáticamente
+                // en UPDATE (a diferencia de InitialSeeder/insert, que lo hacen a mano).
+                'recordatorio_dias' => $body[$campo] === null ? null : json_encode($body[$campo]),
+                default => $body[$campo],
+            };
+        }
+
+        if ($update === []) {
+            // Nada que cambiar; devolvemos el acuerdo tal cual (evita un UPDATE vacío).
+            return $this->response->setJSON(['data' => $this->cargarAcuerdoCompleto((int) $id, $hoy)->aArray()]);
+        }
+
+        $db->transException(true)->transStart();
+        $acuerdoModel->update((int) $id, $update);
+        (new GoogleSyncModel())->marcarPendientePorAcuerdo((int) $id);
+        (new AuditoriaModel())->registrar((int) $actor['id'], 'editar', 'acuerdo', (int) $id, ['cambios' => array_keys($update)], $this->request->getIPAddress());
+        $db->transComplete();
+
+        if (! $db->transStatus()) {
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo guardar el cambio.']);
+        }
+
+        return $this->response->setJSON(['data' => $this->cargarAcuerdoCompleto((int) $id, $hoy)->aArray()]);
+    }
+
+    /**
+     * PUT /acuerdos/{id}/corresponsables (doc 05 §2.2) — Dirección o
+     * coordinación del área. Reemplaza TODO el conjunto (semántica PUT).
+     */
+    public function corresponsables(string $id): ResponseInterface
+    {
+        $actor = service('usuarioActual')->obtener();
+        $hoy   = $this->hoy();
+
+        $acuerdoModel = new AcuerdoModel();
+        $fila         = $acuerdoModel->builderConJoins($hoy)->where('acuerdos.id', (int) $id)->get()->getFirstRow('array');
+        if ($fila === null) {
+            return $this->noEncontrado();
+        }
+
+        $db               = Database::connect();
+        $esCorresponsable = $db->table('acuerdo_corresponsables')
+            ->where('acuerdo_id', (int) $id)->where('usuario_id', (int) $actor['id'])->countAllResults() > 0;
+        if (! VisibilidadAcuerdos::puedeVer($actor, $fila, $esCorresponsable)) {
+            return $this->noEncontrado();
+        }
+
+        if (! $this->puedeEditarEstructura($actor, $fila)) {
+            return $this->sinPermiso('No puedes editar los corresponsables de este acuerdo.');
+        }
+
+        $body = $this->cuerpoJson();
+        if ($body === null) {
+            return $this->errorValidacion('El cuerpo debe ser JSON.');
+        }
+
+        $camposDesconocidos = $this->camposDesconocidos($body, ['usuarios_ids']);
+        if ($camposDesconocidos !== []) {
+            return $this->errorCampoNoPermitido($camposDesconocidos);
+        }
+
+        $usuariosIds = $body['usuarios_ids'] ?? null;
+        if (! is_array($usuariosIds) || ! array_is_list($usuariosIds)) {
+            return $this->errorValidacion('Revisa los corresponsables.', ['usuarios_ids' => 'Debe ser una lista de ids']);
+        }
+
+        $usuariosIds = array_map(static fn ($v) => (int) $v, $usuariosIds);
+        $unicos      = array_values(array_unique($usuariosIds));
+
+        $campos = [];
+        if (count($unicos) !== count($usuariosIds)) {
+            $campos['usuarios_ids'] = 'No se permiten corresponsables duplicados';
+        } elseif (in_array((int) $fila['responsable_id'], $unicos, true)) {
+            $campos['usuarios_ids'] = 'El responsable no puede ser corresponsable';
+        } else {
+            $activos = $this->idsUsuariosActivos();
+            foreach ($unicos as $uid) {
+                if (! in_array($uid, $activos, true)) {
+                    $campos['usuarios_ids'] = 'Usuario inactivo o inexistente';
+
+                    break;
+                }
+            }
+        }
+
+        if ($campos !== []) {
+            return $this->errorValidacion('Revisa los corresponsables.', $campos);
+        }
+
+        $db->transException(true)->transStart();
+        (new AcuerdoCorresponsableModel())->reemplazarDe((int) $id, $unicos);
+        (new GoogleSyncModel())->marcarPendientePorAcuerdo((int) $id);
+        (new AuditoriaModel())->registrar((int) $actor['id'], 'corresponsables', 'acuerdo', (int) $id, ['usuarios_ids' => $unicos], $this->request->getIPAddress());
+        $db->transComplete();
+
+        if (! $db->transStatus()) {
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo guardar el cambio.']);
+        }
+
+        return $this->response->setJSON(['data' => $this->cargarDetalleCompleto((int) $id, $hoy)->aArray()]);
+    }
+
+    /**
+     * POST /acuerdos/{id}/avances (doc 05 §2.2, RF-07) — responsable,
+     * corresponsables, coordinación del área o Dirección. Con `nueva_fecha` =
+     * reprogramación (`vencido` → `en_proceso`); sobre `concluido` → 409.
+     */
+    public function avances(string $id): ResponseInterface
+    {
+        $actor = service('usuarioActual')->obtener();
+        $hoy   = $this->hoy();
+
+        $acuerdoModel = new AcuerdoModel();
+        $fila         = $acuerdoModel->builderConJoins($hoy)->where('acuerdos.id', (int) $id)->get()->getFirstRow('array');
+        if ($fila === null) {
+            return $this->noEncontrado();
+        }
+
+        $db               = Database::connect();
+        $esCorresponsable = $db->table('acuerdo_corresponsables')
+            ->where('acuerdo_id', (int) $id)->where('usuario_id', (int) $actor['id'])->countAllResults() > 0;
+        if (! VisibilidadAcuerdos::puedeVer($actor, $fila, $esCorresponsable)) {
+            return $this->noEncontrado();
+        }
+
+        if (! $this->puedeRegistrarAvance($actor, $fila, $esCorresponsable)) {
+            return $this->sinPermiso('No participas en este acuerdo.');
+        }
+
+        if ($fila['estado'] === 'concluido') {
+            return $this->response->setStatusCode(409)->setJSON([
+                'error'   => 'estado_invalido',
+                'mensaje' => 'El acuerdo ya está concluido.',
+            ]);
+        }
+
+        $body = $this->cuerpoJson();
+        if ($body === null) {
+            return $this->errorValidacion('El cuerpo debe ser JSON.');
+        }
+
+        $camposDesconocidos = $this->camposDesconocidos($body, self::CAMPOS_NUEVO_AVANCE);
+        if ($camposDesconocidos !== []) {
+            return $this->errorCampoNoPermitido($camposDesconocidos);
+        }
+
+        $campos = [];
+        $descripcion = $body['descripcion'] ?? null;
+        if (! is_string($descripcion) || trim($descripcion) === '') {
+            $campos['descripcion'] = 'Requerido';
+        }
+
+        $nuevaFecha = $body['nueva_fecha'] ?? null;
+        if ($nuevaFecha !== null) {
+            if (! is_string($nuevaFecha) || ! $this->esFechaValida($nuevaFecha)) {
+                $campos['nueva_fecha'] = 'Debe ser una fecha YYYY-MM-DD';
+            } elseif ($nuevaFecha < $hoy) {
+                $campos['nueva_fecha'] = 'Debe ser hoy o futura';
+            }
+        }
+
+        if ($campos !== []) {
+            return $this->errorValidacion('Revisa el avance.', $campos);
+        }
+
+        $esReprogramacion = $nuevaFecha !== null;
+
+        $db->transException(true)->transStart();
+
+        (new AvanceModel())->insert([
+            'acuerdo_id'  => (int) $id,
+            'usuario_id'  => (int) $actor['id'],
+            'tipo'        => $esReprogramacion ? 'reprogramacion' : 'avance',
+            'descripcion' => trim($descripcion),
+            'nueva_fecha' => $esReprogramacion ? $nuevaFecha : null,
+        ]);
+
+        if ($esReprogramacion) {
+            $update = ['fecha_compromiso' => $nuevaFecha];
+            if ($fila['estado'] === 'vencido') {
+                $update['estado'] = 'en_proceso'; // RF-05.3 / RF-07: reprogramar limpia el vencido.
+            }
+            $acuerdoModel->update((int) $id, $update);
+            (new GoogleSyncModel())->marcarPendientePorAcuerdo((int) $id);
+        }
+
+        (new AuditoriaModel())->registrar(
+            (int) $actor['id'],
+            $esReprogramacion ? 'reprogramar' : 'avance',
+            'acuerdo',
+            (int) $id,
+            null,
+            $this->request->getIPAddress(),
+        );
+
+        $db->transComplete();
+
+        if (! $db->transStatus()) {
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo registrar el avance.']);
+        }
+
+        return $this->response->setJSON(['data' => $this->cargarDetalleCompleto((int) $id, $hoy)->aArray()]);
+    }
+
+    /**
      * Carga corresponsables de TODA la página en UNA sola query (`whereIn`
      * agrupado) — evita el N+1 de resolverlos acuerdo por acuerdo.
      *
@@ -240,5 +630,286 @@ class AcuerdosController extends BaseController
             'error'   => 'no_encontrado',
             'mensaje' => 'El acuerdo no existe o no es visible para tu cuenta.',
         ]);
+    }
+
+    private function sinPermiso(string $mensaje): ResponseInterface
+    {
+        return $this->response->setStatusCode(403)->setJSON(['error' => 'sin_permiso', 'mensaje' => $mensaje]);
+    }
+
+    /** @param array<string, string> $campos */
+    private function errorValidacion(string $mensaje, array $campos = []): ResponseInterface
+    {
+        $body = ['error' => 'validacion', 'mensaje' => $mensaje];
+        if ($campos !== []) {
+            $body['campos'] = $campos;
+        }
+
+        return $this->response->setStatusCode(422)->setJSON($body);
+    }
+
+    /**
+     * 422 `campo_no_permitido` (doc 05 §2.2 nota de seguridad): `estado` o
+     * cualquier otro campo desconocido en el body de creación/edición. Nunca
+     * se acepta silenciosamente ni se ignora (regla №5 de CLAUDE.md / OW-08).
+     *
+     * @param string[] $campos
+     */
+    private function errorCampoNoPermitido(array $campos): ResponseInterface
+    {
+        return $this->response->setStatusCode(422)->setJSON([
+            'error'   => 'campo_no_permitido',
+            'mensaje' => 'El body contiene campos no permitidos.',
+            'campos'  => array_fill_keys($campos, 'Campo no permitido'),
+        ]);
+    }
+
+    /**
+     * Decodifica el body JSON de la request. `null` si no es un objeto JSON
+     * válido (el caller responde 422).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function cuerpoJson(): ?array
+    {
+        $crudo = $this->request->getBody();
+        if ($crudo === null || trim((string) $crudo) === '') {
+            return [];
+        }
+
+        try {
+            $decodificado = json_decode((string) $crudo, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+
+        return is_array($decodificado) ? $decodificado : null;
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     * @param string[]             $permitidos
+     *
+     * @return string[] Claves presentes en `$body` que NO están en `$permitidos`.
+     */
+    private function camposDesconocidos(array $body, array $permitidos): array
+    {
+        return array_values(array_diff(array_keys($body), $permitidos));
+    }
+
+    private function esFechaValida(string $fecha): bool
+    {
+        return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha) && \DateTime::createFromFormat('Y-m-d', $fecha) !== false;
+    }
+
+    private function esEnlaceValido(mixed $enlace): bool
+    {
+        if (! is_string($enlace) || trim($enlace) === '') {
+            return true; // cadena vacía se normaliza a null, no es un enlace invalido.
+        }
+
+        return (bool) preg_match('/^https?:\/\//i', trim($enlace));
+    }
+
+    /** `recordatorio_dias`: null, o lista de enteros en [0..30] (regla №4 del brief de la Tarea 6). */
+    private function esRecordatorioDiasValido(mixed $valor): bool
+    {
+        if ($valor === null) {
+            return true;
+        }
+        if (! is_array($valor) || ! array_is_list($valor)) {
+            return false;
+        }
+        foreach ($valor as $d) {
+            if (! is_int($d) || $d < 0 || $d > 30) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** @return int[] */
+    private function idsUsuariosActivos(): array
+    {
+        return array_map(static fn (array $u) => (int) $u['id'], (new UsuarioModel())->activos());
+    }
+
+    /** @return int[] */
+    private function idsAreasActivas(): array
+    {
+        return array_map(static fn (array $a) => (int) $a['id'], (new AreaModel())->where('activa', 1)->findAll());
+    }
+
+    /**
+     * Valida un renglón de `NuevoAcuerdo` del lote (reglas №3/4/5/9 del brief
+     * de la Tarea 6) y escribe los errores en `$campos["acuerdos.{i}.campo"]`.
+     *
+     * @param array<string, mixed>  $n
+     * @param array<string, string> $campos
+     * @param int[]                 $usuariosActivos
+     * @param int[]                 $areasActivas
+     */
+    private function validarNuevoAcuerdo(int $i, array $n, array &$campos, string $hoy, array $usuariosActivos, array $areasActivas): void
+    {
+        $accion = $n['accion'] ?? null;
+        if (! is_string($accion) || trim($accion) === '') {
+            $campos["acuerdos.{$i}.accion"] = 'Requerido';
+        }
+
+        $responsableId = $n['responsable_id'] ?? null;
+        if ($responsableId === null || ! in_array((int) $responsableId, $usuariosActivos, true)) {
+            $campos["acuerdos.{$i}.responsable_id"] = 'Usuario inactivo o inexistente';
+        }
+
+        $areaId = $n['area_id'] ?? null;
+        if ($areaId === null || ! in_array((int) $areaId, $areasActivas, true)) {
+            $campos["acuerdos.{$i}.area_id"] = 'Área inactiva o inexistente';
+        }
+
+        $fechaCompromiso = $n['fecha_compromiso'] ?? null;
+        if (! is_string($fechaCompromiso) || ! $this->esFechaValida($fechaCompromiso)) {
+            $campos["acuerdos.{$i}.fecha_compromiso"] = 'Requerido';
+        } elseif ($fechaCompromiso < $hoy) {
+            $campos["acuerdos.{$i}.fecha_compromiso"] = 'Debe ser hoy o futura';
+        }
+
+        $corresponsablesIds = $n['corresponsables_ids'] ?? [];
+        if (! is_array($corresponsablesIds) || ! array_is_list($corresponsablesIds)) {
+            $campos["acuerdos.{$i}.corresponsables_ids"] = 'Debe ser una lista de ids';
+        } else {
+            $corresponsablesIds = array_map(static fn ($v) => (int) $v, $corresponsablesIds);
+            $unicos             = array_values(array_unique($corresponsablesIds));
+
+            if (count($unicos) !== count($corresponsablesIds)) {
+                $campos["acuerdos.{$i}.corresponsables_ids"] = 'No se permiten corresponsables duplicados';
+            } elseif ($responsableId !== null && in_array((int) $responsableId, $unicos, true)) {
+                $campos["acuerdos.{$i}.corresponsables_ids"] = 'El responsable no puede ser corresponsable';
+            } else {
+                foreach ($unicos as $uid) {
+                    if (! in_array($uid, $usuariosActivos, true)) {
+                        $campos["acuerdos.{$i}.corresponsables_ids"] = 'Usuario inactivo o inexistente';
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (array_key_exists('recordatorio_dias', $n) && ! $this->esRecordatorioDiasValido($n['recordatorio_dias'])) {
+            $campos["acuerdos.{$i}.recordatorio_dias"] = 'Cada aviso debe estar entre 0 y 30 días';
+        }
+
+        if (array_key_exists('enlace', $n) && $n['enlace'] !== null && ! $this->esEnlaceValido($n['enlace'])) {
+            $campos["acuerdos.{$i}.enlace"] = 'Debe ser una URL http(s)';
+        }
+    }
+
+    /**
+     * Inserta un acuerdo del lote (ya validado) + sus corresponsables + la
+     * fila `google_sync` pendiente, y audita. Vive dentro de la transacción
+     * abierta por `lote()` — nunca se llama fuera de ella.
+     *
+     * @param array<string, mixed> $n
+     */
+    private function insertarAcuerdo(int $reunionId, array $n, int $actorId): int
+    {
+        $corresponsablesIds = array_values(array_unique(array_map(static fn ($v) => (int) $v, $n['corresponsables_ids'] ?? [])));
+
+        $tema          = isset($n['tema']) && is_string($n['tema']) && trim($n['tema']) !== '' ? trim($n['tema']) : null;
+        $enlace        = isset($n['enlace']) && is_string($n['enlace']) && trim($n['enlace']) !== '' ? trim($n['enlace']) : null;
+        $observaciones = isset($n['observaciones']) && is_string($n['observaciones']) && trim($n['observaciones']) !== '' ? trim($n['observaciones']) : null;
+
+        $acuerdoModel = new AcuerdoModel();
+        $acuerdoModel->insert([
+            'reunion_id'        => $reunionId,
+            'area_id'           => (int) $n['area_id'],
+            'tema'              => $tema,
+            'accion'            => trim((string) $n['accion']),
+            'responsable_id'    => (int) $n['responsable_id'],
+            'capturado_por_id'  => $actorId,
+            'fecha_compromiso'  => (string) $n['fecha_compromiso'],
+            'estado'            => 'en_proceso', // único estado inicial (RF-05.1); el cliente jamás manda estado.
+            'enlace'            => $enlace,
+            'observaciones'     => $observaciones,
+            'recordatorio_dias' => isset($n['recordatorio_dias']) && $n['recordatorio_dias'] !== null
+                ? json_encode($n['recordatorio_dias'])
+                : null,
+        ]);
+        $acuerdoId = (int) $acuerdoModel->insertID();
+
+        if ($corresponsablesIds !== []) {
+            (new AcuerdoCorresponsableModel())->reemplazarDe($acuerdoId, $corresponsablesIds);
+        }
+
+        (new GoogleSyncModel())->crearPendientePara($acuerdoId);
+        (new AuditoriaModel())->registrar($actorId, 'crear', 'acuerdo', $acuerdoId, null, $this->request->getIPAddress());
+
+        return $acuerdoId;
+    }
+
+    /** Recarga un `Acuerdo` completo (con corresponsables) tras una escritura. */
+    private function cargarAcuerdoCompleto(int $id, string $hoy): Acuerdo
+    {
+        $fila = (new AcuerdoModel())->builderConJoins($hoy)->where('acuerdos.id', $id)->get()->getFirstRow('array');
+        $corresponsables = $this->cargarCorresponsables([$id])[$id] ?? [];
+
+        return Acuerdo::desdeFilaJoin($fila, $corresponsables);
+    }
+
+    /** Recarga un `AcuerdoDetalle` completo (avances + recordatorios) tras una escritura. */
+    private function cargarDetalleCompleto(int $id, string $hoy): AcuerdoDetalle
+    {
+        $acuerdo = $this->cargarAcuerdoCompleto($id, $hoy);
+
+        $avancesFilas = (new AvanceModel())->where('acuerdo_id', $id)->orderBy('created_at', 'DESC')->orderBy('id', 'DESC')->findAll();
+        $avances      = $this->hidratarAvances($avancesFilas);
+
+        $configGlobal = (new ConfiguracionModel())->recordatoriosDefault();
+        $enviados     = (new RecordatorioEnviadoModel())->where('acuerdo_id', $id)->findAll();
+        $filaParaProgramador = [
+            'estado'            => $acuerdo->estado,
+            'fecha_compromiso'  => $acuerdo->fechaCompromiso,
+            'recordatorio_dias' => $acuerdo->recordatorioDias,
+        ];
+        $recordatorios = Programador::programadosDe($filaParaProgramador, $configGlobal, $enviados);
+
+        return new AcuerdoDetalle($acuerdo, $avances, $recordatorios);
+    }
+
+    /**
+     * Editar campos estructurales (tema/acción/responsable/área/enlace/
+     * observaciones/recordatorio_dias) y corresponsables: Dirección o
+     * coordinación DEL ÁREA del acuerdo (doc 05 §2.2, SRS matriz de roles).
+     *
+     * @param array<string, mixed> $actor
+     * @param array<string, mixed> $acuerdo Fila con al menos area_id.
+     */
+    private function puedeEditarEstructura(array $actor, array $acuerdo): bool
+    {
+        if ($actor['rol'] === 'direccion') {
+            return true;
+        }
+
+        return $actor['rol'] === 'coordinador' && ((int) $acuerdo['area_id']) === (int) $actor['area_id'];
+    }
+
+    /**
+     * Registrar avance (RF-07): responsable, corresponsables, coordinación
+     * del área o Dirección.
+     *
+     * @param array<string, mixed> $actor
+     * @param array<string, mixed> $acuerdo Fila con al menos area_id, responsable_id.
+     */
+    private function puedeRegistrarAvance(array $actor, array $acuerdo, bool $esCorresponsable): bool
+    {
+        if ($actor['rol'] === 'direccion') {
+            return true;
+        }
+        if (((int) $acuerdo['responsable_id']) === (int) $actor['id'] || $esCorresponsable) {
+            return true;
+        }
+
+        return $actor['rol'] === 'coordinador' && ((int) $acuerdo['area_id']) === (int) $actor['area_id'];
     }
 }

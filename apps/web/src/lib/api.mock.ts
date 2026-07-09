@@ -416,8 +416,9 @@ export const mockClient: ApiClient = {
       throw apiError('validacion', 'Describe el avance.', 422, { descripcion: 'Requerido' });
     }
     const h = toIsoDate(hoy());
-    if (avance.nueva_fecha && avance.nueva_fecha <= h) {
-      throw apiError('validacion', 'La nueva fecha debe ser futura.', 422, { nueva_fecha: 'Debe ser futura' });
+    // Regla `>= hoy` (SRS RF-07): reprogramar a HOY es válido y regresa vencido→en_proceso.
+    if (avance.nueva_fecha && avance.nueva_fecha < h) {
+      throw apiError('validacion', 'La nueva fecha debe ser hoy o futura.', 422, { nueva_fecha: 'Debe ser hoy o futura' });
     }
 
     db.avances.push({

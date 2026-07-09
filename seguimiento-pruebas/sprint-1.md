@@ -35,6 +35,12 @@ administración de usuarios/áreas, y conmutación del frontend a API real.
 |---|---|---|---|
 | 2026-07-09 | S1.3 Filters de borde | `cd apps/api && vendor/bin/phpunit` | ✅ 43/43 (116 aserciones) |
 | 2026-07-09 | S1.4 Endpoints de lectura | `cd apps/api && vendor/bin/phpunit` | ✅ 64/64 (193 aserciones) |
+| 2026-07-09 | S1.5 Endpoints de escritura | `cd apps/api && vendor/bin/phpunit` | ✅ 107/107 (316 aserciones) |
+
+S1.5 (`AcuerdosEscrituraTest`, 43 casos nuevos): LT-01..05 (lote todo-o-nada, cero persistido en LT-02
+verificado en 5 tablas), ME-01/04/04b/05/06/11, avance-en-concluido→409, AU-04/05/06, OW-01/02/06/08.
+2 bugs reales corregidos (insertBatch con PK compuesta; JSON-encode de recordatorio_dias en PATCH).
+Fix de consistencia: `api.mock.ts` alineado a la regla `>= hoy` (antes exigía `> hoy`); frontend 6/6 + typecheck verdes.
 
 S1.4 (`AcuerdosLecturaTest`, commit pendiente): AU-01/02/03 (visibilidad + 404 ajeno), PA-01..05b
 (oculta concluidos, filtro estado, búsqueda q, stats, vencido derivado en TZ), `/me` sin envoltura,
