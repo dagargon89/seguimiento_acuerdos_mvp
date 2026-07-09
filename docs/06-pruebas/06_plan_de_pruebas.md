@@ -71,7 +71,9 @@ PA-01 default oculta concluidos; PA-02 filtro estado=concluido los muestra; PA-0
 
 ### 2.7 Administración (RF-10)
 
-AD-01 alta con email duplicado → 422; AD-02 desactivar al último dirección activo → 422; AD-03 baja lógica conserva acuerdos históricos; AD-04 usuario desactivado desaparece de selects de responsable.
+**Usuarios:** AD-01 alta con email duplicado → 422; AD-02 desactivar al último dirección activo → 422; AD-03 baja lógica conserva acuerdos históricos; AD-04 usuario desactivado desaparece de selects de responsable.
+
+**Áreas (ADR-004):** AR-01 Dirección crea área válida → 201; AR-02 nombre duplicado → 422 `campos.nombre`; AR-03 Dirección edita área (nombre/`activa`) → 200; AR-04 rol no-Dirección intenta `POST`/`PATCH /areas` → 403.
 
 ## 3. Casos negativos OWASP (doc 04)
 
@@ -110,7 +112,7 @@ AD-01 alta con email duplicado → 422; AD-02 desactivar al último dirección a
 | RF-07 Avances | ME-04..06, AU-05..06 |
 | RF-08 Recordatorios | RE-01..10 |
 | RF-09 Calendar sync | GC-01..05 |
-| RF-10 Usuarios/áreas | AD-01..04 |
+| RF-10 Usuarios/áreas | AD-01..04 (usuarios) · AR-01..04 (áreas, ADR-004) |
 | RF-11 Resumen | RE-10, PA-04 |
 | RF-12 Auditoría | ME-07/10/12 (verifican inserción en `auditoria`) |
 

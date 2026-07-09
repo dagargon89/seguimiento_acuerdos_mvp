@@ -68,7 +68,7 @@ Google Workspace activo con posibilidad de habilitar Gmail/Calendar APIs y domai
 
 ### RF-02 · Captura de acuerdos (lote)
 1. Dos vistas intercambiables idénticas al demo: *Formularios* (bloques repetibles) y *Hoja de captura* (cuadrícula).
-2. Campos: tema (opcional), acción*, responsable*, corresponsables (0..N), área*, fecha compromiso*, enlace (opcional), observaciones (opcional). **No existe campo de estado**: todo acuerdo nace `en_proceso` (H-01).
+2. Campos: tema (opcional), acción*, responsable*, corresponsables (0..N), área*, fecha compromiso*, enlace (opcional), observaciones (opcional). **No existe campo de estado**: todo acuerdo nace `en_proceso` (H-01). Un corresponsable **no puede ser** el responsable del mismo acuerdo (la API lo rechaza con 422; evita duplicar destinatarios de recordatorios).
 3. Guardado de todo el lote en una transacción; validación por renglón/bloque resaltando incompletos.
 4. Se registra reunión de origen (por defecto la del día), quién capturó, y se programan recordatorios y evento de calendario.
 **Criterios:** lote con un renglón inválido no persiste nada (todo-o-nada); respuesta incluye ids creados; captura concurrente de usuarios distintos no interfiere.
@@ -104,7 +104,7 @@ Google Workspace activo con posibilidad de habilitar Gmail/Calendar APIs y domai
 ### RF-07 · Avances y seguimiento
 1. Responsable, corresponsables y coordinación del área registran avances (texto) sobre el acuerdo; opcionalmente con reprogramación de fecha.
 2. El historial de avances es inmutable (no se edita ni borra; correcciones = nuevo avance).
-**Criterios:** avance con nueva fecha pasada → 422; avance en acuerdo `concluido` → 409.
+**Criterios:** la reprogramación exige `nueva_fecha >= hoy` (TZ Juárez); `nueva_fecha == hoy` es válida y regresa el acuerdo a `en_proceso`. Avance con fecha estrictamente pasada (`< hoy`) → 422; avance en acuerdo `concluido` → 409.
 
 ### RF-08 · Recordatorios personalizables
 1. Configuración global (edita Dirección): lista de días de anticipación (ej. `[7,3,1]`), incluir aviso del día D (sí/no), seguimiento de vencido cada N días hasta M repeticiones.
@@ -112,7 +112,7 @@ Google Workspace activo con posibilidad de habilitar Gmail/Calendar APIs y domai
 3. Destinatarios: responsable + corresponsables; resumen periódico a Dirección (general) y coordinaciones (su área) con frecuencia configurable.
 4. El job diario materializa y envía por Gmail API, registrando cada envío (destinatario, tipo, `gmail_message_id`, estado, error).
 5. UI de recordatorios idéntica al demo: próximos envíos + historial + vista previa del correo.
-**Criterios:** cambiar el default global no reescribe overrides; acuerdo concluido no genera envíos; reprogramar regenera los futuros y cancela los obsoletos; ningún duplicado por (acuerdo, destinatario, tipo, fecha).
+**Criterios:** cambiar el default global no reescribe overrides; acuerdo concluido no genera envíos; reprogramar regenera los futuros y cancela los obsoletos; ningún duplicado por (acuerdo, destinatario, tipo, fecha). Los recordatorios se materializan siempre de forma **prospectiva** (a partir de hoy): reprogramar a una fecha ya pasada no genera envíos retroactivos.
 
 ### RF-09 · Sincronización Google Calendar
 1. Cada acuerdo genera/actualiza un evento all-day en el calendario compartido "Acuerdos · Plan Juárez" (título: `[Tema] Acción — Responsable`).

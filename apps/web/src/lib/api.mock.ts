@@ -23,6 +23,7 @@ import type {
   Acuerdo,
   AcuerdoDetalle,
   AcuerdoRow,
+  AltaArea,
   AltaUsuario,
   ApiError,
   Area,
@@ -32,6 +33,7 @@ import type {
   ConfigRecordatorios,
   DbJson,
   EdicionAcuerdo,
+  EdicionArea,
   EdicionUsuario,
   FiltrosAcuerdos,
   LoteCaptura,
@@ -671,5 +673,43 @@ export const mockClient: ApiClient = {
     await delay();
     actor();
     return db.areas.filter((a) => a.activa).map((a) => ({ id: a.id, nombre: a.nombre, activa: a.activa }));
+  },
+
+  async crearArea(alta: AltaArea): Promise<Area> {
+    await delay();
+    const u = actor();
+    soloDireccion(u);
+    const nombre = alta.nombre?.trim() ?? '';
+    const campos: Record<string, string> = {};
+    if (!nombre) campos.nombre = 'Requerido';
+    else if (db.areas.some((a) => a.nombre.toLowerCase() === nombre.toLowerCase()))
+      campos.nombre = 'Ya existe un área con ese nombre';
+    if (Object.keys(campos).length > 0) throw apiError('validacion', 'Revisa los campos del área.', 422, campos);
+
+    const row = {
+      id: nextId(db.areas), nombre, activa: true, created_at: nowDateTime(), updated_at: null,
+    };
+    db.areas.push(row);
+    auditar(u.id, 'alta_area', 'area', row.id, null);
+    return { id: row.id, nombre: row.nombre, activa: row.activa };
+  },
+
+  async editarArea(id: number, cambios: EdicionArea): Promise<Area> {
+    await delay();
+    const u = actor();
+    soloDireccion(u);
+    const row = db.areas.find((a) => a.id === id);
+    if (!row) throw apiError('no_encontrado', 'Área inexistente.', 404);
+    if (cambios.nombre !== undefined) {
+      const nombre = cambios.nombre.trim();
+      if (!nombre) throw apiError('validacion', 'Revisa los campos del área.', 422, { nombre: 'Requerido' });
+      if (db.areas.some((a) => a.id !== id && a.nombre.toLowerCase() === nombre.toLowerCase()))
+        throw apiError('validacion', 'Revisa los campos del área.', 422, { nombre: 'Ya existe un área con ese nombre' });
+      row.nombre = nombre;
+    }
+    if (cambios.activa !== undefined) row.activa = cambios.activa;
+    row.updated_at = nowDateTime();
+    auditar(u.id, 'editar_area', 'area', id, null);
+    return { id: row.id, nombre: row.nombre, activa: row.activa };
   },
 };

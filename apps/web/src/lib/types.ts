@@ -324,6 +324,15 @@ export interface EdicionUsuario {
   activo?: boolean;
 }
 
+export interface AltaArea {
+  nombre: string;
+}
+
+export interface EdicionArea {
+  nombre?: string;
+  activa?: boolean;
+}
+
 /** Error de API normalizado (doc 05 §1). */
 export interface ApiError {
   error: string;

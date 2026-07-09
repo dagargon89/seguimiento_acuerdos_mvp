@@ -52,6 +52,7 @@ SPA React servida estáticamente que consume una API REST de CodeIgniter 4. El c
 | ADR-001 | Stack del proyecto | [docs/02-arquitectura/ADR/ADR-001_stack_ci4_react.md](docs/02-arquitectura/ADR/ADR-001_stack_ci4_react.md) |
 | ADR-002 | Firebase Authentication | [docs/02-arquitectura/ADR/ADR-002_firebase_auth.md](docs/02-arquitectura/ADR/ADR-002_firebase_auth.md) |
 | ADR-003 | Integración Google (Gmail/Calendar/Tasks) | [docs/02-arquitectura/ADR/ADR-003_integracion_google.md](docs/02-arquitectura/ADR/ADR-003_integracion_google.md) |
+| ADR-004 | Administración de áreas en el MVP (contrato v1.2) | [docs/02-arquitectura/ADR/ADR-004_administracion_areas.md](docs/02-arquitectura/ADR/ADR-004_administracion_areas.md) |
 | 01 | SRS — Especificación de requisitos | [docs/01-vision/01_SRS_especificacion_requisitos.md](docs/01-vision/01_SRS_especificacion_requisitos.md) |
 | 02 | Arquitectura del sistema | [docs/02-arquitectura/02_arquitectura_sistema.md](docs/02-arquitectura/02_arquitectura_sistema.md) |
 | 03 | Modelo de datos | [docs/03-datos/03_modelo_de_datos.md](docs/03-datos/03_modelo_de_datos.md) |

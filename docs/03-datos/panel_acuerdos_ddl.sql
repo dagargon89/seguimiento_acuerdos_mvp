@@ -55,7 +55,7 @@ CREATE TABLE acuerdos (
   capturado_por_id  INT UNSIGNED NOT NULL,
   fecha_compromiso  DATE         NOT NULL,
   estado            ENUM('en_proceso','vencido','concluido') NOT NULL DEFAULT 'en_proceso',
-  enlace            VARCHAR(500) NULL,
+  enlace            VARCHAR(2048) NULL,
   observaciones     TEXT         NULL,
   recordatorio_dias JSON         NULL,
   concluido_por_id  INT UNSIGNED NULL,

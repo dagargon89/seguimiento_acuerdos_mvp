@@ -3,8 +3,8 @@
 | Campo | Valor |
 |---|---|
 | Documento | 05 — Especificación de API REST |
-| Versión | 1.1 — **CONGELADA** (2026-07-09, Gobernanza v3 §4; interfaz literal de `demo-ux/app/src/lib/api.ts`) |
-| Fecha | 2026-07-08 |
+| Versión | 1.2 — **CONGELADA** (2026-07-09, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añade `crearArea`/`editarArea` (ADR-004). |
+| Fecha | 2026-07-09 |
 | Depende de | 01_SRS, 02_arquitectura, 03_modelo_de_datos |
 
 ## 1. Convenciones
@@ -130,7 +130,24 @@
 | `GET /usuarios` | Todos | Directorio activo (para selects de responsable/corresponsables): id, nombre, rol, área |
 | `POST /usuarios` | **Solo Dirección** | Alta: nombre, email, rol, area_id |
 | `PATCH /usuarios/{id}` | **Solo Dirección** | Editar / activar / desactivar (422 si es el último dirección activo) |
-| `GET /areas` · `POST /areas` · `PATCH /areas/{id}` | GET todos · resto Dirección | Catálogo de áreas |
+| `GET /areas` | Todos | Catálogo de áreas activas (id, nombre, activa) |
+| `POST /areas` | **Solo Dirección** | Alta de área: `{ "nombre": "..." }` |
+| `PATCH /areas/{id}` | **Solo Dirección** | Editar nombre y/o activar/desactivar |
+
+```json
+// 201 POST /areas  (request)  { "nombre": "Coordinación de vinculación" }
+// respuesta
+{ "data": { "id": 3, "nombre": "Coordinación de vinculación", "activa": true } }
+
+// 422 nombre duplicado
+{ "error": "validacion", "mensaje": "Revisa los campos del área.",
+  "campos": { "nombre": "Ya existe un área con ese nombre" } }
+
+// PATCH /areas/{id}  (request)  { "nombre": "Nuevo nombre", "activa": false }
+// respuesta
+{ "data": { "id": 3, "nombre": "Nuevo nombre", "activa": false } }
+```
+*Seguridad:* `POST`/`PATCH /areas` solo Dirección (403 en otro rol); `nombre` requerido y único (422). Añadido en v1.2 (ADR-004).
 
 ### 2.7 Resumen
 
@@ -144,7 +161,7 @@
 
 ## 3. Interfaz del cliente (`lib/api.ts` — CONGELADA)
 
-> **CONGELADA el 2026-07-09.** Este bloque es copia literal de `demo-ux/app/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto.
+> **CONGELADA (v1.2, 2026-07-09).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004).
 
 ```typescript
 export interface ApiClient {
@@ -177,6 +194,8 @@ export interface ApiClient {
   crearUsuario(alta: AltaUsuario): Promise<Usuario>; // solo dirección
   editarUsuario(id: number, cambios: EdicionUsuario): Promise<Usuario>; // solo dirección
   listAreas(): Promise<Area[]>;
+  crearArea(alta: AltaArea): Promise<Area>; // solo dirección
+  editarArea(id: number, cambios: EdicionArea): Promise<Area>; // solo dirección
 }
 ```
 
