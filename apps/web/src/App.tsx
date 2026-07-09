@@ -2,16 +2,17 @@
  * Shell de la aplicación: sesión demo, topbar 1:1 con el demo vanilla,
  * rutas react-router y toast global.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { sesionDemo } from './lib';
+import { api, sesionDemo, setTokenProvider, USA_MOCK } from './lib';
 import type { Sesion } from './lib';
+import { auth, loginEmailPassword, loginGoogle, logoutFirebase, onAuthStateChanged } from './lib/firebase';
 import { fmtL, hoyISO } from './lib/fechas';
-import { ROL_LABEL } from './components/EstadoHelpers';
+import { mensajeError, ROL_LABEL, statusError } from './components/EstadoHelpers';
 import { Avatar } from './components/Avatar';
 import { SessionContext } from './components/SessionContext';
-import { ToastProvider } from './components/Toast';
+import { ToastProvider, useToast } from './components/Toast';
 import { Login } from './pages/Login';
 import { Panel } from './pages/Panel';
 import { Captura } from './pages/Captura';
@@ -20,25 +21,85 @@ import { Checklist } from './pages/Checklist';
 import { Usuarios } from './pages/Usuarios';
 
 export default function App() {
-  const [sesion, setSesion] = useState<Sesion | null>(null);
-  const queryClient = useQueryClient();
-
-  const contexto = useMemo(
-    () => ({
-      sesion,
-      setSesion,
-      logout: () => {
-        sesionDemo.logout();
-        queryClient.clear();
-        setSesion(null);
-      },
-    }),
-    [sesion, queryClient],
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
+}
+
+function AppContent() {
+  const [sesion, setSesion] = useState<Sesion | null>(null);
+  const [cargandoSesion, setCargandoSesion] = useState(!USA_MOCK);
+  const [errorAcceso, setErrorAcceso] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const logout = useMemo(
+    () => () => {
+      queryClient.clear();
+      setSesion(null);
+      if (USA_MOCK) {
+        sesionDemo.logout();
+      } else {
+        void logoutFirebase();
+      }
+    },
+    [queryClient],
+  );
+
+  // Cableado de Firebase Auth (ADR-002): solo activo cuando USA_MOCK === false.
+  useEffect(() => {
+    if (USA_MOCK) return;
+
+    setTokenProvider(async () => (await auth.currentUser?.getIdToken()) ?? '');
+
+    const unsubscribe = onAuthStateChanged(auth, (usuarioFirebase) => {
+      if (!usuarioFirebase) {
+        setSesion(null);
+        setCargandoSesion(false);
+        return;
+      }
+      setCargandoSesion(true);
+      api
+        .getMe()
+        .then((s) => {
+          setErrorAcceso(null);
+          setSesion(s);
+        })
+        .catch((e: unknown) => {
+          if (statusError(e) === 403) {
+            setErrorAcceso('Tu cuenta no tiene acceso al panel. Contacta a Dirección.');
+          } else {
+            toast(mensajeError(e), 'error');
+          }
+          void logoutFirebase();
+          setSesion(null);
+        })
+        .finally(() => setCargandoSesion(false));
+    });
+
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const contexto = useMemo(() => ({ sesion, setSesion, logout }), [sesion, logout]);
+
+  if (!USA_MOCK && cargandoSesion) {
+    return (
+      <SessionContext.Provider value={contexto}>
+        <div className="login-wrap" />
+      </SessionContext.Provider>
+    );
+  }
 
   return (
     <SessionContext.Provider value={contexto}>
-      <ToastProvider>{sesion ? <Shell sesion={sesion} onLogout={contexto.logout} /> : <Login />}</ToastProvider>
+      {sesion ? (
+        <Shell sesion={sesion} onLogout={contexto.logout} />
+      ) : (
+        <Login errorAcceso={errorAcceso} onLoginGoogle={loginGoogle} onLoginEmailPassword={loginEmailPassword} />
+      )}
     </SessionContext.Provider>
   );
 }
