@@ -5,6 +5,7 @@ namespace Config;
 use App\Libraries\Auth\KreaitTokenVerifier;
 use App\Libraries\Auth\TokenVerifierInterface;
 use App\Libraries\Auth\UsuarioActual;
+use App\Libraries\Correo\GmailService;
 use App\Libraries\Correo\Mailer;
 use App\Libraries\Correo\NoopMailer;
 use App\Libraries\Google\CalendarSync;
@@ -65,14 +66,21 @@ class Services extends BaseService
     }
 
     /**
-     * Mailer transaccional (RF-08.4). Binding por defecto: NoopMailer (no envía,
-     * sin credenciales). La impl real GmailMailer llega en S2.2. En tests se
-     * sustituye con FakeMailer vía Services::injectMock('mailer', $fake).
+     * Mailer transaccional (RF-08.4, ADR-003). Binding condicionado a la
+     * presencia de credenciales: si `GOOGLE_APPLICATION_CREDENTIALS` está
+     * configurado (ruta a la clave del service account), resuelve a
+     * `GmailService` (Gmail API real, S2.2); si está vacío (dev sin
+     * credenciales, o el entorno de tests), resuelve a `NoopMailer`. En tests
+     * se sustituye con FakeMailer vía Services::injectMock('mailer', $fake).
      */
     public static function mailer(bool $getShared = true): Mailer
     {
         if ($getShared) {
             return static::getSharedInstance('mailer');
+        }
+
+        if ((string) env('GOOGLE_APPLICATION_CREDENTIALS') !== '') {
+            return new GmailService();
         }
 
         return new NoopMailer();

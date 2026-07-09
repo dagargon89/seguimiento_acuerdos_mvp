@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Libraries\Correo\Mailer;
+use App\Libraries\Correo\PlantillaCorreo;
 use App\Libraries\Google\CalendarSync;
 use App\Libraries\Recordatorios\Programador;
 use App\Models\AcuerdoModel;
@@ -30,12 +31,14 @@ use Throwable;
 final class RecordatorioService
 {
     private BaseConnection $db;
+    private PlantillaCorreo $plantilla;
 
     public function __construct(
         private Mailer $mailer,
         private CalendarSync $calendarSync,
     ) {
-        $this->db = Database::connect();
+        $this->db        = Database::connect();
+        $this->plantilla = new PlantillaCorreo();
     }
 
     /**
@@ -91,9 +94,10 @@ final class RecordatorioService
     {
         $configGlobal = (new ConfiguracionModel())->recordatoriosDefault();
 
-        $acuerdos = $this->db->table('acuerdos')
-            ->select('id, estado, fecha_compromiso, recordatorio_dias, responsable_id, area_id, tema, accion')
-            ->whereIn('estado', ['en_proceso', 'vencido'])
+        $acuerdos = $this->db->table('acuerdos a')
+            ->select('a.id, a.estado, a.fecha_compromiso, a.recordatorio_dias, a.responsable_id, a.area_id, a.tema, a.accion, r.nombre AS responsable_nombre')
+            ->join('usuarios r', 'r.id = a.responsable_id', 'left')
+            ->whereIn('a.estado', ['en_proceso', 'vencido'])
             ->get()->getResultArray();
 
         foreach ($acuerdos as $acuerdo) {
@@ -157,11 +161,12 @@ final class RecordatorioService
         }
 
         $resumen->materializados++;
+        $correo = $this->plantilla->recordatorio($tipo, $acuerdo, $usuario);
         $this->enviarYMarcar(
             $reservado,
             (string) $usuario['email'],
-            $this->asuntoRecordatorio($tipo, $acuerdo),
-            $this->cuerpoRecordatorio($tipo, $acuerdo, $usuario),
+            $correo['asunto'],
+            $correo['html'],
             $resumen,
         );
     }
@@ -329,10 +334,11 @@ final class RecordatorioService
             $resumen->materializados++;
 
             try {
+                $correo    = $this->plantilla->resumen($usuario, $this->acuerdosDelAmbito($usuario));
                 $messageId = $this->mailer->enviar(
                     (string) $usuario['email'],
-                    'Resumen periódico de pendientes',
-                    $this->cuerpoResumen($usuario),
+                    $correo['asunto'],
+                    $correo['html'],
                 );
                 $this->db->table('recordatorios_enviados')->where('id', $filaId)->update([
                     'estado'           => 'enviado',
@@ -374,54 +380,27 @@ final class RecordatorioService
         };
     }
 
-    // ── Plantillas (mínimas y escapadas; la plantilla 1:1 con el demo es S2.2) ──
-
-    /** @param array<string, mixed> $acuerdo */
-    private function asuntoRecordatorio(string $tipo, array $acuerdo): string
-    {
-        $prefijo = match ($tipo) {
-            'previo'  => 'Recordatorio',
-            'dia'     => 'Vence hoy',
-            'vencido' => 'Acuerdo vencido',
-            default   => 'Recordatorio',
-        };
-        $tema = (string) ($acuerdo['tema'] ?? '') !== '' ? (string) $acuerdo['tema'] : 'Acuerdo';
-
-        return $prefijo . ': ' . $tema;
-    }
-
     /**
-     * Cuerpo HTML mínimo, escapado. Método reemplazable: la plantilla rica (1:1
-     * con el demo) se implementa en S2.2 sobreescribiendo esto.
+     * Acuerdos abiertos (en_proceso + vencido) del ámbito del destinatario del
+     * resumen (RF-11): Dirección ve TODOS; coordinación solo los de su área.
+     * Responsables puros no llegan aquí (`procesarResumenPeriodico` ya los
+     * excluye). Incluye el nombre del responsable para la plantilla.
      *
-     * @param array<string, mixed> $acuerdo
      * @param array<string, mixed> $usuario
+     *
+     * @return list<array<string, mixed>>
      */
-    protected function cuerpoRecordatorio(string $tipo, array $acuerdo, array $usuario): string
+    private function acuerdosDelAmbito(array $usuario): array
     {
-        $nombre = esc((string) ($usuario['nombre'] ?? ''));
-        $accion = esc((string) ($acuerdo['accion'] ?? ''));
-        $fecha  = esc((string) ($acuerdo['fecha_compromiso'] ?? ''));
-        $etiqueta = match ($tipo) {
-            'previo'  => 'Tienes un acuerdo próximo a vencer.',
-            'dia'     => 'Tu acuerdo vence hoy.',
-            'vencido' => 'Tienes un acuerdo vencido pendiente.',
-            default   => 'Recordatorio de acuerdo.',
-        };
+        $builder = $this->db->table('acuerdos a')
+            ->select('a.id, a.tema, a.accion, a.fecha_compromiso, a.estado, a.area_id, r.nombre AS responsable_nombre')
+            ->join('usuarios r', 'r.id = a.responsable_id', 'left')
+            ->whereIn('a.estado', ['en_proceso', 'vencido']);
 
-        return "<p>Hola {$nombre},</p>"
-            . "<p>{$etiqueta}</p>"
-            . "<p><strong>Acción:</strong> {$accion}<br>"
-            . "<strong>Fecha compromiso:</strong> {$fecha}</p>";
-    }
+        if ((string) $usuario['rol'] !== 'direccion') {
+            $builder->where('a.area_id', (int) $usuario['area_id']);
+        }
 
-    /** @param array<string, mixed> $usuario */
-    protected function cuerpoResumen(array $usuario): string
-    {
-        $nombre = esc((string) ($usuario['nombre'] ?? ''));
-        $ambito = ((string) $usuario['rol'] === 'direccion') ? 'general' : 'de tu área';
-
-        return "<p>Hola {$nombre},</p>"
-            . "<p>Este es tu resumen periódico {$ambito} de acuerdos pendientes.</p>";
+        return $builder->get()->getResultArray();
     }
 }

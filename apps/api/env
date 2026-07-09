@@ -77,3 +77,21 @@
 
 # CORS — lista blanca separada por comas, sin wildcard (doc 04 §A05)
 # CORS_ALLOWED_ORIGINS = 'http://localhost:5173'
+
+#--------------------------------------------------------------------
+# Panel de Acuerdos — Fase 2 (S2.2: Gmail API, ADR-003)
+#--------------------------------------------------------------------
+
+# Ruta absoluta a la clave JSON del service account (domain-wide delegation,
+# permisos 600, fuera del repo). Si está vacío, Config\Services::mailer()
+# resuelve a NoopMailer (no envía correo real) — comportamiento por defecto
+# en desarrollo y en el entorno de tests.
+# GOOGLE_APPLICATION_CREDENTIALS = ''
+
+# Cuenta central de Google Workspace que el service account impersona para
+# enviar correo (p.ej. acuerdos@planjuarez.org).
+# GOOGLE_IMPERSONATED_USER = ''
+
+# ID del calendario compartido "Acuerdos · Plan Juárez" (S2.3, no usado por
+# GmailService; documentado aquí para mantener las 3 claves de ADR-003 juntas).
+# GOOGLE_CALENDAR_ID = ''
