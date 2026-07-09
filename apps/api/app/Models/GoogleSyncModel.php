@@ -24,9 +24,17 @@ class GoogleSyncModel extends Model
         $this->insert(['acuerdo_id' => $acuerdoId, 'estado' => 'pendiente']);
     }
 
-    /** Marca `pendiente` de nuevo tras una edición que invalida el evento sincronizado. */
+    /**
+     * Marca `pendiente` de nuevo tras una edición que invalida el evento
+     * sincronizado. Resetea `intentos` a 0 y limpia `error`: de lo contrario
+     * una fila que ya agotó los 3 intentos (estado `error`, intentos=3) queda
+     * fuera del filtro `intentos < 3` de `RecordatorioService::sincronizarCalendario`
+     * y nunca se reintenta aunque el acuerdo se edite/reprograme/concluya.
+     */
     public function marcarPendientePorAcuerdo(int $acuerdoId): void
     {
-        $this->where('acuerdo_id', $acuerdoId)->set(['estado' => 'pendiente'])->update();
+        $this->where('acuerdo_id', $acuerdoId)
+            ->set(['estado' => 'pendiente', 'intentos' => 0, 'error' => null])
+            ->update();
     }
 }

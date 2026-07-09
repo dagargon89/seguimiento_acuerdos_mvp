@@ -74,9 +74,18 @@ final class GmailService implements Mailer
      * Método PURO: sin red, sin estado, sin llamar a la API — es el seam de
      * testeo. Los tests lo invocan directamente para verificar la forma del
      * MIME sin credenciales ni conexión.
+     *
+     * Defensa en profundidad: `$de`/`$para` van crudos a los headers `From:`/
+     * `To:`. Hoy no es explotable (el email se valida al alta del usuario /
+     * viene de `.env`), pero si alguna vez llegara un valor con `\r` o `\n`
+     * (CRLF header injection) se podrían inyectar headers/cuerpo arbitrarios.
+     * Se rechaza explícitamente en vez de sanear en silencio.
      */
     public function construirRaw(string $de, string $para, string $asunto, string $html): string
     {
+        $this->rechazarCrlf($de, 'de');
+        $this->rechazarCrlf($para, 'para');
+
         $asuntoCodificado = '=?UTF-8?B?' . base64_encode($asunto) . '?=';
 
         $headers = [
@@ -96,5 +105,13 @@ final class GmailService implements Mailer
     private function base64UrlEncode(string $data): string
     {
         return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+    }
+
+    /** Lanza si `$valor` contiene CR o LF (CRLF header injection). */
+    private function rechazarCrlf(string $valor, string $campo): void
+    {
+        if (str_contains($valor, "\r") || str_contains($valor, "\n")) {
+            throw new RuntimeException("GmailService: el valor de '{$campo}' contiene caracteres de control (\\r/\\n) no permitidos en un header de correo.");
+        }
     }
 }

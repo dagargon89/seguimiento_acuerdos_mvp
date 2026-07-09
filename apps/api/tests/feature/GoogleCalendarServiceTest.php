@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Database\Seeds\InitialSeeder;
 use App\Libraries\Google\GoogleCalendarService;
+use App\Models\GoogleSyncModel;
 use App\Services\RecordatorioService;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
@@ -214,5 +215,41 @@ final class GoogleCalendarServiceTest extends CIUnitTestCase
 
         $this->assertSame(0, $this->api->llamadasCrear());
         $this->assertSame(0, $this->api->llamadasActualizar());
+    }
+
+    // ── GC-06: marcarPendientePorAcuerdo resetea intentos (fix Hallazgo 1) ────
+
+    /**
+     * Una fila que agotó los 3 intentos (estado `error`) queda fuera del
+     * filtro `intentos < 3` del job. Al editar/reprogramar/concluir el
+     * acuerdo, `marcarPendientePorAcuerdo` debe resetear `intentos` a 0 (y
+     * limpiar `error`) para que la fila vuelva a ser candidata y el job la
+     * reintente.
+     */
+    public function testMarcarPendientePorAcuerdoReseteaIntentosYPermiteReintento(): void
+    {
+        // Aísla el caso: reconcilia el resto del seed para que la única
+        // candidata potencial sea la fila de este test.
+        $this->conn->table('google_sync')->set(['estado' => 'sincronizado'])->where('estado !=', 'sincronizado')->update();
+
+        $id = $this->crearAcuerdo('2026-07-25');
+        $this->crearGoogleSync($id, calendarEventId: null, estado: 'error', intentos: 3);
+        $this->conn->table('google_sync')->where('acuerdo_id', $id)->update(['error' => 'boom anterior']);
+
+        // Antes del fix, el job no la tocaría (intentos=3 no pasa `intentos < 3`).
+        (new GoogleSyncModel())->marcarPendientePorAcuerdo($id);
+
+        $filaTrasMarcar = $this->googleSyncDe($id);
+        $this->assertSame('pendiente', $filaTrasMarcar['estado']);
+        $this->assertSame(0, (int) $filaTrasMarcar['intentos'], 'intentos debe resetearse a 0');
+        $this->assertNull($filaTrasMarcar['error'], 'error debe limpiarse');
+
+        $servicio = new RecordatorioService(new FakeMailer(), $this->servicio());
+        $servicio->procesar(new \DateTimeImmutable('2026-07-14'));
+
+        $this->assertSame(1, $this->api->llamadasCrear(), 'el job SÍ debe reintentar tras el reset de intentos');
+
+        $filaFinal = $this->googleSyncDe($id);
+        $this->assertSame('sincronizado', $filaFinal['estado']);
     }
 }

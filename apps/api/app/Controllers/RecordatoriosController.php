@@ -87,7 +87,10 @@ class RecordatoriosController extends BaseController
     /**
      * `historial`: filas de `recordatorios_enviados` de acuerdos visibles.
      * Las filas de tipo `resumen` (`acuerdo_id IS NULL`) se muestran a
-     * cualquiera que NO sea responsable (igual que `api.mock.ts`).
+     * cualquiera que NO sea responsable (igual que `api.mock.ts`), pero SOLO
+     * las del propio actor (`usuario_id = actor.id`): son un envío personal,
+     * no un acuerdo con visibilidad compartida, así que un coordinador no debe
+     * ver que Dirección u otra coordinación recibió su resumen.
      */
     public function historial(): ResponseInterface
     {
@@ -103,8 +106,12 @@ class RecordatoriosController extends BaseController
             }
             $builder->whereIn('acuerdo_id', $idsVisibles);
         } else {
+            $actorId = (int) $actor['id'];
             $builder->groupStart()
-                ->where('acuerdo_id', null)
+                ->groupStart()
+                    ->where('acuerdo_id', null)
+                    ->where('usuario_id', $actorId)
+                ->groupEnd()
                 ->orWhereIn('acuerdo_id', $idsVisibles === [] ? [0] : $idsVisibles)
                 ->groupEnd();
         }

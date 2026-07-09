@@ -295,6 +295,39 @@ final class RecordatorioJobTest extends CIUnitTestCase
         }
     }
 
+    /**
+     * Garantía real de idempotencia del resumen (Hallazgo 2): como
+     * `acuerdo_id` es NULL en estas filas, la UNIQUE natural NO las protege
+     * (MySQL trata cada NULL como distinto). Lo que evita el duplicado es el
+     * check-then-act de `procesarResumenPeriodico()` + que el cron corre con
+     * un solo runner. Este test corre el job dos veces seguidas el mismo día
+     * de resumen y verifica que NO se duplica ni se re-envía.
+     */
+    public function testResumenNoSeDuplicaAlReejecutarElMismoDia(): void
+    {
+        $this->correr('2026-07-13'); // lunes → dispara resumen.
+        $this->correr('2026-07-13'); // re-ejecución del MISMO día.
+
+        $resumenes = $this->conn->table('recordatorios_enviados')
+            ->where('tipo', 'resumen')
+            ->where('programado_para', '2026-07-13')
+            ->get()->getResultArray();
+
+        $usuarios = array_map(static fn (array $e) => (int) $e['usuario_id'], $resumenes);
+        sort($usuarios);
+        // Sigue siendo exactamente una fila por destinatario (dirección + coordinadores).
+        $this->assertSame([1, 2, 3], $usuarios, 'no debe duplicar filas de resumen al reejecutar');
+
+        foreach ([1, 2, 3] as $usuarioId) {
+            $count = $this->conn->table('recordatorios_enviados')
+                ->where('tipo', 'resumen')
+                ->where('programado_para', '2026-07-13')
+                ->where('usuario_id', $usuarioId)
+                ->countAllResults();
+            $this->assertSame(1, $count, "usuario {$usuarioId} debe tener exactamente 1 fila de resumen");
+        }
+    }
+
     public function testResumenNoSeGeneraEnFechaFueraDeFrecuencia(): void
     {
         // 2026-07-14 es martes → NO corresponde a 'semanal'.

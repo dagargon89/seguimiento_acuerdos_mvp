@@ -401,6 +401,53 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
         $this->assertTrue($item['enviado']);
     }
 
+    public function testRecordatoriosHistorialResumenSoloMuestraElPropioDelActorNoElDeOtroUsuario(): void
+    {
+        // Inserta un resumen propio para el coordinador operativo (id 2, distinto
+        // del de Dirección que ya trae el seed con id 9, usuario 1) y otro para
+        // vinculación (id 3), en una fecha nueva para no chocar con el seed.
+        Database::connect()->table('recordatorios_enviados')->insertBatch([
+            [
+                'acuerdo_id'       => null,
+                'usuario_id'       => 2,
+                'tipo'             => 'resumen',
+                'programado_para'  => '2026-07-13',
+                'enviado_at'       => '2026-07-13 09:00:00',
+                'estado'           => 'enviado',
+                'gmail_message_id' => 'msg-test-resumen-coord-op',
+                'error'            => null,
+            ],
+            [
+                'acuerdo_id'       => null,
+                'usuario_id'       => 3,
+                'tipo'             => 'resumen',
+                'programado_para'  => '2026-07-13',
+                'enviado_at'       => '2026-07-13 09:00:00',
+                'estado'           => 'enviado',
+                'gmail_message_id' => 'msg-test-resumen-coord-vinc',
+                'error'            => null,
+            ],
+        ]);
+
+        // Vinculación (id 3) no debe ver el resumen del coordinador operativo (id 2).
+        $r = $this->como('coordinacion.vinculacion@demo.test')->get('api/v1/recordatorios/historial');
+        $r->assertStatus(200);
+        $cuerpo = $this->cuerpo($r);
+
+        $resumenes = array_values(array_filter($cuerpo['data'], static fn (array $x) => $x['tipo'] === 'resumen'));
+        $this->assertNotEmpty($resumenes, 'sí debe ver su propio resumen');
+        foreach ($resumenes as $item) {
+            $this->assertSame(3, $item['destinatario']['id'], 'no debe ver resumen de otro usuario (id 2 o 1)');
+        }
+
+        // Y el resumen propio (usuario 3, 2026-07-13) sí aparece.
+        $propios = array_values(array_filter(
+            $resumenes,
+            static fn (array $x) => $x['programado_para'] === '2026-07-13',
+        ));
+        $this->assertNotEmpty($propios, 'debe ver su propio resumen del 2026-07-13');
+    }
+
     public function testRecordatoriosHistorialFormaCorrectaIncluyeFallidos(): void
     {
         $r = $this->como('direccion@demo.test')->get('api/v1/recordatorios/historial');

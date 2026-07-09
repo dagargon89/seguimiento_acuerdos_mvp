@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Libraries\Correo\GmailService;
 use CodeIgniter\Test\CIUnitTestCase;
 use Google\Client as GoogleClient;
+use RuntimeException;
 
 /**
  * `GmailService::construirRaw()` (S2.2): seam de testeo puro, sin red ni
@@ -90,5 +91,43 @@ final class GmailServiceTest extends CIUnitTestCase
         $this->assertMatchesRegularExpression('/Subject: =\?UTF-8\?B\?([A-Za-z0-9+\/=]+)\?=/', $mime);
         preg_match('/Subject: =\?UTF-8\?B\?([A-Za-z0-9+\/=]+)\?=/', $mime, $m);
         $this->assertSame($asunto, base64_decode($m[1]));
+    }
+
+    // ── Defensa en profundidad: rechazo de CRLF header injection (Hallazgo 4) ──
+
+    public function testConstruirRawRechazaParaConCrlf(): void
+    {
+        $this->expectException(RuntimeException::class);
+
+        $this->gmail->construirRaw(
+            'acuerdos@planjuarez.org',
+            "destinatario@demo.test\r\nBcc: atacante@evil.test",
+            'Asunto normal',
+            '<p>cuerpo</p>',
+        );
+    }
+
+    public function testConstruirRawRechazaDeConCrlf(): void
+    {
+        $this->expectException(RuntimeException::class);
+
+        $this->gmail->construirRaw(
+            "acuerdos@planjuarez.org\nBcc: atacante@evil.test",
+            'destinatario@demo.test',
+            'Asunto normal',
+            '<p>cuerpo</p>',
+        );
+    }
+
+    public function testConstruirRawRechazaParaConSoloLf(): void
+    {
+        $this->expectException(RuntimeException::class);
+
+        $this->gmail->construirRaw(
+            'acuerdos@planjuarez.org',
+            "destinatario@demo.test\nBcc: atacante@evil.test",
+            'Asunto normal',
+            '<p>cuerpo</p>',
+        );
     }
 }

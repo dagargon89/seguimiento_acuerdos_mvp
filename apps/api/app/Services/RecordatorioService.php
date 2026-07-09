@@ -22,11 +22,13 @@ use Throwable;
  *
  * Construido contra las interfaces `Mailer`/`CalendarSync` para poder probarlo
  * con dobles SIN credenciales de Google. Reglas de CLAUDE.md respetadas:
- * transacción en la materialización multi-tabla; idempotencia por la UNIQUE
- * natural `(acuerdo_id, usuario_id, tipo, programado_para)`; `vencido` solo lo
- * asigna el sistema; fechas en TZ America/Ciudad_Juarez (la `$fecha` llega ya
- * calculada por el comando); Query Builder; auditoría de la corrida; un fallo
- * de envío NO aborta el job.
+ * transacción en la materialización multi-tabla; idempotencia para
+ * recordatorios normales por la UNIQUE natural
+ * `(acuerdo_id, usuario_id, tipo, programado_para)`; para el resumen
+ * (`acuerdo_id` NULL) esa UNIQUE NO aplica — ver nota en
+ * `procesarResumenPeriodico()`; `vencido` solo lo asigna el sistema; fechas en
+ * TZ America/Ciudad_Juarez (la `$fecha` llega ya calculada por el comando);
+ * Query Builder; auditoría de la corrida; un fallo de envío NO aborta el job.
  */
 final class RecordatorioService
 {
@@ -173,9 +175,12 @@ final class RecordatorioService
 
     /**
      * Reserva la fila de envío en transacción. Devuelve el id insertado, o null
-     * si ya existía (violación de la UNIQUE natural → idempotencia). Inserta con
-     * estado `fallido`/enviado_at null como "pendiente de envío"; el paso de
-     * envío la actualiza a `enviado` o deja `fallido` con error.
+     * si ya existía (check-then-act contra la UNIQUE natural
+     * `(acuerdo_id, usuario_id, tipo, programado_para)` → idempotencia; esta
+     * ruta SÍ tiene `acuerdo_id` no-NULL, así que la UNIQUE de BD también la
+     * enforcea como respaldo ante una eventual carrera). Inserta con estado
+     * `fallido`/enviado_at null como "pendiente de envío"; el paso de envío la
+     * actualiza a `enviado` o deja `fallido` con error.
      */
     private function reservarEnvio(int $acuerdoId, ?int $usuarioId, string $tipo, string $programadoPara): ?int
     {
@@ -288,7 +293,20 @@ final class RecordatorioService
      * Paso 5 (RF-11): si `$hoy` corresponde a la frecuencia configurada,
      * materializa y envía un `tipo='resumen'` (acuerdo_id NULL) a Dirección
      * (ámbito general) y a cada coordinación (su área). Responsables puros NO
-     * reciben resumen (regla del mock). Idempotente por la UNIQUE natural.
+     * reciben resumen (regla del mock).
+     *
+     * IMPORTANTE — idempotencia real de esta rama: aquí `acuerdo_id` es
+     * siempre NULL, y en MySQL una UNIQUE trata cada NULL como distinto de
+     * cualquier otro (incluso de otro NULL), así que la UNIQUE natural
+     * `(acuerdo_id, usuario_id, tipo, programado_para)` NO impide filas de
+     * resumen duplicadas para el mismo usuario/día — a diferencia de
+     * `reservarEnvio()` (recordatorios normales, `acuerdo_id` no-NULL), donde
+     * esa UNIQUE sí es la garantía de BD. Aquí la única protección contra
+     * duplicados es el check-then-act de abajo (`countAllResults() > 0` antes
+     * de insertar), que es seguro porque el cron ejecuta el job con un solo
+     * runner (sin corridas concurrentes el mismo día); NO sería seguro ante
+     * ejecuciones concurrentes del job. No se agrega un lock nuevo: para el
+     * MVP basta con documentar con precisión esta garantía más débil.
      */
     private function procesarResumenPeriodico(string $hoy, ResumenCorrida $resumen): void
     {
