@@ -41,9 +41,9 @@ Cubierto por 2 tests nuevos en `FiltersDeBordeTest`
 
 | Verificación | Resultado |
 |---|---|
-| Promoción `apps/web` sin mock (typecheck/lint/build verdes) | ⏳ |
-| Suite completa Fase 2 verde | ⏳ |
-| Checklist DoD Fase 2 firmada en README | ⏳ |
+| Promoción `apps/web` sin mock (typecheck/lint/build verdes) | ✅ S3.3 commit b07d525 (vitest 4/4, espejo 11/11, db.json conservado) |
+| Suite completa Fase 2 verde | ✅ backend 206/206 + frontend 4/4 (2026-07-09) |
+| Checklist DoD Fase 2 firmada en README | ⏳ (S3.4) |
 
 ## Gate DoD Fase 2 (Gobernanza v3 §3)
 
