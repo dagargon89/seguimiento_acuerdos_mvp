@@ -479,6 +479,80 @@ final class AcuerdosLecturaTest extends CIUnitTestCase
         // página) = 3. (La resolución del actor por FirebaseAuthFilter puede sumar 0-1 queries
         // adicionales cacheadas 60s — por eso comparamos el DELTA, no un valor absoluto ajeno al SUT.)
         $this->assertSame(3, $queriesConSeedOriginal);
+
+        // Tercer punto de dato a escala mayor (doc brief S3.1: "20 y luego 200"): llevamos el
+        // total de filas visibles a ~200 (10 del seed + 20 ya insertadas + 170 más, todas CON
+        // corresponsable) y confirmamos que el nº de queries de la página sigue siendo el mismo.
+        for ($i = 20; $i < 190; $i++) {
+            $db->table('acuerdos')->insert([
+                'reunion_id'       => 1,
+                'area_id'          => 1,
+                'tema'             => "Carga N+1 #{$i}",
+                'accion'           => "Acuerdo de prueba de carga #{$i}",
+                'responsable_id'   => 4,
+                'capturado_por_id' => 1,
+                'fecha_compromiso' => Time::now()->addDays($i + 1)->toDateString(),
+                'estado'           => 'en_proceso',
+                'created_at'       => Time::now()->toDateTimeString(),
+            ]);
+            $nuevoId = (int) $db->insertID();
+            $db->table('acuerdo_corresponsables')->insert(['acuerdo_id' => $nuevoId, 'usuario_id' => 6]);
+        }
+
+        $queriesConDoscientasFilas = $this->contarQueriesDeLaRequest(
+            fn () => $this->como('direccion@demo.test')->get('api/v1/acuerdos?per_page=200'),
+        );
+
+        $this->assertSame(
+            $queriesConSeedOriginal,
+            $queriesConDoscientasFilas,
+            'A ~200 filas visibles el nº de queries del listado sigue siendo constante (cero N+1 a escala).',
+        );
+    }
+
+    // --- Cero N+1: nº de queries del detalle no crece con el nº de avances ---
+
+    public function testDetalleEjecutaUnNumeroConstanteDeQueriesIndependienteDelNumeroDeAvances(): void
+    {
+        // Acuerdo 4 (área 1, dirección lo ve): ya tiene 1 avance + corresponsables + override
+        // de recordatorio_dias en el seed (ver testDetalleAcuerdo4...). Warm-up: cache de auth caliente.
+        $this->como('direccion@demo.test')->get('api/v1/acuerdos/4');
+
+        $queriesConSeedOriginal = $this->contarQueriesDeLaRequest(
+            fn () => $this->como('direccion@demo.test')->get('api/v1/acuerdos/4'),
+        );
+
+        // Multiplicamos los avances del acuerdo 4 — si `hidratarAvances()` resolviera el usuario
+        // avance por avance (en vez de un whereIn agrupado), el nº de queries crecería con ellos.
+        $db = Database::connect();
+        for ($i = 0; $i < 50; $i++) {
+            $db->table('avances')->insert([
+                'acuerdo_id'  => 4,
+                'usuario_id'  => $i % 2 === 0 ? 4 : 6, // alterna responsable/corresponsable ya sembrados.
+                'tipo'        => 'avance',
+                'descripcion' => "Avance de carga N+1 #{$i}",
+                'created_at'  => Time::now()->subMinutes($i)->toDateTimeString(),
+            ]);
+        }
+
+        $queriesConMasAvances = $this->contarQueriesDeLaRequest(
+            fn () => $this->como('direccion@demo.test')->get('api/v1/acuerdos/4'),
+        );
+
+        $this->assertSame(
+            $queriesConSeedOriginal,
+            $queriesConMasAvances,
+            'El nº de queries del detalle debe ser constante independientemente del nº de avances (cero N+1).',
+        );
+        // Documenta el nº exacto esperado dentro del controller `show()`: 1 (builderConJoins del
+        // acuerdo) + 1 (count de acuerdo_corresponsables para esCorresponsable) + 1
+        // (cargarCorresponsables, whereIn) + 1 (avances findAll) + 1 (hidratarAvances, whereIn de
+        // usuarios) + 1 (config global de recordatorios) + 1 (recordatorios enviados) = 7.
+        $this->assertSame(7, $queriesConSeedOriginal);
+
+        // Verificación funcional: el endpoint sí refleja los 51 avances (1 seed + 50 nuevos).
+        $detalle = $this->cuerpo($this->como('direccion@demo.test')->get('api/v1/acuerdos/4'));
+        $this->assertCount(51, $detalle['data']['avances']);
     }
 
     /** Cuenta TODAS las queries SQL disparadas durante la ejecución de `$accion`, vía el evento `DBQuery`. */
