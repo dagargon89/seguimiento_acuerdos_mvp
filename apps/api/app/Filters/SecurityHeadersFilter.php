@@ -17,10 +17,14 @@ use CodeIgniter\HTTP\ResponseInterface;
  * este filter NO puede vivir solo en `after` si se quiere que 401/403/429
  * también lleven estos headers.
  *
- * NO se agrega Strict-Transport-Security aquí: HSTS solo tiene sentido detrás de
- * HTTPS ya forzado y se activa en el hardening de despliegue (S3.2, doc 04
- * "Hardening de despliegue"); agregarlo antes, en dev sobre HTTP, rompería el
- * acceso local.
+ * Strict-Transport-Security (HSTS, S3.2/doc 04 §A02) se agrega SOLO cuando la
+ * request llega por HTTPS real (`$request->isSecure()`, que en CI4 consulta
+ * `$_SERVER['HTTPS']` — ver IncomingRequest::isSecure()). Nunca en HTTP plano:
+ * anunciarlo ahí forzaría al navegador a exigir HTTPS en un host que todavía
+ * no lo tiene (dev local, o un healthcheck sin TLS), dejándolo inaccesible.
+ * En despliegues detrás de un proxy/balanceador que termina TLS y reenvía por
+ * HTTP interno, el proxy debe fijar `$_SERVER['HTTPS']` (o el equivalente que
+ * CI4 lea) para que esta condición se cumpla.
  */
 class SecurityHeadersFilter implements FilterInterface
 {
@@ -32,8 +36,9 @@ class SecurityHeadersFilter implements FilterInterface
         $response->setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->setHeader('Content-Security-Policy', "default-src 'none'");
 
-        // TODO(hardening S3.2): agregar Strict-Transport-Security cuando HTTPS
-        // esté forzado en producción (app.forceGlobalSecureRequests = true).
+        if ($request->isSecure()) {
+            $response->setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+        }
 
         return null;
     }

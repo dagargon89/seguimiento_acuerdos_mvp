@@ -255,4 +255,38 @@ final class FiltersDeBordeTest extends CIUnitTestCase
         $resultado->assertHeader('Content-Security-Policy', "default-src 'none'");
         $resultado->assertHeaderMissing('Strict-Transport-Security');
     }
+
+    // --- A02/HSTS: header condicional (S3.2) ----------------------------------
+
+    public function testHSTSAusenteEnHttpAunEnProduccion(): void
+    {
+        // Dev y CI corren sobre HTTP: aunque CI_ENVIRONMENT fuera 'production',
+        // sin TLS real HSTS no debe enviarse (le diría al navegador que fuerce
+        // HTTPS sobre un host que no lo tiene, dejándolo inaccesible).
+        service('superglobals')->unsetServer('HTTPS');
+
+        $resultado = $this->withHeaders(['Authorization' => 'Bearer token-inexistente'])->get('api/v1/me');
+
+        $resultado->assertHeaderMissing('Strict-Transport-Security');
+    }
+
+    public function testHSTSPresenteCuandoLaRequestEsHttps(): void
+    {
+        // Simulamos HTTPS real (p.ej. terminado por el proxy/balanceador en
+        // producción) vía el servicio `superglobals`, que es lo que
+        // Request::isSecure() consulta (no $_SERVER directo: el servicio cachea
+        // su propia copia al construirse) — sin depender de CI_ENVIRONMENT.
+        service('superglobals')->setServer('HTTPS', 'on');
+
+        try {
+            $resultado = $this->get('api/v1/me');
+
+            $resultado->assertHeader(
+                'Strict-Transport-Security',
+                'max-age=63072000; includeSubDomains; preload',
+            );
+        } finally {
+            service('superglobals')->unsetServer('HTTPS');
+        }
+    }
 }

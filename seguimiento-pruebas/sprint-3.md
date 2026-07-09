@@ -23,12 +23,19 @@ bundle gzip) se corrió y se documenta con valores concretos abajo.
 
 ## Seguridad y auditorías
 
+Tarea 14 (S3.2). Detalle completo en `docs/04-seguridad/04b_verificacion_owasp_fase2.md` y
+`docs/04-seguridad/checklist_despliegue.md`. Cambio de código (mínimo, según alcance de la
+tarea): HSTS condicional en `SecurityHeadersFilter` — se agrega `Strict-Transport-Security`
+solo cuando la request es HTTPS real (`$request->isSecure()`), nunca en HTTP plano (dev/CI).
+Cubierto por 2 tests nuevos en `FiltersDeBordeTest`
+(`testHSTSAusenteEnHttpAunEnProduccion`, `testHSTSPresenteCuandoLaRequestEsHttps`).
+
 | Verificación | Resultado |
 |---|---|
-| `composer audit` sin críticos | ⏳ |
-| `npm audit` sin críticos | ⏳ |
-| OWASP A01–A10 re-verificado (checklist doc 04) | ⏳ |
-| Cobertura de Services ≥ 80% (`phpunit --coverage-text`) | ⏳ |
+| `composer audit` sin críticos | ✅ "No security vulnerability advisories found." (2026-07-09) |
+| `npm audit` sin críticos | ✅ "found 0 vulnerabilities" (2026-07-09) — no fue necesario `npm audit fix` |
+| OWASP A01–A10 re-verificado (checklist doc 04) | ✅ A01/A03/A06/A07/A09 y A02(HSTS)/A05(código)/A10(backend) verificados con evidencia en código+tests; A02(HTTPS forzado)/A05(`CI_ENVIRONMENT`)/A08(procedimiento operativo)/A10(`rel="noopener"` en frontend) marcados 🔶 como config de despliegue pendiente o mejora de defensa en profundidad de bajo riesgo — ninguno bloqueante. Ver `04b_verificacion_owasp_fase2.md`. |
+| Cobertura de Services ≥ 80% (`phpunit --coverage-text`) | ⏳ **gate no medible en este entorno** — sin driver de cobertura (pcov/Xdebug no instalables, sin `pecl`/`phpize`). Comando para medirlo cuando haya driver: `XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-text` (Xdebug) o `vendor/bin/phpunit --coverage-text` con `pcov` instalado. Suite actual: **206/206 tests verde** (204 previos + 2 de HSTS de esta tarea), 842 assertions, cubriendo dominio/permisos/estados/job/plantillas/calendario/filtros de borde. |
 
 ## Cierre
 

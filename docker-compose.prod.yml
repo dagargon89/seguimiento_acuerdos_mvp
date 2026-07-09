@@ -1,0 +1,29 @@
+# Override de producción · Panel de Acuerdos (S3.2, doc 04 §A05 / §4 "Hardening de despliegue")
+#
+# Uso: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Este archivo NO reemplaza docker-compose.yml: solo sobreescribe lo necesario
+# para producción. Efecto principal: quita los `ports:` de mysql y redis para
+# que NO queden publicados en el host — solo accesibles desde la red interna
+# de Docker (por los servicios de la app en el mismo compose/red). Redis ya
+# corre con `--requirepass` en el compose base; aquí se mantiene.
+#
+# Nota: `!reset []` (tag de la Compose Specification) es necesario porque un
+# `ports: []` simple NO limpia la lista del archivo base al hacer merge — hay
+# que decirle explícitamente a Compose que reemplace en vez de fusionar.
+# Verificado con `docker compose -f docker-compose.yml -f docker-compose.prod.yml
+# config` (Docker Compose v5.0.1 en este entorno): sin `!reset`, los puertos
+# publicados del compose base sobreviven en la config final.
+#
+# Antes de usarlo en un despliegue real:
+#   - Definir MYSQL_ROOT_PASSWORD / MYSQL_PASSWORD / REDIS_PASSWORD reales en
+#     el .env del servidor (nunca los defaults `_local` del compose base).
+#   - Confirmar que ningún otro servicio necesita conectarse a mysql/redis
+#     desde fuera del host Docker (si lo necesita, usar un túnel SSH puntual,
+#     no reabrir el puerto de forma permanente).
+services:
+  mysql:
+    ports: !reset []
+
+  redis:
+    ports: !reset []
