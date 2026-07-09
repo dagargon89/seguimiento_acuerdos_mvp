@@ -2,63 +2,61 @@
 
 namespace App\Libraries\Auth;
 
-use Kreait\Firebase\Contract\Auth as FirebaseAuth;
-use Kreait\Firebase\Exception\Auth\FailedToVerifyToken;
+use Kreait\Firebase\JWT\Error\IdTokenVerificationFailed;
+use Kreait\Firebase\JWT\IdTokenVerifier;
 use Throwable;
 
 /**
- * Verificador real de ID tokens de Firebase, respaldado por kreait/firebase-php.
+ * Verificador real de ID tokens de Firebase.
  *
- * kreait envuelve TODAS las causas de rechazo (firma, exp, iat, aud, iss, token
- * malformado, ausencia de claves) en la misma excepción
- * Kreait\Firebase\Exception\Auth\FailedToVerifyToken, sin exponer un tipo por
- * causa: el motivo solo vive en el mensaje de texto libre (viene de
- * lcobucci/jwt vía kreait/firebase-tokens). Por eso el mapeo a nuestro
- * TokenInvalidoException se hace por coincidencia de substring del mensaje,
- * no por jerarquía de excepciones.
+ * Usa el verificador ligero de kreait/firebase-tokens (IdTokenVerifier), que
+ * valida firma (llaves públicas de Google), exp, iat, aud e iss usando SOLO el
+ * project id — NO requiere credenciales de service account (esas son de la
+ * integración Gmail/Calendar del Sprint 2). Todas las causas de rechazo llegan
+ * como IdTokenVerificationFailed; el motivo solo vive en el mensaje de texto,
+ * así que el mapeo a nuestro TokenInvalidoException es best-effort por substring
+ * (solo informativo para logs; la respuesta HTTP siempre es 401 sin distinguir).
  */
 final class KreaitTokenVerifier implements TokenVerifierInterface
 {
-    public function __construct(private readonly FirebaseAuth $auth)
+    public function __construct(private readonly IdTokenVerifier $verifier)
     {
     }
 
     public function verify(string $idToken): VerifiedToken
     {
         try {
-            $verificado = $this->auth->verifyIdToken($idToken);
-        } catch (FailedToVerifyToken $e) {
-            throw new TokenInvalidoException($this->motivo($e->getMessage()));
+            $token = $this->verifier->verifyIdToken($idToken);
+        } catch (IdTokenVerificationFailed $e) {
+            throw new TokenInvalidoException(self::motivoDesde($e->getMessage()), $e->getMessage());
         } catch (Throwable $e) {
-            // Cualquier otra excepción de kreait (red, credenciales, etc.) también
-            // se trata como token inválido de cara al cliente; el detalle queda
-            // solo en el mensaje interno, nunca en la respuesta HTTP.
+            // Red, llaves no disponibles, etc.: se trata como token inválido de
+            // cara al cliente; el detalle queda solo en el mensaje interno.
             throw new TokenInvalidoException('desconocido', $e->getMessage());
         }
 
-        $claims = $verificado->claims();
+        $claims = $token->payload();
 
         return new VerifiedToken(
-            uid: (string) $claims->get('sub', ''),
-            email: (string) $claims->get('email', ''),
-            emailVerified: (bool) $claims->get('email_verified', false),
+            uid: (string) ($claims['sub'] ?? ''),
+            email: (string) ($claims['email'] ?? ''),
+            emailVerified: (bool) ($claims['email_verified'] ?? false),
         );
     }
 
-    /** Traduce el mensaje de FailedToVerifyToken a un motivo corto (solo para logs/tests). */
-    private function motivo(string $mensajeKreait): string
+    /** Traduce el mensaje de fallo a un motivo corto (solo para logs/tests). */
+    public static function motivoDesde(string $mensaje): string
     {
-        $m = strtolower($mensajeKreait);
+        $m = strtolower($mensaje);
 
         return match (true) {
-            str_contains($m, 'expired')                          => 'expirado',
-            str_contains($m, 'issued in the future')              => 'iat_futuro',
-            str_contains($m, 'not allowed to be used by this audience') => 'aud',
-            str_contains($m, 'not issued by the given issuers')   => 'iss',
-            str_contains($m, 'signature')                         => 'firma',
-            str_contains($m, 'the token is invalid')              => 'malformado',
-            str_contains($m, 'could not be parsed')               => 'malformado',
-            default                                               => 'desconocido',
+            str_contains($m, 'expired')     => 'expirado',
+            str_contains($m, 'future')      => 'iat_futuro',
+            str_contains($m, 'audience'), str_contains($m, 'intended for') => 'aud',
+            str_contains($m, 'issuer'), str_contains($m, 'issued by')      => 'iss',
+            str_contains($m, 'signature')   => 'firma',
+            str_contains($m, 'malformed'), str_contains($m, 'parse')       => 'malformado',
+            default                         => 'desconocido',
         };
     }
 }

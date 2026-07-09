@@ -6,7 +6,7 @@ use App\Libraries\Auth\KreaitTokenVerifier;
 use App\Libraries\Auth\TokenVerifierInterface;
 use App\Libraries\Auth\UsuarioActual;
 use CodeIgniter\Config\BaseService;
-use Kreait\Firebase\Factory;
+use Kreait\Firebase\JWT\IdTokenVerifier;
 
 /**
  * Services Configuration file.
@@ -28,15 +28,12 @@ class Services extends BaseService
      * KreaitTokenVerifier; en tests se sustituye con FakeTokenVerifier vía
      * Services::injectMock('tokenVerifier', $fake).
      *
-     * Nota (concern documentado en la tarea 4): kreait/firebase-php solo acepta
-     * un cache PSR-6 (CacheItemPoolInterface) para las claves públicas de Google
-     * (JWKS) vía Factory::withVerifierCache(). El proyecto no trae ningún
-     * adaptador PSR-6 respaldado por Redis (solo beste/in-memory-cache, que es
-     * en memoria de proceso); implementar uno propio queda fuera de alcance de
-     * esta tarea. Se deja con el default de kreait (InMemoryCache), que sigue
-     * evitando llamadas de red repetidas dentro del mismo proceso PHP pero no
-     * comparte el cache de JWKS entre workers/requests como sí lo hace el cache
-     * Redis de CI4 para el resto de la app.
+     * Usa IdTokenVerifier de kreait/firebase-tokens (createWithProjectId): valida
+     * el token solo con el project id + las llaves públicas de Google, SIN
+     * credenciales de service account. `Factory::createAuth()` NO sirve aquí
+     * porque exige credenciales (falla con "Unable to create an API client
+     * without credentials") aun para verificar; esas credenciales son de la
+     * integración Gmail/Calendar del Sprint 2, no de la autenticación.
      */
     public static function tokenVerifier(bool $getShared = true): TokenVerifierInterface
     {
@@ -44,11 +41,9 @@ class Services extends BaseService
             return static::getSharedInstance('tokenVerifier');
         }
 
-        $auth = (new Factory())
-            ->withProjectId((string) env('FIREBASE_PROJECT_ID'))
-            ->createAuth();
+        $verifier = IdTokenVerifier::createWithProjectId((string) env('FIREBASE_PROJECT_ID'));
 
-        return new KreaitTokenVerifier($auth);
+        return new KreaitTokenVerifier($verifier);
     }
 
     /**
