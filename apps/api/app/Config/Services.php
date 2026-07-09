@@ -9,6 +9,8 @@ use App\Libraries\Correo\GmailService;
 use App\Libraries\Correo\Mailer;
 use App\Libraries\Correo\NoopMailer;
 use App\Libraries\Google\CalendarSync;
+use App\Libraries\Google\GoogleApiClientCalendarApi;
+use App\Libraries\Google\GoogleCalendarService;
 use App\Libraries\Google\NoopCalendarSync;
 use App\Services\RecordatorioService;
 use CodeIgniter\Config\BaseService;
@@ -87,15 +89,28 @@ class Services extends BaseService
     }
 
     /**
-     * Sincronizador de Google Calendar (RF-09). Binding por defecto:
-     * NoopCalendarSync (no sincroniza, sin credenciales). La impl real
-     * GoogleCalendarSync llega en S2.3. En tests se sustituye vía
+     * Sincronizador de Google Calendar (RF-09, S2.3). Binding condicionado a
+     * la presencia de AMBAS credenciales: si `GOOGLE_APPLICATION_CREDENTIALS`
+     * (ruta a la clave del service account) Y `GOOGLE_CALENDAR_ID` (calendario
+     * compartido "Acuerdos") están configurados (no vacíos), resuelve a
+     * `GoogleCalendarService` (con `GoogleApiClientCalendarApi` real, Calendar
+     * API vía domain-wide delegation); si falta cualquiera de las dos (dev sin
+     * credenciales, o el entorno de tests), resuelve a `NoopCalendarSync`
+     * (cero red). En tests se sustituye con `FakeCalendarSync` (o
+     * `GoogleCalendarService` + `Tests\Support\FakeCalendarApi`) vía
      * Services::injectMock('calendarSync', $fake).
      */
     public static function calendarSync(bool $getShared = true): CalendarSync
     {
         if ($getShared) {
             return static::getSharedInstance('calendarSync');
+        }
+
+        $credenciales = (string) env('GOOGLE_APPLICATION_CREDENTIALS');
+        $calendarId   = (string) env('GOOGLE_CALENDAR_ID');
+
+        if ($credenciales !== '' && $calendarId !== '') {
+            return new GoogleCalendarService(new GoogleApiClientCalendarApi(), $calendarId);
         }
 
         return new NoopCalendarSync();
