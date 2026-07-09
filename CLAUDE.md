@@ -12,7 +12,7 @@ Aplicación de seguimiento de acuerdos de reuniones de dirección de Plan Juáre
 |---|---|---|
 | 0 — Documentación (00–08) | ✅ Completa (2026-07-08) | Sí |
 | 1 — Demo UI/UX (React, `apps/web/`) | ✅ Completa | Sí (freeze del contrato 2026-07-09; sesión de validación con stakeholder en paralelo — hallazgos vía bitácora doc 09 §9 + ADR corto) |
-| 2 — Backend (CI4) | 🟡 En curso (2026-07-09) | No |
+| 2 — Backend (CI4) | ✅ Desarrollo completo (2026-07-09) | Sí, con pendientes operativos (ver checklist DoD en README) |
 
 **Regla de gate:** no generes código o docs de la Fase N+1 si la Fase N tiene "DoD verificada: No", salvo excepción justificada por escrito en esta tabla (aquí y en README).
 

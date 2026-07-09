@@ -43,11 +43,15 @@ Cubierto por 2 tests nuevos en `FiltersDeBordeTest`
 |---|---|
 | Promoción `apps/web` sin mock (typecheck/lint/build verdes) | ✅ S3.3 commit b07d525 (vitest 4/4, espejo 11/11, db.json conservado) |
 | Suite completa Fase 2 verde | ✅ backend 206/206 + frontend 4/4 (2026-07-09) |
-| Checklist DoD Fase 2 firmada en README | ⏳ (S3.4) |
+| Checklist DoD Fase 2 firmada en README | ✅ S3.4 (2026-07-09) |
+| Revisión final de rama (whole-branch, Opus) | ✅ APTO sin críticos; 4 hallazgos corregidos (commit 797c35b) |
+| Suite tras correcciones | ✅ 212/212 (858 aserciones) |
 
 ## Gate DoD Fase 2 (Gobernanza v3 §3)
 
-- [ ] Cero N+1 auditado · Policies con negativos · seeder desde `db.json` sin transformación
-- [ ] Cobertura ≥80% · OWASP re-verificado · transacciones confirmadas · `api.ts` ≡ doc 05
+- [x] Cero N+1 auditado · Policies con negativos · seeder desde `db.json` sin transformación
+- [x] OWASP re-verificado (con notas) · transacciones confirmadas · `api.ts` ≡ doc 05
+- [ ] Cobertura ≥80% — ⏳ pendiente de driver (pcov/xdebug); 212 tests como red actual
 
-**Estado:** ⏳ Pendiente.
+**Estado:** ✅ Desarrollo cerrado. Pendientes operativos del usuario: humo real Gmail/Calendar
+(credenciales), métricas k6, cobertura con driver, y deploy. Detalle en README (checklist DoD).
