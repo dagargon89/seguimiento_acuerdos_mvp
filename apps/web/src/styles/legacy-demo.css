@@ -459,11 +459,68 @@ body {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
 
-/* ── Sesión y roles (simulados) ── */
-.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--pj-purple-700); padding: 24px; }
-.login-card { width: 480px; max-width: 94vw; background: #ffffff; border-radius: 14px; padding: 36px 38px; box-shadow: 0 24px 64px rgba(26, 7, 29, .45); }
-.login-user { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 11px 14px; border: 1px solid var(--border-default); border-radius: 10px; background: #ffffff; cursor: pointer; margin-bottom: 10px; font-family: inherit; }
-.login-user:hover { border-color: var(--pj-purple-300); background: var(--pj-purple-50); }
+/* ── Login (split: introducción + acceso) ──
+   Panel de marca sobre degradado morado profundo con el ciclo de vida real del
+   acuerdo como motivo (En proceso → Vencido → Concluido); acceso sobre superficie
+   clara. Identidad PJ: texto sobre morado = blanco; lima solo como acento. */
+.login-split { min-height: 100vh; display: grid; grid-template-columns: 1.15fr 1fr; }
+
+/* Splash mientras se resuelve la sesión (App.tsx): mismo fondo de marca, sin contenido. */
+.login-splash { min-height: 100vh; background: linear-gradient(152deg, var(--pj-purple-900) 0%, var(--pj-purple-800) 55%, var(--pj-purple-700) 100%); }
+
+.login-brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 64px 72px;
+  color: #ffffff;
+  background:
+    radial-gradient(ellipse at 85% 12%, rgba(219, 236, 87, .07), transparent 55%),
+    linear-gradient(152deg, var(--pj-purple-900) 0%, var(--pj-purple-800) 55%, var(--pj-purple-700) 100%);
+}
+.login-brand__logo { height: 40px; width: auto; align-self: flex-start; margin: 0 0 48px; }
+.login-brand__eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--pj-lime-400); margin: 0 0 14px; }
+.login-brand__titulo { font-family: var(--font-display); font-weight: 500; font-size: clamp(28px, 3.2vw, 40px); line-height: 1.15; margin: 0 0 16px; max-width: 15ch; }
+.login-brand__sub { font-size: 14.5px; line-height: 1.65; color: rgba(255, 255, 255, .82); max-width: 44ch; margin: 0 0 44px; }
+
+.login-lifecycle { list-style: none; margin: 0; padding: 0; }
+.login-lifecycle__paso { position: relative; display: flex; gap: 16px; padding: 0 0 26px; }
+.login-lifecycle__paso:last-child { padding-bottom: 0; }
+.login-lifecycle__paso::before { content: ''; position: absolute; left: 5px; top: 21px; bottom: 4px; width: 1px; background: rgba(255, 255, 255, .16); }
+.login-lifecycle__paso:last-child::before { display: none; }
+.login-lifecycle__punto { flex: none; width: 11px; height: 11px; border-radius: 50%; margin-top: 5px; }
+.login-lifecycle__punto--proceso { background: var(--pj-lime-400); box-shadow: 0 0 0 4px rgba(219, 236, 87, .14); }
+.login-lifecycle__punto--vencido { background: var(--status-warning-bg); }
+.login-lifecycle__punto--concluido { background: var(--status-success-bg); }
+.login-lifecycle__estado { display: block; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #ffffff; margin-bottom: 3px; }
+.login-lifecycle__desc { font-size: 13px; line-height: 1.55; color: rgba(255, 255, 255, .68); margin: 0; max-width: 40ch; }
+
+.login-panel { display: flex; align-items: center; justify-content: center; background: var(--surface-subtle); padding: 40px 28px; }
+.login-card { width: 400px; max-width: 100%; background: #ffffff; border: 1px solid var(--border-default); border-radius: 16px; padding: 36px 34px; box-shadow: 0 16px 44px rgba(58, 13, 65, .12); }
+.login-card__titulo { font-family: var(--font-display); font-weight: 500; font-size: 20px; margin: 0 0 6px; }
+.login-card__hint { font-size: 13px; line-height: 1.55; color: var(--text-secondary); margin: 0 0 22px; }
+
+@keyframes login-entra {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.login-brand > * { animation: login-entra .5s ease-out both; }
+.login-brand > *:nth-child(2) { animation-delay: .08s; }
+.login-brand > *:nth-child(3) { animation-delay: .16s; }
+.login-brand > *:nth-child(4) { animation-delay: .24s; }
+.login-brand > *:nth-child(5) { animation-delay: .32s; }
+.login-card { animation: login-entra .5s ease-out .12s both; }
+
+@media (max-width: 900px) {
+  .login-split { grid-template-columns: 1fr; }
+  .login-brand { padding: 30px 24px 26px; justify-content: flex-start; }
+  .login-brand__logo { height: 30px; margin-bottom: 22px; }
+  .login-brand__titulo { font-size: 24px; }
+  .login-brand__sub { margin-bottom: 0; }
+  .login-lifecycle { display: none; }
+  .login-panel { padding: 28px 18px 44px; align-items: flex-start; }
+}
 
 .rol-chip { flex: none; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 4px 10px; border-radius: 999px; }
 .rol-chip--direccion { background: var(--pj-purple-700); color: var(--pj-lime-400); }

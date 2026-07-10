@@ -71,4 +71,5 @@ Sesión con dirección + Mariel recorriendo por rol: (Dirección) login → pane
 
 | # | Fecha | Hallazgo | Clasificación | Cambio aplicado | Estado |
 |---|---|---|---|---|---|
+| 1 | 2026-07-10 | Stakeholder solicita rediseñar el Login: dos secciones (introducción de la app + acceso), elegante, identidad Participa Juárez | Mejora | Login split: panel de marca (degradado morado, logo blanco, titular Fredoka, ciclo de vida del acuerdo como motivo) + panel de acceso claro con el form existente. Sin cambios de lógica de auth. | ✅ Aplicado |
 | — | — | *(pendiente de sesión de validación)* | — | — | — |
