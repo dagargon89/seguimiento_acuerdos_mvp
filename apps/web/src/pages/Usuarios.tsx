@@ -22,6 +22,14 @@ interface FormAlta {
 
 const formVacio = (): FormAlta => ({ nombre: '', email: '', rol: 'responsable', area_id: '' });
 
+/** Roles asignables (el alta directa y la aprobación nunca dejan a alguien como pendiente). */
+const ROLES_ASIGNABLES = (Object.keys(ROL_LABEL) as Rol[]).filter((r) => r !== 'pendiente');
+
+interface Aprobacion {
+  rol: Rol;
+  area_id: string;
+}
+
 export function Usuarios() {
   const { sesion } = useSesion();
   const { toast } = useToast();
@@ -30,6 +38,8 @@ export function Usuarios() {
   const [nuevo, setNuevo] = useState<FormAlta>(formVacio());
   const [altaError, setAltaError] = useState<string | null>(null);
   const [altaCampos, setAltaCampos] = useState<Record<string, string>>({});
+  // Selección de rol/área por cada usuario pendiente (id → aprobación en edición).
+  const [aprobaciones, setAprobaciones] = useState<Record<number, Aprobacion>>({});
 
   const usuariosQ = useQuery({ queryKey: ['usuarios'], queryFn: () => api.listUsuarios() });
   const areasQ = useQuery({ queryKey: ['areas'], queryFn: () => api.listAreas() });
@@ -54,6 +64,41 @@ export function Usuarios() {
     },
     onError: (e) => toast(mensajeError(e), 'error'),
   });
+
+  const aprobarMut = useMutation({
+    mutationFn: ({ id, rol, area_id }: { id: number; rol: Rol; area_id: number | null }) =>
+      api.editarUsuario(id, { rol, area_id }),
+    onSuccess: (u) => {
+      toast(`${u.nombre} quedó aprobada como ${ROL_LABEL[u.rol]} y ya puede entrar al panel.`);
+      setAprobaciones((prev) => {
+        const sig = { ...prev };
+        delete sig[u.id];
+        return sig;
+      });
+      invalidar();
+    },
+    onError: (e) => toast(mensajeError(e), 'error'),
+  });
+
+  const aprobacionDe = (id: number): Aprobacion => aprobaciones[id] ?? { rol: 'responsable', area_id: '' };
+
+  const setAprobacion = (id: number, cambios: Partial<Aprobacion>) => {
+    setAprobaciones((prev) => {
+      const actual = prev[id] ?? { rol: 'responsable' as Rol, area_id: '' };
+      const sig = { ...actual, ...cambios };
+      if (cambios.rol && cambios.rol !== 'coordinador') sig.area_id = '';
+      return { ...prev, [id]: sig };
+    });
+  };
+
+  const aprobar = (id: number) => {
+    const a = aprobacionDe(id);
+    if (a.rol === 'coordinador' && !a.area_id) {
+      toast('Una coordinación necesita un área asignada.', 'error');
+      return;
+    }
+    aprobarMut.mutate({ id, rol: a.rol, area_id: a.rol === 'coordinador' ? Number(a.area_id) : null });
+  };
 
   const altaMut = useMutation({
     mutationFn: (alta: AltaUsuario) => api.crearUsuario(alta),
@@ -135,9 +180,45 @@ export function Usuarios() {
                 </td>
                 <td style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{u.email}</td>
                 <td>
-                  <span className={`rol-chip rol-chip--${u.rol}`}>{ROL_LABEL[u.rol]}</span>
+                  {u.rol === 'pendiente' && u.activo ? (
+                    <select
+                      className="select"
+                      aria-label={`Rol para ${u.nombre}`}
+                      value={aprobacionDe(u.id).rol}
+                      onChange={(e) => setAprobacion(u.id, { rol: e.target.value as Rol })}
+                      style={{ minWidth: 130 }}
+                    >
+                      {ROLES_ASIGNABLES.map((r) => (
+                        <option key={r} value={r}>
+                          {ROL_LABEL[r]}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className={`rol-chip rol-chip--${u.rol}`}>{ROL_LABEL[u.rol]}</span>
+                  )}
                 </td>
-                <td style={{ fontSize: 12.5 }}>{areaNombre(u.area_id) ?? '—'}</td>
+                <td style={{ fontSize: 12.5 }}>
+                  {u.rol === 'pendiente' && u.activo ? (
+                    <select
+                      className="select"
+                      aria-label={`Área para ${u.nombre}`}
+                      value={aprobacionDe(u.id).area_id}
+                      disabled={aprobacionDe(u.id).rol !== 'coordinador'}
+                      onChange={(e) => setAprobacion(u.id, { area_id: e.target.value })}
+                      style={{ minWidth: 110 }}
+                    >
+                      <option value="">—</option>
+                      {areas.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    areaNombre(u.area_id) ?? '—'
+                  )}
+                </td>
                 <td>
                   {u.activo ? (
                     <Badge variant="success" size="sm" label="Activo" />
@@ -149,14 +230,26 @@ export function Usuarios() {
                   {u.id === sesion?.usuario.id ? (
                     <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Tu cuenta</span>
                   ) : (
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--sm"
-                      disabled={estadoMut.isPending}
-                      onClick={() => estadoMut.mutate({ id: u.id, activo: !u.activo })}
-                    >
-                      {u.activo ? 'Dar de baja' : 'Reactivar'}
-                    </button>
+                    <span style={{ display: 'inline-flex', gap: 8 }}>
+                      {u.rol === 'pendiente' && u.activo && (
+                        <button
+                          type="button"
+                          className="btn btn--accent btn--sm"
+                          disabled={aprobarMut.isPending}
+                          onClick={() => aprobar(u.id)}
+                        >
+                          {aprobarMut.isPending ? 'Aprobando…' : 'Aprobar'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn--ghost btn--sm"
+                        disabled={estadoMut.isPending}
+                        onClick={() => estadoMut.mutate({ id: u.id, activo: !u.activo })}
+                      >
+                        {u.activo ? (u.rol === 'pendiente' ? 'Rechazar' : 'Dar de baja') : 'Reactivar'}
+                      </button>
+                    </span>
                   )}
                 </td>
               </tr>
@@ -212,7 +305,7 @@ export function Usuarios() {
               Rol
             </label>
             <select className="select" id="nu-rol" value={nuevo.rol} onChange={(e) => setCampo('rol', e.target.value as Rol)}>
-              {(Object.keys(ROL_LABEL) as Rol[]).map((r) => (
+              {ROLES_ASIGNABLES.map((r) => (
                 <option key={r} value={r}>
                   {ROL_LABEL[r]}
                 </option>
