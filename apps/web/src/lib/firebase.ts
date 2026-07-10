@@ -5,12 +5,15 @@
  */
 import { initializeApp } from 'firebase/app';
 import {
+  EmailAuthProvider,
   getAuth,
   GoogleAuthProvider,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  updatePassword,
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -42,4 +45,34 @@ export async function loginEmailPassword(email: string, password: string): Promi
 
 export async function logoutFirebase(): Promise<void> {
   await signOut(auth);
+}
+
+/** true si la cuenta actual inicia sesión con email/password (no Google). */
+export function proveedorEsPassword(): boolean {
+  return auth.currentUser?.providerData.some((p) => p.providerId === 'password') ?? false;
+}
+
+/** Cambio de contraseña autogestionado (reautentica y luego actualiza). */
+export async function cambiarPassword(actual: string, nueva: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user?.email) {
+    throw new Error('No hay una sesión activa con email/contraseña.');
+  }
+  try {
+    const credencial = EmailAuthProvider.credential(user.email, actual);
+    await reauthenticateWithCredential(user, credencial);
+    await updatePassword(user, nueva);
+  } catch (e: unknown) {
+    const codigo = typeof e === 'object' && e !== null && 'code' in e ? String((e as { code: unknown }).code) : '';
+    if (codigo === 'auth/wrong-password' || codigo === 'auth/invalid-credential') {
+      throw new Error('La contraseña actual es incorrecta.');
+    }
+    if (codigo === 'auth/weak-password') {
+      throw new Error('La nueva contraseña debe tener al menos 6 caracteres.');
+    }
+    if (codigo === 'auth/requires-recent-login') {
+      throw new Error('Vuelve a iniciar sesión e inténtalo de nuevo.');
+    }
+    throw new Error('No se pudo actualizar la contraseña. Inténtalo de nuevo.');
+  }
 }
