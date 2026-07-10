@@ -5,6 +5,7 @@
  */
 import { initializeApp } from 'firebase/app';
 import {
+  createUserWithEmailAndPassword,
   EmailAuthProvider,
   getAuth,
   GoogleAuthProvider,
@@ -41,6 +42,25 @@ export async function loginGoogle(): Promise<void> {
 /** Login con email/password (respaldo para personas externas invitadas, ADR-002). */
 export async function loginEmailPassword(email: string, password: string): Promise<void> {
   await signInWithEmailAndPassword(auth, email, password);
+}
+
+/** Alta de cuenta con email/password para el autorregistro (ADR-006). */
+export async function crearCuentaEmailPassword(email: string, password: string): Promise<void> {
+  try {
+    await createUserWithEmailAndPassword(auth, email, password);
+  } catch (e: unknown) {
+    const codigo = typeof e === 'object' && e !== null && 'code' in e ? String((e as { code: unknown }).code) : '';
+    if (codigo === 'auth/email-already-in-use') {
+      throw Object.assign(new Error('Ya existe una cuenta con este correo. Inicia sesión.'), { code: codigo });
+    }
+    if (codigo === 'auth/invalid-email') {
+      throw Object.assign(new Error('El correo no es válido.'), { code: codigo });
+    }
+    if (codigo === 'auth/weak-password') {
+      throw Object.assign(new Error('La contraseña debe tener al menos 6 caracteres.'), { code: codigo });
+    }
+    throw e;
+  }
 }
 
 export async function logoutFirebase(): Promise<void> {

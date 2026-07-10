@@ -34,6 +34,13 @@ export function Usuarios() {
   const usuariosQ = useQuery({ queryKey: ['usuarios'], queryFn: () => api.listUsuarios() });
   const areasQ = useQuery({ queryKey: ['areas'], queryFn: () => api.listAreas() });
 
+  // Pendientes primero: son los que requieren acción de Dirección.
+  const usuariosOrdenados = [...(usuariosQ.data ?? [])].sort((a, b) => {
+    const aPendiente = a.rol === 'pendiente' ? 0 : 1;
+    const bPendiente = b.rol === 'pendiente' ? 0 : 1;
+    return aPendiente - bPendiente;
+  });
+
   const areas = areasQ.data ?? [];
   const areaNombre = (id: number | null) => (id === null ? null : areas.find((a) => a.id === id)?.nombre ?? '—');
 
@@ -118,7 +125,7 @@ export function Usuarios() {
             </tr>
           </thead>
           <tbody>
-            {(usuariosQ.data ?? []).map((u) => (
+            {usuariosOrdenados.map((u) => (
               <tr key={u.id} style={{ cursor: 'default', opacity: u.activo ? 1 : 0.65 }}>
                 <td>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>

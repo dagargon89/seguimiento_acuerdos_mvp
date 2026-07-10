@@ -6,7 +6,10 @@
  */
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { mensajeError } from '../components/EstadoHelpers';
+import { api } from '../lib';
+import { crearCuentaEmailPassword } from '../lib/firebase';
+import { validarRegistro } from '../lib/registro';
+import { mensajeError, statusError } from '../components/EstadoHelpers';
 
 interface LoginProps {
   errorAcceso?: string | null;
@@ -34,6 +37,8 @@ const CICLO_DE_VIDA = [
 ] as const;
 
 export function Login({ errorAcceso = null, onLoginGoogle, onLoginEmailPassword }: LoginProps) {
+  const [modo, setModo] = useState<'entrar' | 'registro'>('entrar');
+
   return (
     <div className="login-split">
       <section className="login-brand" aria-label="Acerca del panel">
@@ -56,17 +61,47 @@ export function Login({ errorAcceso = null, onLoginGoogle, onLoginEmailPassword 
         </ol>
       </section>
 
-      <section className="login-panel" aria-label="Iniciar sesión">
+      <section className="login-panel" aria-label={modo === 'entrar' ? 'Iniciar sesión' : 'Crear cuenta'}>
         <div className="login-card">
-          <h2 className="login-card__titulo">Entrar al panel</h2>
-          <p className="login-card__hint">
-            Usa tu cuenta de Google del equipo o el correo y contraseña con los que te dieron de alta.
-          </p>
-          <LoginReal
-            errorAcceso={errorAcceso}
-            onLoginGoogle={onLoginGoogle!}
-            onLoginEmailPassword={onLoginEmailPassword!}
-          />
+          {modo === 'entrar' ? (
+            <>
+              <h2 className="login-card__titulo">Entrar al panel</h2>
+              <p className="login-card__hint">
+                Usa tu cuenta de Google del equipo o el correo y contraseña con los que te dieron de alta.
+              </p>
+              <LoginReal
+                errorAcceso={errorAcceso}
+                onLoginGoogle={onLoginGoogle!}
+                onLoginEmailPassword={onLoginEmailPassword!}
+              />
+              <p style={{ textAlign: 'center', marginTop: 18 }}>
+                <button
+                  type="button"
+                  className="login-card__link"
+                  onClick={() => setModo('registro')}
+                >
+                  ¿No tienes cuenta? Crear cuenta
+                </button>
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="login-card__titulo">Crear cuenta</h2>
+              <p className="login-card__hint">
+                Tu cuenta quedará pendiente hasta que un administrador te asigne acceso.
+              </p>
+              <RegistroForm />
+              <p style={{ textAlign: 'center', marginTop: 18 }}>
+                <button
+                  type="button"
+                  className="login-card__link"
+                  onClick={() => setModo('entrar')}
+                >
+                  ¿Ya tienes cuenta? Inicia sesión
+                </button>
+              </p>
+            </>
+          )}
         </div>
       </section>
     </div>
@@ -174,6 +209,156 @@ function LoginReal({
           {entrando ? 'Entrando…' : 'Entrar con correo'}
         </button>
       </form>
+    </>
+  );
+}
+
+/**
+ * Formulario de autorregistro (ADR-006): crea la cuenta en Firebase y luego la
+ * fila en el backend (`POST /registro`). Si la cuenta Firebase ya quedó creada
+ * pero `registrarme` falla (p. ej. red), se ofrece reintentar solo ese paso —
+ * la sesión Firebase sigue activa. Un 409 `cuenta_ya_existe` se trata como
+ * éxito silencioso: la fila ya existe y `onAuthStateChanged` (App) resolverá
+ * `getMe` para entrar como pendiente.
+ */
+function RegistroForm() {
+  const [nombre, setNombre] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmar, setConfirmar] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [cuentaCreada, setCuentaCreada] = useState(false);
+
+  const registrarme = async () => {
+    try {
+      await api.registrarme({ nombre: nombre.trim() });
+      setError(null);
+    } catch (err) {
+      if (statusError(err) === 409) {
+        // La fila ya existe (cuenta_ya_existe): éxito silencioso, getMe fluye.
+        setError(null);
+        return;
+      }
+      setCuentaCreada(true);
+      setError(mensajeError(err));
+    }
+  };
+
+  const enviar = async (e: FormEvent) => {
+    e.preventDefault();
+    if (enviando) return;
+    const invalido = validarRegistro(nombre, email, password, confirmar);
+    if (invalido) {
+      setError(invalido);
+      return;
+    }
+    setEnviando(true);
+    setError(null);
+    try {
+      await crearCuentaEmailPassword(email.trim(), password);
+      await registrarme();
+    } catch (err) {
+      setError(mensajeError(err));
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const reintentar = async () => {
+    if (enviando) return;
+    setEnviando(true);
+    try {
+      await registrarme();
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <>
+      {error && (
+        <div className="alert alert--error" style={{ marginBottom: 16 }}>
+          <div className="alert__body">{error}</div>
+        </div>
+      )}
+
+      {cuentaCreada ? (
+        <button
+          type="button"
+          className="btn btn--accent btn--full btn--md"
+          onClick={() => void reintentar()}
+          disabled={enviando}
+        >
+          {enviando ? 'Reintentando…' : 'Reintentar'}
+        </button>
+      ) : (
+        <form onSubmit={(e) => void enviar(e)}>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label className="field__label" htmlFor="registro-nombre">
+              Nombre completo
+            </label>
+            <input
+              id="registro-nombre"
+              type="text"
+              className="input"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              autoComplete="name"
+              required
+              disabled={enviando}
+            />
+          </div>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label className="field__label" htmlFor="registro-email">
+              Correo
+            </label>
+            <input
+              id="registro-email"
+              type="email"
+              className="input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+              disabled={enviando}
+            />
+          </div>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label className="field__label" htmlFor="registro-password">
+              Contraseña
+            </label>
+            <input
+              id="registro-password"
+              type="password"
+              className="input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              required
+              disabled={enviando}
+            />
+          </div>
+          <div className="field" style={{ marginBottom: 18 }}>
+            <label className="field__label" htmlFor="registro-confirmar">
+              Confirmar contraseña
+            </label>
+            <input
+              id="registro-confirmar"
+              type="password"
+              className="input"
+              value={confirmar}
+              onChange={(e) => setConfirmar(e.target.value)}
+              autoComplete="new-password"
+              required
+              disabled={enviando}
+            />
+          </div>
+          <button type="submit" className="btn btn--accent btn--full btn--md" disabled={enviando}>
+            {enviando ? 'Creando cuenta…' : 'Crear cuenta'}
+          </button>
+        </form>
+      )}
     </>
   );
 }

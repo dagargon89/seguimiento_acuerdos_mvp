@@ -14,6 +14,7 @@ import { Avatar } from './components/Avatar';
 import { SessionContext } from './components/SessionContext';
 import { ToastProvider, useToast } from './components/Toast';
 import { Login } from './pages/Login';
+import { PendienteAprobacion } from './pages/PendienteAprobacion';
 import { Panel } from './pages/Panel';
 import { Captura } from './pages/Captura';
 import { Recordatorios } from './pages/Recordatorios';
@@ -91,7 +92,11 @@ function AppContent() {
   return (
     <SessionContext.Provider value={contexto}>
       {sesion ? (
-        <Shell sesion={sesion} onLogout={contexto.logout} />
+        sesion.usuario.rol === 'pendiente' ? (
+          <PendienteAprobacion onLogout={contexto.logout} />
+        ) : (
+          <Shell sesion={sesion} onLogout={contexto.logout} />
+        )
       ) : (
         <Login errorAcceso={errorAcceso} onLoginGoogle={loginGoogle} onLoginEmailPassword={loginEmailPassword} />
       )}
