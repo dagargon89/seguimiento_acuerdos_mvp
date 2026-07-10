@@ -38,7 +38,6 @@ export function Login({ errorAcceso = null, onLoginGoogle, onLoginEmailPassword 
     <div className="login-split">
       <section className="login-brand" aria-label="Acerca del panel">
         <img className="login-brand__logo" src="/assets/logo-horizontal-white.png" alt="Participa Juárez" />
-        <p className="login-brand__eyebrow">Participa Juárez</p>
         <h1 className="login-brand__titulo">Los acuerdos no se quedan en la minuta.</h1>
         <p className="login-brand__sub">
           Captura los compromisos de cada reunión, da seguimiento por rol y recibe recordatorios automáticos
