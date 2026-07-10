@@ -11,6 +11,14 @@ import { auth, loginEmailPassword, loginGoogle, logoutFirebase, onAuthStateChang
 import { fmtL, hoyISO } from './lib/fechas';
 import { mensajeError, ROL_LABEL, statusError } from './components/EstadoHelpers';
 import { Avatar } from './components/Avatar';
+import {
+  IconoCaptura,
+  IconoChecklist,
+  IconoColapsar,
+  IconoPanel,
+  IconoRecordatorios,
+  IconoUsuarios,
+} from './components/Iconos';
 import { SessionContext } from './components/SessionContext';
 import { ToastProvider, useToast } from './components/Toast';
 import { Login } from './pages/Login';
@@ -173,20 +181,30 @@ function MenuUsuario({ nombre, rolLabel, onLogout }: { nombre: string; rolLabel:
 
 /** Grupos de navegación del sidebar; "Administración" solo se renderiza para Dirección. */
 const NAV_GENERAL = [
-  { to: '/panel', label: 'Panel' },
-  { to: '/captura', label: 'Capturar acuerdo' },
-  { to: '/recordatorios', label: 'Recordatorios' },
+  { to: '/panel', label: 'Panel', Icono: IconoPanel },
+  { to: '/captura', label: 'Capturar acuerdo', Icono: IconoCaptura },
+  { to: '/recordatorios', label: 'Recordatorios', Icono: IconoRecordatorios },
 ];
 const NAV_ADMIN = [
-  { to: '/checklist', label: 'Checklist' },
-  { to: '/usuarios', label: 'Usuarios' },
+  { to: '/checklist', label: 'Checklist', Icono: IconoChecklist },
+  { to: '/usuarios', label: 'Usuarios', Icono: IconoUsuarios },
 ];
+
+const COLAPSADO_KEY = 'pj-sidebar-colapsado';
 
 function Shell({ sesion, onLogout }: { sesion: Sesion; onLogout: () => void }) {
   const u = sesion.usuario;
   const esDireccion = u.rol === 'direccion';
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [colapsado, setColapsado] = useState(() => localStorage.getItem(COLAPSADO_KEY) === '1');
   const cerrarMenu = () => setMenuAbierto(false);
+
+  const alternarColapso = () => {
+    setColapsado((v) => {
+      localStorage.setItem(COLAPSADO_KEY, v ? '0' : '1');
+      return !v;
+    });
+  };
 
   // Cierre del menú móvil con Esc.
   useEffect(() => {
@@ -200,36 +218,54 @@ function Shell({ sesion, onLogout }: { sesion: Sesion; onLogout: () => void }) {
 
   const linkClase = ({ isActive }: { isActive: boolean }) => `sidebar__link${isActive ? ' is-active' : ''}`;
 
+  const renderLinks = (items: typeof NAV_GENERAL) =>
+    items.map(({ to, label, Icono }) => (
+      <NavLink key={to} to={to} className={linkClase} onClick={cerrarMenu} title={colapsado ? label : undefined}>
+        <Icono className="sidebar__icono" />
+        <span className="sidebar__texto">{label}</span>
+      </NavLink>
+    ));
+
   return (
-    <div className="shell">
+    <div className={`shell${colapsado ? ' shell--colapsado' : ''}`}>
       {menuAbierto && <div className="sidebar__backdrop" onClick={cerrarMenu} aria-hidden="true" />}
 
       <aside className={`sidebar${menuAbierto ? ' is-abierto' : ''}`}>
-        <NavLink to="/panel" className="sidebar__logo-link" onClick={cerrarMenu}>
+        <NavLink to="/panel" className="sidebar__logo-link" onClick={cerrarMenu} title="Panel">
           <img className="sidebar__logo" src="/assets/logo-horizontal-white.png" alt="Participa Juárez" />
+          <span className="sidebar__monograma" aria-hidden="true">
+            PJ
+          </span>
         </NavLink>
 
         <nav className="sidebar__nav" aria-label="Secciones">
           <div className="sidebar__grupo">
-            <div className="sidebar__eyebrow">General</div>
-            {NAV_GENERAL.map((t) => (
-              <NavLink key={t.to} to={t.to} className={linkClase} onClick={cerrarMenu}>
-                {t.label}
-              </NavLink>
-            ))}
+            <div className="sidebar__eyebrow">
+              <span className="sidebar__texto">General</span>
+            </div>
+            {renderLinks(NAV_GENERAL)}
           </div>
 
           {esDireccion && (
             <div className="sidebar__grupo">
-              <div className="sidebar__eyebrow">Administración</div>
-              {NAV_ADMIN.map((t) => (
-                <NavLink key={t.to} to={t.to} className={linkClase} onClick={cerrarMenu}>
-                  {t.label}
-                </NavLink>
-              ))}
+              <div className="sidebar__eyebrow">
+                <span className="sidebar__texto">Administración</span>
+              </div>
+              {renderLinks(NAV_ADMIN)}
             </div>
           )}
         </nav>
+
+        <button
+          type="button"
+          className="sidebar__colapsar"
+          onClick={alternarColapso}
+          aria-label={colapsado ? 'Expandir menú' : 'Contraer menú'}
+          title={colapsado ? 'Expandir' : 'Contraer'}
+        >
+          <IconoColapsar invertido={colapsado} className="sidebar__icono" />
+          <span className="sidebar__texto">Contraer</span>
+        </button>
       </aside>
 
       <div className="shell__contenido">
