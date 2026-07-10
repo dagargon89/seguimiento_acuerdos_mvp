@@ -468,7 +468,7 @@ export function Captura() {
   );
 
   return (
-    <div style={{ maxWidth: esHoja ? 1240 : 780, margin: '0 auto' }}>
+    <div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 22 }}>
         <div style={{ flex: 1, minWidth: 300 }}>
           <div className="section-header__eyebrow">Formato de Reunión Operativa</div>

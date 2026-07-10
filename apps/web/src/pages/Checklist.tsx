@@ -37,7 +37,7 @@ export function Checklist() {
   const items = checklistQ.data ?? [];
 
   return (
-    <div style={{ maxWidth: 980, margin: '0 auto' }}>
+    <div>
       <div style={{ marginBottom: 24 }}>
         <div className="section-header__eyebrow">Validación de acuerdos · solo Dirección</div>
         <h2 className="section-header__title">Checklist de validación</h2>

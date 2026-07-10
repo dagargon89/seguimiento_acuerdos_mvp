@@ -141,7 +141,7 @@ export function Usuarios() {
   };
 
   return (
-    <div style={{ maxWidth: 880, margin: '0 auto' }}>
+    <div>
       <div style={{ marginBottom: 24 }}>
         <div className="section-header__eyebrow">Administración · solo Dirección</div>
         <h2 className="section-header__title">Usuarios y permisos</h2>

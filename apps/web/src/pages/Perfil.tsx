@@ -88,7 +88,7 @@ export function Perfil() {
   if (!usuario) return null;
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto' }}>
+    <div>
       <div style={{ marginBottom: 24 }}>
         <div className="section-header__eyebrow">Mi cuenta</div>
         <h2 className="section-header__title">Perfil</h2>
