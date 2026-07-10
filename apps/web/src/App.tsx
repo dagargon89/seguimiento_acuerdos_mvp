@@ -83,7 +83,7 @@ function AppContent() {
   if (cargandoSesion) {
     return (
       <SessionContext.Provider value={contexto}>
-        <div className="login-wrap" />
+        <div className="login-splash" />
       </SessionContext.Provider>
     );
   }
