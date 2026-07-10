@@ -216,9 +216,15 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
         $this->assertNotContains($idJulio31, $idsAgosto);
     }
 
-    public function testCalendarioRespetaLaVisibilidadPorRolIgualQueAcuerdos(): void
+    /**
+     * ADR-007 (visibilidad abierta): el calendario deriva su visibilidad de
+     * `VisibilidadAcuerdos::aplicarAlListado`, igual que `/acuerdos` — al
+     * abrirse la política, un responsable ve TODOS los acuerdos del mes (no
+     * solo donde participa). Antes de ADR-007 este test verificaba [3,4,10].
+     */
+    public function testCalendarioVisibilidadAbiertaResponsableVeTodosLosAcuerdosDelMesIgualQueAcuerdos(): void
     {
-        // Rafael (id 5, responsable): responsable de 4 y 10; corresponsable de 3.
+        // Rafael (id 5, responsable): antes de ADR-007 solo veía 3,4,10 (donde participa).
         $r = $this->como('responsable.dos@demo.test')->get('api/v1/calendario?mes=2026-07&incluir_concluidos=true');
 
         $r->assertStatus(200);
@@ -231,7 +237,8 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
             }
         }
         sort($ids);
-        $this->assertSame([3, 4, 10], $ids);
+        // Todo julio con incluir_concluidos=true: 2,3,4,5,6,7,8,9,10 (1 es de junio).
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10], $ids);
     }
 
     public function testCalendarioMesInvalidoDevuelve422(): void
