@@ -1,13 +1,12 @@
 /**
  * Implementación real del contrato ApiClient contra la API CI4 (doc 05).
- * Se completa/activa en Fase 2 (`VITE_USE_MOCK=false`); la firma es idéntica
- * a la del mock — las pantallas no cambian (Demo-First v2).
+ * Único cliente de datos del frontend desde S3.3 (real-only).
  * El ID token lo provee el SDK de Firebase (ADR-002) vía `setTokenProvider`.
  */
 import type { ApiClient } from './api';
 import type {
-  Acuerdo, AcuerdoDetalle, AltaUsuario, Area, CalendarioMes, ChecklistItem,
-  ConfigRecordatorios, EdicionAcuerdo, EdicionUsuario, FiltrosAcuerdos,
+  Acuerdo, AcuerdoDetalle, AltaArea, AltaUsuario, Area, CalendarioMes, ChecklistItem,
+  ConfigRecordatorios, EdicionAcuerdo, EdicionArea, EdicionUsuario, FiltrosAcuerdos,
   LoteCaptura, NuevoAvance, Paginado, RecordatorioVista, Resumen, Sesion, Usuario,
 } from './types';
 
@@ -86,4 +85,7 @@ export const realClient: ApiClient = {
   editarUsuario: async (id, cambios: EdicionUsuario) =>
     (await req<{ data: Usuario }>('PATCH', `/usuarios/${id}`, cambios)).data,
   listAreas: async () => (await req<{ data: Area[] }>('GET', '/areas')).data,
+  crearArea: async (alta: AltaArea) => (await req<{ data: Area }>('POST', '/areas', alta)).data,
+  editarArea: async (id, cambios: EdicionArea) =>
+    (await req<{ data: Area }>('PATCH', `/areas/${id}`, cambios)).data,
 };

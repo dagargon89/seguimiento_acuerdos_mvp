@@ -72,7 +72,7 @@ erDiagram
 | capturado_por_id | INT UNSIGNED FK→usuarios | No | |
 | fecha_compromiso | DATE | No | TZ Juárez |
 | estado | ENUM('en_proceso','vencido','concluido') | No | default 'en_proceso' (RF-05); 'vencido' solo lo escribe el sistema |
-| enlace | VARCHAR(500) | Sí | URL a productos |
+| enlace | VARCHAR(2048) | Sí | URL a productos (límite HTTP estándar; cubre enlaces largos de Drive/Sheets) |
 | observaciones | TEXT | Sí | |
 | recordatorio_dias | JSON | Sí | override RF-08, ej. `[7,3,1]`; NULL = default global |
 | concluido_por_id | INT UNSIGNED FK→usuarios | Sí | solo Dirección (RF-06) |
@@ -210,7 +210,7 @@ CREATE TABLE acuerdos (
   capturado_por_id  INT UNSIGNED NOT NULL,
   fecha_compromiso  DATE         NOT NULL,
   estado            ENUM('en_proceso','vencido','concluido') NOT NULL DEFAULT 'en_proceso',
-  enlace            VARCHAR(500) NULL,
+  enlace            VARCHAR(2048) NULL,
   observaciones     TEXT         NULL,
   recordatorio_dias JSON         NULL,
   concluido_por_id  INT UNSIGNED NULL,

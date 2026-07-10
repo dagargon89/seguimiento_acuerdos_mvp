@@ -17,9 +17,34 @@ Aplicación a la medida para capturar acuerdos de reuniones de dirección, dar s
 |---|---|---|
 | 0 — Documentación (00–08) | ✅ Completa (2026-07-08) | Sí |
 | 1 — Demo UI/UX (React, `apps/web/`) | ✅ Completa | Sí (freeze del contrato 2026-07-09; sesión de validación con stakeholder en paralelo — hallazgos vía bitácora doc 09 §9 + ADR corto) |
-| 2 — Backend (CI4 + MySQL + Redis) | 🟡 En curso (2026-07-09) | No |
+| 2 — Backend (CI4 + MySQL + Redis) | ✅ Desarrollo completo (2026-07-09) | Sí, con pendientes operativos (ver checklist abajo) |
 
 > Regla de gate: no se genera trabajo de la Fase N+1 si la Fase N tiene "DoD verificada: No", salvo excepción justificada por escrito en esta tabla.
+>
+
+## Checklist DoD Fase 2 (Gobernanza v3 §3) — firmada 2026-07-09
+
+Backend REST completo (CI4 4.7) con auth Firebase, job de recordatorios y Gmail/Calendar (tras interfaces),
+frontend real-only. Suite **212 pruebas PHPUnit verdes** + 4 vitest; revisión final de rama: APTO sin críticos.
+
+| Criterio DoD | Estado | Evidencia |
+|---|---|---|
+| Cero N+1 auditado | ✅ | Listado 3 queries / detalle 7, constantes al escalar (S3.1) |
+| Policies con pruebas negativas (403/401/404) | ✅ | AU-01..10, ME-12 (403 auditado), OW-* |
+| Seeder desde `db.json` sin transformación | ✅ | `InitialSeeder` + `InitialSeederTest`; espejo `verificar_espejo.mjs` 11/11 |
+| Transacciones en operaciones multi-tabla | ✅ | lote/concluir/reabrir/avances/config; confirmado en revisión final |
+| OWASP A01–A10 re-verificado | ✅ (con notas) | `docs/04-seguridad/04b_verificacion_owasp_fase2.md`; brechas menores documentadas (rel=noopener, config de prod) |
+| `api.ts` ≡ doc 05 (contrato congelado) | ✅ | doc 05 v1.2 CONGELADA (ADR-004) |
+| Solo Dirección concluye/reabre + auditoría del 403 | ✅ | revisión final: regla OK |
+| Cobertura de Services ≥ 80% | ⏳ **pendiente de herramienta** | sin driver pcov/xdebug en el entorno; comando en `docs/04-seguridad/checklist_despliegue.md`; 212 tests como red actual |
+
+**Pendientes operativos (requieren tu intervención, no bloquean el código):**
+> - **Humo real Gmail/Calendar**: configurar `GOOGLE_APPLICATION_CREDENTIALS` (service account con domain-wide
+>   delegation), `GOOGLE_IMPERSONATED_USER` y `GOOGLE_CALENDAR_ID` en `apps/api/.env` y validar correo+evento reales.
+> - **Métricas de carga k6**: instalar k6 y correr `apps/api/tests/perf/k6-acuerdos.js` (+ `php spark perf:seed`).
+> - **Cobertura ≥80%**: instalar pcov/xdebug y correr `vendor/bin/phpunit --coverage-text`.
+> - **Deploy**: hardening de `docs/04-seguridad/checklist_despliegue.md` (HTTPS/HSTS, `docker-compose.prod.yml`,
+>   `CI_ENVIRONMENT=production`, CORS de producción, backups).
 >
 > **Nota:** existe un demo vanilla JS ya aprobado por dirección (fuente F2, ver [00_auditoria_fuentes](docs/00-fuentes/00_auditoria_fuentes.md)). La Fase 1 de este proyecto es su **conversión 1:1 a React + Vite + Tailwind** más las funciones nuevas aprobadas; la validación visual del diseño ya ocurrió.
 
@@ -52,6 +77,7 @@ SPA React servida estáticamente que consume una API REST de CodeIgniter 4. El c
 | ADR-001 | Stack del proyecto | [docs/02-arquitectura/ADR/ADR-001_stack_ci4_react.md](docs/02-arquitectura/ADR/ADR-001_stack_ci4_react.md) |
 | ADR-002 | Firebase Authentication | [docs/02-arquitectura/ADR/ADR-002_firebase_auth.md](docs/02-arquitectura/ADR/ADR-002_firebase_auth.md) |
 | ADR-003 | Integración Google (Gmail/Calendar/Tasks) | [docs/02-arquitectura/ADR/ADR-003_integracion_google.md](docs/02-arquitectura/ADR/ADR-003_integracion_google.md) |
+| ADR-004 | Administración de áreas en el MVP (contrato v1.2) | [docs/02-arquitectura/ADR/ADR-004_administracion_areas.md](docs/02-arquitectura/ADR/ADR-004_administracion_areas.md) |
 | 01 | SRS — Especificación de requisitos | [docs/01-vision/01_SRS_especificacion_requisitos.md](docs/01-vision/01_SRS_especificacion_requisitos.md) |
 | 02 | Arquitectura del sistema | [docs/02-arquitectura/02_arquitectura_sistema.md](docs/02-arquitectura/02_arquitectura_sistema.md) |
 | 03 | Modelo de datos | [docs/03-datos/03_modelo_de_datos.md](docs/03-datos/03_modelo_de_datos.md) |

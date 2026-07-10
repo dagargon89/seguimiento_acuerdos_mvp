@@ -1,22 +1,37 @@
 # Plan de implementación — Panel de Acuerdos: del demo al producto (Fase 2)
 
-## Estado de ejecución (actualizado 2026-07-09 ~12:00)
+## Estado de ejecución (actualizado 2026-07-09 ~12:30)
 
-| # | Tarea | Estado |
+**Modo de ejecución (decisiones del usuario):** implementación **sprint por sprint con gate al
+100%** — no se avanza al siguiente sprint hasta que el anterior cumple su *Definition of Done*
+(tests verdes + criterios de aceptación + verificación ejecutable). Ritmo directo (yo implemento,
+sin ciclos de subagente por tarea); revisión completa al final de cada sprint. Repo git **nuevo**
+en la raíz `~/seguimiento_acuerdos_mvp/` (rama de trabajo `fase-2-backend`; baseline en `master`).
+
+**Reestructura (hecha):** el código quedó en la raíz — `apps/web` (frontend), `apps/api`
+(backend, a reconstruir), `docs/` (documentación 00-07 + ADRs + guía 09), `scripts/`,
+`docker-compose.yml`, `CLAUDE.md`, `README.md` en la raíz. Rutas actualizadas y espejo verde.
+El scaffold previo de `apps/api` fue borrado por el usuario; se reconstruye por sprints.
+
+**Decisiones de producto (2026-07-09):**
+- Áreas: SÍ se administran en el MVP → se extiende el contrato congelado (`crearArea`/`editarArea`)
+  con ADR-004; el doc 05 pasa a v1.2 y se re-congela.
+- Reprogramar con `nueva_fecha == hoy` regresa a `en_proceso` (regla `>= hoy`).
+- Un corresponsable no puede ser el responsable del mismo acuerdo (422).
+- Recordatorios siempre prospectivos (nunca retroactivos).
+- `acuerdos.enlace` pasa a `VARCHAR(2048)`.
+- Búsqueda de texto con `LIKE` (sin FULLTEXT) por volumen <5000 filas.
+
+| Sprint | Contenido | Estado |
 |---|---|---|
-| 1 | Etapa 0: git init, freeze contrato doc 05, gates, docker | ✅ Completa (commits ef373be..17856f9) |
-| 2 | S1.1 Scaffold apps/api CI4 4.7 + config + smoke | ✅ Completa (commits cb37557..d65b06c) |
-| 3 | S1.2 Migraciones espejo DDL + InitialSeeder | 🔄 Casi lista — migración, seeder y tests escritos, falta verificación final y commit |
-| 17 | Reestructura del monorepo (producto a la raíz, docs/ solo documentación) | ⏳ Pendiente (decisión del usuario 2026-07-09) |
-| 4-16 | Filters auth → endpoints → frontend → Google → hardening → promoción | ⏳ Pendientes |
+| 0 — Cimientos | Reestructura + git baseline | ✅ Hecho |
+| 0 — Cimientos | Mejoras de doc: áreas v1.2 + ADR-004 + doc 05/06 + SRS + DDL enlace 2048 | ⏳ En curso |
+| 0 — Cimientos | Scaffold `apps/api` (CI4 4.7) + migraciones espejo DDL + InitialSeeder | ⏳ Pendiente |
+| 1 — API núcleo + auth | Filters, visibilidad, endpoints del contrato, conmutación frontend | ⏳ Pendiente |
+| 2 — Recordatorios + Google | Job spark, Gmail, Calendar, idempotencia | ⏳ Pendiente |
+| 3 — Piloto + cierre | Rendimiento, hardening, promoción, DoD Fase 2 firmada | ⏳ Pendiente |
 
-**Modo de ejecución:** directo (sin subagentes por tarea, decisión del usuario por velocidad);
-revisión final de rama completa se mantiene (Tarea 16). Ledger detallado en
-`.superpowers/sdd/progress.md` del repo. Rama de trabajo: `fase-2-producto`.
-
-**Reestructura acordada:** raíz del repo = `~/seguimiento_acuerdos_mvp/` con `docs/`
-(antes SeguimientoAcuerdosDocs, solo documentación 00-09), `apps/api`, `demo-ux/`,
-`scripts/`, `docker-compose.yml`, CLAUDE.md y README en la raíz, conservando historial git.
+Ledger detallado del avance: `.superpowers/sdd/progress.md`.
 
 ## Contexto
 

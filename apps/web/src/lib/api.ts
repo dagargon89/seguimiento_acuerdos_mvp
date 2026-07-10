@@ -7,12 +7,14 @@
 import type {
   Acuerdo,
   AcuerdoDetalle,
+  AltaArea,
   AltaUsuario,
   Area,
   CalendarioMes,
   ChecklistItem,
   ConfigRecordatorios,
   EdicionAcuerdo,
+  EdicionArea,
   EdicionUsuario,
   FiltrosAcuerdos,
   LoteCaptura,
@@ -54,4 +56,6 @@ export interface ApiClient {
   crearUsuario(alta: AltaUsuario): Promise<Usuario>; // solo dirección
   editarUsuario(id: number, cambios: EdicionUsuario): Promise<Usuario>; // solo dirección
   listAreas(): Promise<Area[]>;
+  crearArea(alta: AltaArea): Promise<Area>; // solo dirección
+  editarArea(id: number, cambios: EdicionArea): Promise<Area>; // solo dirección
 }

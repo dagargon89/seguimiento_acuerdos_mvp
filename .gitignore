@@ -8,6 +8,9 @@ credentials/
 node_modules/
 vendor/
 dist/
+*.tsbuildinfo
+# Scratch de proceso (ledger de ejecución; el plan vive en PLAN_IMPLEMENTACION.md)
+.superpowers/
 # CI4 runtime (Fase 2)
 apps/api/writable/cache/*
 apps/api/writable/logs/*

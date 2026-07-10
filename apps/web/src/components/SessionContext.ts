@@ -1,6 +1,6 @@
 /**
- * Contexto de sesión propio (App lo provee). En mock la sesión se resuelve
- * con sesionDemo.login + api.getMe(); en Fase 2 lo hará Firebase Auth.
+ * Contexto de sesión propio (App lo provee). La sesión se resuelve con
+ * Firebase Auth (onAuthStateChanged) + api.getMe() (ADR-002).
  */
 import { createContext, useContext } from 'react';
 import type { Sesion } from '../lib';
