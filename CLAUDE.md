@@ -6,6 +6,8 @@ Aplicación de seguimiento de acuerdos de reuniones de dirección de Plan Juáre
 
 **Acuerdo**: compromiso pactado en una reunión — tema, acción, responsable (1), corresponsables (0..N), área, fecha compromiso, estado, enlace a productos, observaciones, avances. **Estados**: `en_proceso` (default) → `vencido` (automático al pasar fecha compromiso; regresa a `en_proceso` al reprogramar) → `concluido` (SOLO Dirección, vía checklist de validación). Concluidos ocultos por defecto en el panel.
 
+**Acceso (RF-01, ADR-006):** el acceso ya no depende exclusivamente del alta manual de Dirección — cualquier portador de un ID token Firebase válido puede autorregistrarse (`POST /registro`), pero nace con rol `pendiente`: existe en `usuarios` sin ningún acceso funcional (403 `cuenta_pendiente` fuera de `GET/PATCH /me`) hasta que Dirección le asigna uno de los tres roles operativos (`direccion`/`coordinador`/`responsable`) vía `PATCH /usuarios/{id}`.
+
 ## Estado de fase (gate)
 
 | Fase | Estado | DoD verificada |

@@ -7,7 +7,7 @@ import type { ApiClient } from './api';
 import type {
   Acuerdo, AcuerdoDetalle, ActualizacionPerfil, AltaArea, AltaUsuario, Area, CalendarioMes, ChecklistItem,
   ConfigRecordatorios, EdicionAcuerdo, EdicionArea, EdicionUsuario, FiltrosAcuerdos,
-  LoteCaptura, NuevoAvance, Paginado, RecordatorioVista, Resumen, Sesion, Usuario,
+  LoteCaptura, NuevoAvance, Paginado, RecordatorioVista, RegistroCuenta, Resumen, Sesion, Usuario,
 } from './types';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -49,6 +49,7 @@ const qs = (params: Record<string, string | number | boolean | undefined>): stri
 export const realClient: ApiClient = {
   getMe: () => req<Sesion>('GET', '/me'),
   editarMiPerfil: async (c: ActualizacionPerfil) => (await req<{ data: Usuario }>('PATCH', '/me', c)).data,
+  registrarme: async (d: RegistroCuenta) => (await req<{ data: Usuario }>('POST', '/registro', d)).data,
 
   listAcuerdos: (f: FiltrosAcuerdos) =>
     req<Paginado<Acuerdo>>('GET', `/acuerdos${qs({

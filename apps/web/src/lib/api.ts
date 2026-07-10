@@ -22,6 +22,7 @@ import type {
   NuevoAvance,
   Paginado,
   RecordatorioVista,
+  RegistroCuenta,
   Resumen,
   Sesion,
   Usuario,
@@ -31,6 +32,7 @@ export interface ApiClient {
   // sesión
   getMe(): Promise<Sesion>;
   editarMiPerfil(cambios: ActualizacionPerfil): Promise<Usuario>;
+  registrarme(datos: RegistroCuenta): Promise<Usuario>; // ADR-006: autorregistro, rol nace `pendiente`
 
   // acuerdos
   listAcuerdos(filtros: FiltrosAcuerdos): Promise<Paginado<Acuerdo>>;

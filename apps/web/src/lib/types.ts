@@ -4,7 +4,7 @@
  */
 
 // ── Enums del DDL ──
-export type Rol = 'direccion' | 'coordinador' | 'responsable';
+export type Rol = 'direccion' | 'coordinador' | 'responsable' | 'pendiente';
 export type EstadoAcuerdo = 'en_proceso' | 'vencido' | 'concluido';
 export type TipoAvance = 'avance' | 'reprogramacion' | 'validacion' | 'reapertura';
 export type TipoRecordatorio = 'previo' | 'dia' | 'vencido' | 'resumen';
@@ -327,6 +327,11 @@ export interface EdicionUsuario {
 /** Self-service (ADR-005): el propio usuario solo puede editar su `nombre`. */
 export interface ActualizacionPerfil {
   nombre?: string;
+}
+
+/** Autorregistro (ADR-006): `POST /registro` — uid/email salen del token verificado. */
+export interface RegistroCuenta {
+  nombre: string;
 }
 
 export interface AltaArea {

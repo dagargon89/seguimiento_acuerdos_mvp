@@ -34,7 +34,7 @@ frontend real-only. Suite **212 pruebas PHPUnit verdes** + 4 vitest; revisión f
 | Seeder desde `db.json` sin transformación | ✅ | `InitialSeeder` + `InitialSeederTest`; espejo `verificar_espejo.mjs` 11/11 |
 | Transacciones en operaciones multi-tabla | ✅ | lote/concluir/reabrir/avances/config; confirmado en revisión final |
 | OWASP A01–A10 re-verificado | ✅ (con notas) | `docs/04-seguridad/04b_verificacion_owasp_fase2.md`; brechas menores documentadas (rel=noopener, config de prod) |
-| `api.ts` ≡ doc 05 (contrato congelado) | ✅ | doc 05 v1.3 CONGELADA (ADR-004, ADR-005) |
+| `api.ts` ≡ doc 05 (contrato congelado) | ✅ | doc 05 v1.4 CONGELADA (ADR-004, ADR-005, ADR-006) |
 | Solo Dirección concluye/reabre + auditoría del 403 | ✅ | revisión final: regla OK |
 | Cobertura de Services ≥ 80% | ⏳ **pendiente de herramienta** | sin driver pcov/xdebug en el entorno; comando en `docs/04-seguridad/checklist_despliegue.md`; 212 tests como red actual |
 
@@ -79,6 +79,7 @@ SPA React servida estáticamente que consume una API REST de CodeIgniter 4. El c
 | ADR-003 | Integración Google (Gmail/Calendar/Tasks) | [docs/02-arquitectura/ADR/ADR-003_integracion_google.md](docs/02-arquitectura/ADR/ADR-003_integracion_google.md) |
 | ADR-004 | Administración de áreas en el MVP (contrato v1.2) | [docs/02-arquitectura/ADR/ADR-004_administracion_areas.md](docs/02-arquitectura/ADR/ADR-004_administracion_areas.md) |
 | ADR-005 | Perfil self-service (contrato v1.3) | [docs/02-arquitectura/ADR/ADR-005_perfil_usuario.md](docs/02-arquitectura/ADR/ADR-005_perfil_usuario.md) |
+| ADR-006 | Autorregistro con rol `pendiente` (contrato v1.4) | [docs/02-arquitectura/ADR/ADR-006_autorregistro_pendiente.md](docs/02-arquitectura/ADR/ADR-006_autorregistro_pendiente.md) |
 | 01 | SRS — Especificación de requisitos | [docs/01-vision/01_SRS_especificacion_requisitos.md](docs/01-vision/01_SRS_especificacion_requisitos.md) |
 | 02 | Arquitectura del sistema | [docs/02-arquitectura/02_arquitectura_sistema.md](docs/02-arquitectura/02_arquitectura_sistema.md) |
 | 03 | Modelo de datos | [docs/03-datos/03_modelo_de_datos.md](docs/03-datos/03_modelo_de_datos.md) |

@@ -64,7 +64,8 @@ Google Workspace activo con posibilidad de habilitar Gmail/Calendar APIs y domai
 1. Login con Google (dominio) y con email/password vía Firebase (ADR-002).
 2. Solo usuarios existentes en la tabla local y `activo=1` acceden; de lo contrario 403 `usuario_no_registrado`.
 3. `GET /me` devuelve identidad, rol y área.
-**Criterios de aceptación:** token inválido/expirado → 401; usuario desactivado → 403 en ≤60 s; primer login enlaza `firebase_uid` por email verificado.
+4. Autorregistro (ADR-006): cualquier portador de un ID token Firebase válido puede darse de alta vía `POST /registro` sin depender de un alta manual previa. La cuenta nace con rol `pendiente` — existe pero sin acceso funcional (403 `cuenta_pendiente` en todo endpoint salvo `GET/PATCH /me`) — hasta que Dirección le asigna uno de los tres roles operativos vía `PATCH /usuarios/{id}`.
+**Criterios de aceptación:** token inválido/expirado → 401; usuario desactivado → 403 en ≤60 s; primer login enlaza `firebase_uid` por email verificado; una cuenta recién autorregistrada (`pendiente`) puede consultar/editar su propio nombre en `/me` pero recibe 403 en cualquier otro endpoint hasta la aprobación de Dirección.
 
 ### RF-02 · Captura de acuerdos (lote)
 1. Dos vistas intercambiables idénticas al demo: *Formularios* (bloques repetibles) y *Hoja de captura* (cuadrícula).

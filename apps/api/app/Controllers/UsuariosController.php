@@ -25,7 +25,9 @@ class UsuariosController extends BaseController
     /** Campos que acepta `EdicionUsuario` (todos opcionales). */
     private const CAMPOS_EDICION = ['nombre', 'email', 'rol', 'area_id', 'activo'];
 
-    private const ROLES = ['direccion', 'coordinador', 'responsable'];
+    /** `pendiente` (ADR-006) — Dirección puede asignarlo/verlo; las reglas de coordinador→área
+     *  y última cuenta de Dirección activa no cambian. */
+    private const ROLES = ['direccion', 'coordinador', 'responsable', 'pendiente'];
 
     public function index(): ResponseInterface
     {

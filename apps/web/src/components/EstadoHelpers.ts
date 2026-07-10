@@ -24,6 +24,7 @@ export const ROL_LABEL: Record<Rol, string> = {
   direccion: 'Dirección',
   coordinador: 'Coordinación',
   responsable: 'Responsable',
+  pendiente: 'Pendiente de aprobación',
 };
 
 /** "Vence hoy / mañana / en N días / Venció hace N días" + color (portado de vm()). */

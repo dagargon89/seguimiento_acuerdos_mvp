@@ -22,7 +22,7 @@ CREATE TABLE usuarios (
   firebase_uid  VARCHAR(128) NULL,
   nombre        VARCHAR(120) NOT NULL,
   email         VARCHAR(160) NOT NULL,
-  rol           ENUM('direccion','coordinador','responsable') NOT NULL,
+  rol           ENUM('direccion','coordinador','responsable','pendiente') NOT NULL,
   area_id       INT UNSIGNED NULL,
   activo        TINYINT(1)   NOT NULL DEFAULT 1,
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

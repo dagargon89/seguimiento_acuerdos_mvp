@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Documento | 05 — Especificación de API REST |
-| Versión | 1.3 — **CONGELADA** (2026-07-10, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). |
+| Versión | 1.4 — **CONGELADA** (2026-07-10, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). |
 | Fecha | 2026-07-10 |
 | Depende de | 01_SRS, 02_arquitectura, 03_modelo_de_datos |
 
@@ -26,8 +26,24 @@
 
 | Método/Ruta | Auth | Descripción |
 |---|---|---|
+| `POST /registro` | ID token verificado, **sin lista blanca** | Autorregistro (ADR-006): crea la cuenta del portador del token con rol `pendiente` |
 | `GET /me` | Cualquier usuario activo | Identidad, rol, área, y configuración global de recordatorios visible |
 | `PATCH /me` | Cualquier usuario activo (self) | Perfil self-service (ADR-005): edita únicamente su propio `nombre` |
+
+```json
+// 201 POST /registro  (request)  { "nombre": "Persona Nueva" }
+// respuesta — uid/email SIEMPRE del token verificado, nunca del body
+{ "data": { "id": 9, "nombre": "Persona Nueva", "email": "nueva@demo.test",
+            "rol": "pendiente", "area_id": null, "activo": true } }
+
+// 409 — ya existe una cuenta con ese email o ese firebase_uid
+{ "error": "cuenta_ya_existe", "mensaje": "Ya existe una cuenta para este correo. Inicia sesión." }
+
+// 422 — body con cualquier campo distinto de `nombre` (p. ej. `rol`, `estado`, `email`)
+{ "error": "campo_no_permitido", "mensaje": "El body contiene campos no permitidos.",
+  "campos": { "rol": "Campo no permitido" } }
+```
+*Seguridad:* `POST /registro` corre detrás de `firebaseauth:sin_lista` — el token se verifica igual que en el resto de la API (401 `token_faltante`/`token_invalido` si falta o es inválido) pero **sin exigir que el usuario ya exista**; `uid`/`email` se toman del token verificado, jamás del body; `rol`/`estado` no son campos aceptados (siempre nace `rol: "pendiente"`). Un usuario `pendiente` **no tiene acceso funcional**: la guardia central `cuenta_pendiente` (en `FirebaseAuthFilter`, modo normal) responde 403 `{"error":"cuenta_pendiente","mensaje":"Tu cuenta está pendiente de aprobación."}` en cualquier ruta del grupo protegido salvo `GET/PATCH /me` — hasta que Dirección le asigna un rol operativo vía `PATCH /usuarios/{id}` (ADR-006).
 
 ```json
 // 200 GET /me
@@ -39,7 +55,7 @@
                             "resumen_frecuencia": "semanal" }
 }
 ```
-*Seguridad:* si el token es válido pero el email no está en la lista blanca → 403 `usuario_no_registrado`.
+*Seguridad:* si el token es válido pero el email no está en la lista blanca ni tiene cuenta autorregistrada → 403 `usuario_no_registrado`. Una cuenta `rol: "pendiente"` (ADR-006) SÍ puede llamar `GET/PATCH /me` (para ver su estado y corregir su nombre) pero recibe 403 `cuenta_pendiente` en cualquier otro endpoint del panel.
 
 ```json
 // PATCH /me  (request)  { "nombre": "Nuevo Nombre" }
@@ -178,13 +194,14 @@
 
 ## 3. Interfaz del cliente (`lib/api.ts` — CONGELADA)
 
-> **CONGELADA (v1.3, 2026-07-10).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005).
+> **CONGELADA (v1.4, 2026-07-10).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005). v1.4 añade `registrarme` (ADR-006).
 
 ```typescript
 export interface ApiClient {
   // sesión
   getMe(): Promise<Sesion>;
   editarMiPerfil(cambios: ActualizacionPerfil): Promise<Usuario>;
+  registrarme(datos: RegistroCuenta): Promise<Usuario>; // ADR-006: autorregistro, rol nace `pendiente`
 
   // acuerdos
   listAcuerdos(filtros: FiltrosAcuerdos): Promise<Paginado<Acuerdo>>;
@@ -219,4 +236,4 @@ export interface ApiClient {
 
 ## 4. Notas transversales de seguridad
 
-Todos los endpoints pasan por `FirebaseAuthFilter` + Throttle; los de escritura auditan en `auditoria`; los 403 de `concluir/reabrir` también se auditan (intento de abuso); ningún endpoint acepta `estado` del cliente; los ids de usuario en payloads se validan contra usuarios **activos**.
+Todos los endpoints pasan por `FirebaseAuthFilter` + Throttle; los de escritura auditan en `auditoria`; los 403 de `concluir/reabrir` también se auditan (intento de abuso); ningún endpoint acepta `estado` del cliente; los ids de usuario en payloads se validan contra usuarios **activos**. `POST /registro` es la única excepción a "lista blanca": corre con `firebaseauth:sin_lista` (token verificado, usuario aún no exigido) — ver ADR-006. La guardia `cuenta_pendiente` aplica a **todo** el resto de la API (salvo `GET/PATCH /me`): un rol `pendiente` no tiene acceso funcional hasta que Dirección le asigna rol.

@@ -46,8 +46,8 @@ erDiagram
 | id | INT UNSIGNED AI PK | No | |
 | firebase_uid | VARCHAR(128) | Sí | UNIQUE; null hasta el primer login (ADR-002) |
 | nombre | VARCHAR(120) | No | |
-| email | VARCHAR(160) | No | UNIQUE; lista blanca de acceso |
-| rol | ENUM('direccion','coordinador','responsable') | No | RBAC (SRS §2.2) |
+| email | VARCHAR(160) | No | UNIQUE; alta por Dirección o autorregistro (ADR-006) |
+| rol | ENUM('direccion','coordinador','responsable','pendiente') | No | RBAC (SRS §2.2); `pendiente` = autorregistrado sin rol asignado (ADR-006) |
 | area_id | INT UNSIGNED FK→areas | Sí | Obligatorio solo para rol coordinador (CHECK) |
 | activo | TINYINT(1) | No | default 1; baja lógica (RF-10) |
 | created_at / updated_at | DATETIME | No / Sí | |
@@ -177,7 +177,7 @@ CREATE TABLE usuarios (
   firebase_uid  VARCHAR(128) NULL,
   nombre        VARCHAR(120) NOT NULL,
   email         VARCHAR(160) NOT NULL,
-  rol           ENUM('direccion','coordinador','responsable') NOT NULL,
+  rol           ENUM('direccion','coordinador','responsable','pendiente') NOT NULL,
   area_id       INT UNSIGNED NULL,
   activo        TINYINT(1)   NOT NULL DEFAULT 1,
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

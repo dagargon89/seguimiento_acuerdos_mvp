@@ -3,6 +3,7 @@
 namespace Config;
 
 use App\Libraries\Auth\KreaitTokenVerifier;
+use App\Libraries\Auth\TokenVerificado;
 use App\Libraries\Auth\TokenVerifierInterface;
 use App\Libraries\Auth\UsuarioActual;
 use App\Libraries\Correo\GmailService;
@@ -65,6 +66,21 @@ class Services extends BaseService
         }
 
         return new UsuarioActual();
+    }
+
+    /**
+     * Claims del ID token verificado por FirebaseAuthFilter cuando corre en modo
+     * `sin_lista` (ADR-006, `POST /registro`) — publica uid/email/emailVerified
+     * SIN exigir que el usuario exista en `usuarios`. RegistroController lo
+     * consume para tomar uid/email del token, jamás del body.
+     */
+    public static function tokenVerificado(bool $getShared = true): TokenVerificado
+    {
+        if ($getShared) {
+            return static::getSharedInstance('tokenVerificado');
+        }
+
+        return new TokenVerificado();
     }
 
     /**

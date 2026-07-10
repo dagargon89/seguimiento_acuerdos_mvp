@@ -27,7 +27,7 @@ class ResumenController extends BaseController
     {
         $actor = service('usuarioActual')->obtener();
 
-        if ($actor['rol'] === 'responsable') {
+        if (! in_array($actor['rol'], ['direccion', 'coordinador'], true)) {
             return $this->response->setStatusCode(403)->setJSON([
                 'error'   => 'sin_permiso',
                 'mensaje' => 'El resumen es para dirección y coordinaciones.',

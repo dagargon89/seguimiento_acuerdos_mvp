@@ -10,6 +10,13 @@ $routes->group('api/v1', ['filter' => ['cors']], static function (RouteCollectio
     $routes->get('ping', 'Ping::index');
 });
 
+// API v1 — autorregistro (ADR-006, "Registro A"): token verificado SIN lista
+// blanca (firebaseauth:sin_lista) — el usuario aún no existe en `usuarios`.
+$routes->group('api/v1', ['filter' => ['cors', 'firebaseauth:sin_lista', 'throttle']], static function (RouteCollection $routes): void {
+    $routes->post('registro', 'RegistroController::crear');
+    $routes->options('registro', 'RegistroController::crear');
+});
+
 // API v1 — grupo protegido: todo endpoint de dominio del Sprint 1 vive aquí,
 // detrás de CORS + FirebaseAuth + Throttle (S1.3).
 $routes->group('api/v1', ['filter' => ['cors', 'firebaseauth', 'throttle']], static function (RouteCollection $routes): void {
