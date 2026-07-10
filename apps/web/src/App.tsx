@@ -19,6 +19,7 @@ import { Captura } from './pages/Captura';
 import { Recordatorios } from './pages/Recordatorios';
 import { Checklist } from './pages/Checklist';
 import { Usuarios } from './pages/Usuarios';
+import { Perfil } from './pages/Perfil';
 
 export default function App() {
   return (
@@ -130,11 +131,17 @@ function Shell({ sesion, onLogout }: { sesion: Sesion; onLogout: () => void }) {
             ))}
           </nav>
           <div className="topbar__user">
-            <Avatar nombre={u.nombre} size="sm" />
-            <span className="topbar__user-info">
-              <span className="topbar__user-name">{u.nombre}</span>
-              <span className="topbar__user-rol">{ROL_LABEL[u.rol]}</span>
-            </span>
+            <NavLink
+              to="/perfil"
+              className="topbar__user"
+              style={{ textDecoration: 'none', padding: 0, margin: 0 }}
+            >
+              <Avatar nombre={u.nombre} size="sm" />
+              <span className="topbar__user-info">
+                <span className="topbar__user-name">{u.nombre}</span>
+                <span className="topbar__user-rol">{ROL_LABEL[u.rol]}</span>
+              </span>
+            </NavLink>
             <button type="button" className="topbar__salir" onClick={onLogout}>
               Salir
             </button>
@@ -148,6 +155,7 @@ function Shell({ sesion, onLogout }: { sesion: Sesion; onLogout: () => void }) {
           <Route path="/recordatorios" element={<Recordatorios />} />
           <Route path="/checklist" element={esDireccion ? <Checklist /> : <Navigate to="/panel" replace />} />
           <Route path="/usuarios" element={esDireccion ? <Usuarios /> : <Navigate to="/panel" replace />} />
+          <Route path="/perfil" element={<Perfil />} />
           <Route path="*" element={<Navigate to="/panel" replace />} />
         </Routes>
       </main>

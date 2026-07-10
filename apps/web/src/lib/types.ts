@@ -324,6 +324,11 @@ export interface EdicionUsuario {
   activo?: boolean;
 }
 
+/** Self-service (ADR-005): el propio usuario solo puede editar su `nombre`. */
+export interface ActualizacionPerfil {
+  nombre?: string;
+}
+
 export interface AltaArea {
   nombre: string;
 }

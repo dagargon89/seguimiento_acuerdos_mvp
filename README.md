@@ -34,7 +34,7 @@ frontend real-only. Suite **212 pruebas PHPUnit verdes** + 4 vitest; revisión f
 | Seeder desde `db.json` sin transformación | ✅ | `InitialSeeder` + `InitialSeederTest`; espejo `verificar_espejo.mjs` 11/11 |
 | Transacciones en operaciones multi-tabla | ✅ | lote/concluir/reabrir/avances/config; confirmado en revisión final |
 | OWASP A01–A10 re-verificado | ✅ (con notas) | `docs/04-seguridad/04b_verificacion_owasp_fase2.md`; brechas menores documentadas (rel=noopener, config de prod) |
-| `api.ts` ≡ doc 05 (contrato congelado) | ✅ | doc 05 v1.2 CONGELADA (ADR-004) |
+| `api.ts` ≡ doc 05 (contrato congelado) | ✅ | doc 05 v1.3 CONGELADA (ADR-004, ADR-005) |
 | Solo Dirección concluye/reabre + auditoría del 403 | ✅ | revisión final: regla OK |
 | Cobertura de Services ≥ 80% | ⏳ **pendiente de herramienta** | sin driver pcov/xdebug en el entorno; comando en `docs/04-seguridad/checklist_despliegue.md`; 212 tests como red actual |
 
@@ -78,11 +78,12 @@ SPA React servida estáticamente que consume una API REST de CodeIgniter 4. El c
 | ADR-002 | Firebase Authentication | [docs/02-arquitectura/ADR/ADR-002_firebase_auth.md](docs/02-arquitectura/ADR/ADR-002_firebase_auth.md) |
 | ADR-003 | Integración Google (Gmail/Calendar/Tasks) | [docs/02-arquitectura/ADR/ADR-003_integracion_google.md](docs/02-arquitectura/ADR/ADR-003_integracion_google.md) |
 | ADR-004 | Administración de áreas en el MVP (contrato v1.2) | [docs/02-arquitectura/ADR/ADR-004_administracion_areas.md](docs/02-arquitectura/ADR/ADR-004_administracion_areas.md) |
+| ADR-005 | Perfil self-service (contrato v1.3) | [docs/02-arquitectura/ADR/ADR-005_perfil_usuario.md](docs/02-arquitectura/ADR/ADR-005_perfil_usuario.md) |
 | 01 | SRS — Especificación de requisitos | [docs/01-vision/01_SRS_especificacion_requisitos.md](docs/01-vision/01_SRS_especificacion_requisitos.md) |
 | 02 | Arquitectura del sistema | [docs/02-arquitectura/02_arquitectura_sistema.md](docs/02-arquitectura/02_arquitectura_sistema.md) |
 | 03 | Modelo de datos | [docs/03-datos/03_modelo_de_datos.md](docs/03-datos/03_modelo_de_datos.md) |
 | 04 | Plan de seguridad | [docs/04-seguridad/04_plan_de_seguridad.md](docs/04-seguridad/04_plan_de_seguridad.md) |
-| 05 | Especificación de API (CONGELADA 2026-07-09) | [docs/05-api/05_especificacion_api.md](docs/05-api/05_especificacion_api.md) |
+| 05 | Especificación de API (CONGELADA v1.3, 2026-07-10) | [docs/05-api/05_especificacion_api.md](docs/05-api/05_especificacion_api.md) |
 | 06 | Plan de pruebas | [docs/06-pruebas/06_plan_de_pruebas.md](docs/06-pruebas/06_plan_de_pruebas.md) |
 | 07 | Roadmap por sprints | [docs/07-roadmap/07_roadmap_sprints.md](docs/07-roadmap/07_roadmap_sprints.md) |
 | 08 | Identidad visual y design system | [docs/01-vision/08_identidad_visual_design_system.md](docs/01-vision/08_identidad_visual_design_system.md) |
