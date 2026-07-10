@@ -444,13 +444,28 @@ final class AcuerdosEscrituraTest extends CIUnitTestCase
         $r->assertStatus(403);
     }
 
-    public function testAU04CoordinadorEditaAcuerdoDeOtraAreaSinParticiparEs404NoEncontrado(): void
+    /**
+     * ADR-007 (visibilidad abierta, 2026-07-10): antes de ADR-007 este caso
+     * respondía 404 (el acuerdo 6, área 2, no era visible para Carla —
+     * coordinadora del área 1, sin participar — y la visibilidad manda sobre
+     * el permiso). Con la visibilidad de lectura abierta, Carla SÍ ve el
+     * acuerdo 6 (200 en GET), así que la request llega al guard de ESCRITURA
+     * (`puedeEditarEstructura`), que sigue exigiendo Dirección o coordinación
+     * DEL ÁREA del acuerdo — ese guard NO cambió, por eso ahora es 403 (no
+     * 404). La restricción de edición es exactamente la misma; solo cambia
+     * el código porque el recurso ya no está oculto.
+     */
+    public function testAU04CoordinadorEditaAcuerdoDeOtraAreaSinParticiparEs403TrasVisibilidadAbierta(): void
     {
-        // Carla (coordinadora, área 1) intenta editar el acuerdo 6 (área 2): ni de su
-        // área, ni participa → no es visible → 404 (visibilidad manda sobre permiso).
+        // Carla (coordinadora, área 1): visibilidad abierta → GET del acuerdo 6 (área 2) es 200.
+        $lectura = $this->como('coordinacion.operativa@demo.test')->get('api/v1/acuerdos/6');
+        $lectura->assertStatus(200);
+
+        // Pero PATCH sigue restringido: no es Dirección ni coordinación DEL ÁREA del acuerdo → 403.
         $r = $this->como('coordinacion.operativa@demo.test')->patch('api/v1/acuerdos/6', ['tema' => 'Intento ajeno']);
 
-        $r->assertStatus(404);
+        $r->assertStatus(403);
+        $this->assertSame('sin_permiso', $this->cuerpo($r)['error']);
     }
 
     // ── AU-05: corresponsable registra avance → 200 ──────────────────────
@@ -482,14 +497,34 @@ final class AcuerdosEscrituraTest extends CIUnitTestCase
         $r->assertStatus(403);
     }
 
-    // ── Acuerdo no visible → 404 (en vez de 403) ──────────────────────────
+    // ── Acuerdo inexistente → 404; ajeno-pero-visible (ADR-007) → 403 en escritura ──
 
-    public function testEscrituraSobreAcuerdoNoVisibleEs404(): void
+    public function testEscrituraSobreAcuerdoInexistenteEs404(): void
     {
-        // Acuerdo 6 (área 2): Rafael (responsable.dos, id 5) no participa ni es de esa área.
-        $r = $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/6/avances', ['descripcion' => 'no debería poder']);
+        $r = $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/9999/avances', ['descripcion' => 'no debería poder']);
 
         $r->assertStatus(404);
+    }
+
+    /**
+     * ADR-007 (visibilidad abierta): antes de ADR-007 este caso respondía 404
+     * (el acuerdo 6, área 2, no era visible para Rafael — responsable, no
+     * participa ni es de esa área). Con la visibilidad de lectura abierta,
+     * Rafael SÍ ve el acuerdo 6 (200 en GET), así que el intento de avance
+     * llega al guard de ESCRITURA (`puedeRegistrarAvance`), que sigue
+     * exigiendo ser responsable/corresponsable/coordinación del área/
+     * Dirección — ese guard NO cambió, por eso ahora es 403 (no 404).
+     */
+    public function testEscrituraSobreAcuerdoAjenoVisibleEs403TrasVisibilidadAbierta(): void
+    {
+        // Acuerdo 6 (área 2): Rafael (responsable.dos, id 5) no participa ni es de esa área.
+        $lectura = $this->como('responsable.dos@demo.test')->get('api/v1/acuerdos/6');
+        $lectura->assertStatus(200);
+
+        $r = $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/6/avances', ['descripcion' => 'no debería poder']);
+
+        $r->assertStatus(403);
+        $this->assertSame('sin_permiso', $this->cuerpo($r)['error']);
     }
 
     // ── OW-01: SQLi en q/textos no rompe; se guarda literal ──────────────

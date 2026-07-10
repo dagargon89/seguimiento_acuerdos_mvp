@@ -80,6 +80,7 @@ SPA React servida estáticamente que consume una API REST de CodeIgniter 4. El c
 | ADR-004 | Administración de áreas en el MVP (contrato v1.2) | [docs/02-arquitectura/ADR/ADR-004_administracion_areas.md](docs/02-arquitectura/ADR/ADR-004_administracion_areas.md) |
 | ADR-005 | Perfil self-service (contrato v1.3) | [docs/02-arquitectura/ADR/ADR-005_perfil_usuario.md](docs/02-arquitectura/ADR/ADR-005_perfil_usuario.md) |
 | ADR-006 | Autorregistro con rol `pendiente` (contrato v1.4) | [docs/02-arquitectura/ADR/ADR-006_autorregistro_pendiente.md](docs/02-arquitectura/ADR/ADR-006_autorregistro_pendiente.md) |
+| ADR-007 | Visibilidad de lectura abierta (temporal/reversible, sin cambio de contrato) | [docs/02-arquitectura/ADR/ADR-007_visibilidad_abierta.md](docs/02-arquitectura/ADR/ADR-007_visibilidad_abierta.md) |
 | 01 | SRS — Especificación de requisitos | [docs/01-vision/01_SRS_especificacion_requisitos.md](docs/01-vision/01_SRS_especificacion_requisitos.md) |
 | 02 | Arquitectura del sistema | [docs/02-arquitectura/02_arquitectura_sistema.md](docs/02-arquitectura/02_arquitectura_sistema.md) |
 | 03 | Modelo de datos | [docs/03-datos/03_modelo_de_datos.md](docs/03-datos/03_modelo_de_datos.md) |

@@ -18,7 +18,7 @@
 | Rate limit | 60 req/min por usuario (Redis); 429 con `Retry-After` |
 | Paginación | `?page=1&per_page=50` (default 50, máx 200); respuesta `{"data": [...], "meta": {"page","per_page","total"}}`. Listados del panel (<5,000 filas) pueden pedir `per_page=200` |
 | Fechas | `date` como `YYYY-MM-DD`; `datetime` como `YYYY-MM-DD HH:mm:ss` (TZ America/Ciudad_Juarez) |
-| Filtrado de visibilidad | Siempre server-side por rol (doc 04 §A01); un 404 puede significar "existe pero no te es visible" |
+| Filtrado de visibilidad | Siempre server-side por rol (doc 04 §A01, `App\Policies\VisibilidadAcuerdos`). **Nota de comportamiento (ADR-007, 2026-07-10, temporal/reversible — no es un cambio de contrato):** la LECTURA de acuerdos es actualmente **abierta** para los tres roles aprobados (dirección/coordinador/responsable) — todos ven todos los acuerdos, sin filtrar por área/participación. El 404 "existe pero no te es visible" hoy solo ocurre para ids inexistentes o para el rol `pendiente` (bloqueado antes de llegar aquí por la guardia `cuenta_pendiente`, ADR-006). La ESCRITURA (editar, avances) y la conclusión/reapertura **no** se abrieron: siguen devolviendo 403 `sin_permiso` sobre un recurso ya visible cuando el actor no cumple el permiso de escritura (antes ese mismo caso podía devolver 404 porque el recurso estaba oculto; ahora es visible y el guard de escritura responde su código normal) |
 
 ## 2. Recursos
 

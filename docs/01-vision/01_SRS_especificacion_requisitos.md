@@ -39,9 +39,11 @@ SPA React contra API REST CI4. Job diario (cron, TZ America/Ciudad_Juarez) para 
 
 | Rol | Ve | Puede |
 |---|---|---|
-| **Dirección** | Todos los acuerdos y áreas | Todo lo de coordinación +: **concluir/reabrir** acuerdos (checklist), administrar usuarios y áreas, editar configuración global de recordatorios, ver resumen general |
-| **Coordinación de área** | Acuerdos de su área + aquellos donde es responsable o corresponsable | Capturar, editar campos de acuerdos de su área, registrar avances, reprogramar, gestionar corresponsables, ver resumen de su área |
-| **Responsable** | Acuerdos donde es responsable **o corresponsable** | Capturar, registrar avances y reprogramar en sus acuerdos, editar observaciones/enlace propios |
+| **Dirección** | Todos los acuerdos — visibilidad abierta, ADR-007 | Todo lo de coordinación +: **concluir/reabrir** acuerdos (checklist), administrar usuarios y áreas, editar configuración global de recordatorios, ver resumen general |
+| **Coordinación de área** | Todos los acuerdos — visibilidad abierta, ADR-007 | Capturar; editar campos y registrar avances **solo de acuerdos de su área** (la edición NO se abrió); reprogramar, gestionar corresponsables, ver resumen de su área |
+| **Responsable** | Todos los acuerdos — visibilidad abierta, ADR-007 | Capturar; registrar avances y reprogramar **solo en sus acuerdos** (responsable o corresponsable — la escritura NO se abrió); editar observaciones/enlace propios |
+
+> **ADR-007 (2026-07-10, temporal/reversible):** por decisión del stakeholder ("trabajamos en conjunto"), la visibilidad de LECTURA se abrió para los tres roles aprobados — antes cada uno veía solo su área/participación. Solo cambió la lectura (listado, detalle, calendario, recordatorios); los permisos de escritura de la columna "Puede" (editar/avances por área o participación, concluir/reabrir solo Dirección) **no cambiaron**. Ver ADR-007 para el detalle y cómo revertir.
 
 Matriz de autorización fina (fuente de verdad para Policies y pruebas):
 
@@ -78,9 +80,9 @@ Google Workspace activo con posibilidad de habilitar Gmail/Calendar APIs y domai
 1. Cinco modos: **Tabla**, **Tarjetas (kanban 2 columnas: En proceso, Vencido — Concluido aparece solo al filtrar)**, **Por reunión**, **Cronograma (gantt)** y **Calendario** (RF-04).
 2. Tarjetas de estadísticas sobre lo visible: En proceso, Vencidos, Por vencer (≤7 días), Concluidos.
 3. Filtros: estado, responsable, búsqueda de texto (tema+acción+responsable). **Default: los `concluido` se ocultan**; solo se muestran al filtrar explícitamente por estado Concluido (requisito de dirección).
-4. Visibilidad por rol según §2.2.
+4. Visibilidad por rol según §2.2 — visibilidad de LECTURA abierta para los tres roles aprobados (ADR-007, temporal); la guardia del rol `pendiente` (ADR-006) sigue bloqueando cualquier acceso fuera de `/me`.
 5. Detalle en drawer lateral: datos completos, corresponsables, avances, recordatorios del acuerdo, acciones según permisos.
-**Criterios:** un responsable nunca recibe en la respuesta acuerdos ajenos (filtrado server-side); contador "Mostrando X de Y".
+**Criterios:** cualquier rol aprobado (dirección/coordinador/responsable) recibe en la respuesta TODOS los acuerdos abiertos, sin filtrar por área/participación (ADR-007); un rol `pendiente` nunca recibe ninguno (403 `cuenta_pendiente`, guardia intocable); contador "Mostrando X de Y".
 
 ### RF-04 · Vista calendario
 1. Rejilla mensual con los acuerdos visibles ubicados en su fecha compromiso, con punto de color por estado y navegación mes anterior/siguiente/hoy.

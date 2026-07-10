@@ -40,14 +40,17 @@ Herramientas: backend PHPUnit (feature tests de CI4 con BD efímera y trait `Dat
 
 ### 2.2 Autorización y visibilidad (A01 — negativos obligatorios)
 
+> **ADR-007 (2026-07-10, temporal/reversible):** la visibilidad de LECTURA de acuerdos es abierta para los tres roles aprobados (dirección/coordinador/responsable) — AU-01/02/03 reflejan la regla nueva. La ESCRITURA (AU-04/05/06) **no cambió de intención**: sigue restringida por área/participación; solo cambia el código de un caso puntual (AU-04b) porque el recurso ajeno ya es visible antes de llegar al guard de escritura.
+
 | ID | Caso | Esperado |
 |---|---|---|
-| AU-01 | Responsable lista acuerdos | solo propios (responsable o corresponsable) |
-| AU-02 | Responsable pide por id un acuerdo ajeno | 404 |
-| AU-03 | Coordinador lista | su área + participaciones propias |
-| AU-04 | Coordinador edita acuerdo de otra área | 403 |
-| AU-05 | Corresponsable registra avance | 200 |
-| AU-06 | Corresponsable edita responsable/área | 403 |
+| AU-01 | Responsable lista acuerdos | **ADR-007:** TODOS los acuerdos abiertos (no solo donde participa) |
+| AU-02 | Responsable pide por id un acuerdo ajeno | **ADR-007:** 200 (visible); el `PATCH` de ese mismo acuerdo sigue en 403 (ver AU-04b) |
+| AU-03 | Coordinador lista | **ADR-007:** TODOS los acuerdos abiertos (no solo su área + participaciones) |
+| AU-04 | Coordinador edita acuerdo de otra área (participando, ej. como responsable) | 403 — sin cambios |
+| AU-04b | Coordinador edita acuerdo de otra área SIN participar | **ADR-007:** 403 (antes 404 — el acuerdo ahora es visible, pero la edición sigue exigiendo Dirección o coordinación del área) |
+| AU-05 | Corresponsable registra avance | 200 — sin cambios |
+| AU-06 | Corresponsable edita responsable/área | 403 — sin cambios |
 | AU-07 | No-dirección accede a `/checklist`, `/usuarios` POST/PATCH, `PUT /configuracion/recordatorios` | 403 |
 | AU-08 | Token expirado / firma inválida / aud incorrecto | 401 |
 | AU-09 | Token válido de email no registrado | 403 `usuario_no_registrado` |

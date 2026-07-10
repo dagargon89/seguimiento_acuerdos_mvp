@@ -327,10 +327,16 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
 
     // ── GET /recordatorios/proximos — RF-08 ──────────────────────────────────
 
-    public function testRecordatoriosProximosDeUnResponsableSoloIncluyenSusAcuerdosVisibles(): void
+    /**
+     * ADR-007 (visibilidad abierta): `proximos` deriva de
+     * `VisibilidadAcuerdos::aplicarAlListado`, igual que `/acuerdos` — un
+     * responsable ahora ve recordatorios de TODOS los acuerdos abiertos, no
+     * solo donde participa. Antes de ADR-007 este test verificaba [3,4,10].
+     */
+    public function testRecordatoriosProximosVisibilidadAbiertaIncluyeTodosLosAcuerdosAbiertos(): void
     {
-        // Rafael (id 5): responsable de 4 (en_proceso, override [5,1]) y 10 (vencido);
-        // corresponsable de 3 (vencido). Concluidos (1,2) no generan recordatorios.
+        // Rafael (id 5, responsable): antes de ADR-007 solo veía 3,4,10 (donde participa).
+        // Concluidos (1,2) no generan recordatorios (independiente de la visibilidad).
         $r = $this->como('responsable.dos@demo.test')->get('api/v1/recordatorios/proximos');
 
         $r->assertStatus(200);
@@ -339,7 +345,7 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
 
         $acuerdoIds = array_values(array_unique(array_map(static fn (array $x) => $x['acuerdo_id'], $cuerpo['data'])));
         sort($acuerdoIds);
-        $this->assertSame([3, 4, 10], $acuerdoIds);
+        $this->assertSame([3, 4, 5, 6, 7, 8, 9, 10], $acuerdoIds);
 
         foreach ($cuerpo['data'] as $item) {
             $this->assertSame($item['destinatario']['id'], $item['destinatario']['id']); // forma presente
@@ -353,15 +359,20 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
         }
     }
 
-    public function testRecordatoriosProximosNoIncluyeAcuerdosNoVisibles(): void
+    /**
+     * ADR-007: un coordinador ahora SÍ ve recordatorios de acuerdos de otra
+     * área (visibilidad abierta) — antes de ADR-007 este test verificaba lo
+     * contrario (Camilo, área 2, no veía el acuerdo 4 de área 1).
+     */
+    public function testRecordatoriosProximosVisibilidadAbiertaIncluyeAcuerdosDeOtraArea(): void
     {
-        // Camilo (id 3, área 2) no debe ver recordatorios del acuerdo 4 (área 1, no participa).
+        // Camilo (id 3, área 2): ADR-007 → sí ve recordatorios del acuerdo 4 (área 1, ajeno).
         $r = $this->como('coordinacion.vinculacion@demo.test')->get('api/v1/recordatorios/proximos');
 
         $r->assertStatus(200);
         $cuerpo = $this->cuerpo($r);
         $acuerdoIds = array_map(static fn (array $x) => $x['acuerdo_id'], $cuerpo['data']);
-        $this->assertNotContains(4, $acuerdoIds);
+        $this->assertContains(4, $acuerdoIds);
     }
 
     public function testRecordatoriosProximosIncluyeADestinatariosResponsableYCorresponsables(): void
@@ -382,10 +393,19 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
 
     // ── GET /recordatorios/historial — RF-08 ─────────────────────────────────
 
-    public function testRecordatoriosHistorialDeUnResponsableSoloIncluyeSusAcuerdosVisibles(): void
+    /**
+     * ADR-007 (visibilidad abierta): `historial` deriva de
+     * `VisibilidadAcuerdos::aplicarAlListado` — con la regla abierta Rafael
+     * (responsable) ve el historial de TODOS los acuerdos, no solo donde
+     * participa. El resultado observable sigue siendo [3,4,10] porque esos
+     * son los ÚNICOS acuerdos con `recordatorios_enviados` en el seed (el
+     * resto de acuerdos visibles simplemente no tiene filas de historial) —
+     * no es una coincidencia con la regla previa, es que el seed no da más
+     * datos para diferenciarlas. El "resumen" global (acuerdo_id null, id 9)
+     * sigue sin verlo (rol responsable, regla de `historial()` que NO cambia).
+     */
+    public function testRecordatoriosHistorialVisibilidadAbiertaIncluyeTodosLosAcuerdosConEnviosDelSeed(): void
     {
-        // Rafael (id 5): visible en acuerdos 3,4,10. Enviados del seed para esos: ids 1,2,3(ac4),4,5,6,7(ac3),8(ac10).
-        // El "resumen" global (acuerdo_id null, id 9) NO debe verlo (rol responsable).
         $r = $this->como('responsable.dos@demo.test')->get('api/v1/recordatorios/historial');
 
         $r->assertStatus(200);
