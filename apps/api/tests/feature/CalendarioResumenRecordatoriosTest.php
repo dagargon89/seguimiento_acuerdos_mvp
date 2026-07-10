@@ -11,6 +11,7 @@ use CodeIgniter\Test\TestResponse;
 use Config\Database;
 use Config\Services;
 use Tests\Support\FakeTokenVerifier;
+use Tests\Support\FechaFijaTrait;
 
 /**
  * Calendario, resumen, recordatorios (lectura) y configuración de
@@ -36,6 +37,7 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
     use FeatureTestTrait;
+    use FechaFijaTrait;
 
     protected $refresh   = true;
     protected $namespace = 'App';
@@ -55,6 +57,7 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->fijarFechaTest();
         $this->fake = new FakeTokenVerifier();
         Services::injectMock('tokenVerifier', $this->fake);
         service('cache')->clean();
@@ -63,6 +66,7 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
     protected function tearDown(): void
     {
         Services::reset();
+        $this->resetFechaTest();
         parent::tearDown();
     }
 

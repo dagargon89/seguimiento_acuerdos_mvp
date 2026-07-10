@@ -13,6 +13,7 @@ use CodeIgniter\Test\TestResponse;
 use Config\Database;
 use Config\Services;
 use Tests\Support\FakeTokenVerifier;
+use Tests\Support\FechaFijaTrait;
 
 /**
  * Endpoints de LECTURA (Tarea 5 / S1.4): GET /me, GET /acuerdos, GET /acuerdos/{id},
@@ -30,6 +31,7 @@ final class AcuerdosLecturaTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
     use FeatureTestTrait;
+    use FechaFijaTrait;
 
     protected $refresh   = true;
     protected $namespace = 'App';
@@ -50,6 +52,7 @@ final class AcuerdosLecturaTest extends CIUnitTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->fijarFechaTest();
         $this->fake = new FakeTokenVerifier();
         Services::injectMock('tokenVerifier', $this->fake);
         service('cache')->clean();
@@ -58,6 +61,7 @@ final class AcuerdosLecturaTest extends CIUnitTestCase
     protected function tearDown(): void
     {
         Services::reset();
+        $this->resetFechaTest();
         parent::tearDown();
     }
 
