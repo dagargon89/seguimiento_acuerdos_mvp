@@ -5,7 +5,7 @@
  */
 import type { ApiClient } from './api';
 import type {
-  Acuerdo, AcuerdoDetalle, AltaArea, AltaUsuario, Area, CalendarioMes, ChecklistItem,
+  Acuerdo, AcuerdoDetalle, ActualizacionPerfil, AltaArea, AltaUsuario, Area, CalendarioMes, ChecklistItem,
   ConfigRecordatorios, EdicionAcuerdo, EdicionArea, EdicionUsuario, FiltrosAcuerdos,
   LoteCaptura, NuevoAvance, Paginado, RecordatorioVista, Resumen, Sesion, Usuario,
 } from './types';
@@ -48,6 +48,7 @@ const qs = (params: Record<string, string | number | boolean | undefined>): stri
 
 export const realClient: ApiClient = {
   getMe: () => req<Sesion>('GET', '/me'),
+  editarMiPerfil: async (c: ActualizacionPerfil) => (await req<{ data: Usuario }>('PATCH', '/me', c)).data,
 
   listAcuerdos: (f: FiltrosAcuerdos) =>
     req<Paginado<Acuerdo>>('GET', `/acuerdos${qs({

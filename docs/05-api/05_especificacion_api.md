@@ -3,8 +3,8 @@
 | Campo | Valor |
 |---|---|
 | Documento | 05 — Especificación de API REST |
-| Versión | 1.2 — **CONGELADA** (2026-07-09, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añade `crearArea`/`editarArea` (ADR-004). |
-| Fecha | 2026-07-09 |
+| Versión | 1.3 — **CONGELADA** (2026-07-10, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). |
+| Fecha | 2026-07-10 |
 | Depende de | 01_SRS, 02_arquitectura, 03_modelo_de_datos |
 
 ## 1. Convenciones
@@ -27,6 +27,7 @@
 | Método/Ruta | Auth | Descripción |
 |---|---|---|
 | `GET /me` | Cualquier usuario activo | Identidad, rol, área, y configuración global de recordatorios visible |
+| `PATCH /me` | Cualquier usuario activo (self) | Perfil self-service (ADR-005): edita únicamente su propio `nombre` |
 
 ```json
 // 200 GET /me
@@ -39,6 +40,22 @@
 }
 ```
 *Seguridad:* si el token es válido pero el email no está en la lista blanca → 403 `usuario_no_registrado`.
+
+```json
+// PATCH /me  (request)  { "nombre": "Nuevo Nombre" }
+// respuesta 200
+{ "data": { "id": 2, "nombre": "Nuevo Nombre", "email": "coord1@demo.test",
+            "rol": "coordinador", "area_id": 1, "activo": true } }
+
+// 422 — cualquier campo distinto de `nombre` (email/rol/area_id/activo/...) es rechazado
+{ "error": "campo_no_permitido", "mensaje": "El body contiene campos no permitidos.",
+  "campos": { "rol": "Campo no permitido" } }
+
+// 422 — nombre vacío o ausente
+{ "error": "validacion", "mensaje": "Revisa los campos de tu perfil.",
+  "campos": { "nombre": "Requerido" } }
+```
+*Seguridad:* `PATCH /me` solo modifica el registro del propio actor (`service('usuarioActual')`); rol/área/estado/email son inmutables por esta vía — su edición sigue exclusiva de `PATCH /usuarios/{id}` (solo Dirección). Invalida el `AuthCache` del actor y audita `editar_perfil` (entidad `usuario`). La contraseña se gestiona vía Firebase (email/password) client-side; no hay endpoint de contraseña en esta API (ADR-005).
 
 ### 2.2 Acuerdos
 
@@ -161,12 +178,13 @@
 
 ## 3. Interfaz del cliente (`lib/api.ts` — CONGELADA)
 
-> **CONGELADA (v1.2, 2026-07-09).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004).
+> **CONGELADA (v1.3, 2026-07-10).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005).
 
 ```typescript
 export interface ApiClient {
   // sesión
   getMe(): Promise<Sesion>;
+  editarMiPerfil(cambios: ActualizacionPerfil): Promise<Usuario>;
 
   // acuerdos
   listAcuerdos(filtros: FiltrosAcuerdos): Promise<Paginado<Acuerdo>>;

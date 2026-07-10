@@ -7,6 +7,7 @@
 import type {
   Acuerdo,
   AcuerdoDetalle,
+  ActualizacionPerfil,
   AltaArea,
   AltaUsuario,
   Area,
@@ -29,6 +30,7 @@ import type {
 export interface ApiClient {
   // sesión
   getMe(): Promise<Sesion>;
+  editarMiPerfil(cambios: ActualizacionPerfil): Promise<Usuario>;
 
   // acuerdos
   listAcuerdos(filtros: FiltrosAcuerdos): Promise<Paginado<Acuerdo>>;

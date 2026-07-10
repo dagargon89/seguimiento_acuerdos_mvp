@@ -15,6 +15,8 @@ $routes->group('api/v1', ['filter' => ['cors']], static function (RouteCollectio
 $routes->group('api/v1', ['filter' => ['cors', 'firebaseauth', 'throttle']], static function (RouteCollection $routes): void {
     // Endpoints de LECTURA (Tarea 5 / S1.4). Escritura llega en la Tarea 6.
     $routes->get('me', 'SesionController::me');
+    // Perfil self-service (ADR-005): cualquier usuario activo edita su propio nombre.
+    $routes->patch('me', 'SesionController::editarMiPerfil');
     $routes->options('me', 'SesionController::me');
 
     $routes->get('acuerdos', 'AcuerdosController::index');
