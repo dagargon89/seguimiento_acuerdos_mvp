@@ -8,6 +8,57 @@ body {
   color: var(--text-primary);
 }
 
+/* ══ Shell: sidebar + contenido ══
+   Sidebar morado profundo (identidad del login); la navegación vive aquí, con el
+   grupo "Administración" visible solo para Dirección (App.tsx). La topbar conserva
+   el bloque de usuario a la derecha. */
+.shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+.shell__contenido { display: flex; flex-direction: column; min-width: 0; }
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px 0 24px;
+  background:
+    radial-gradient(ellipse at 80% 0%, rgba(219, 236, 87, .06), transparent 50%),
+    linear-gradient(170deg, var(--pj-purple-900) 0%, var(--pj-purple-800) 100%);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.sidebar__logo-link { display: block; padding: 4px 20px 14px; }
+.sidebar__logo { height: 34px; width: auto; display: block; }
+.sidebar__nav { display: flex; flex-direction: column; gap: 22px; }
+.sidebar__grupo { display: flex; flex-direction: column; gap: 2px; }
+.sidebar__eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--pj-lime-400);
+  padding: 0 20px 8px;
+}
+.sidebar__link {
+  display: block;
+  padding: 10px 20px 10px 17px;
+  border-left: 3px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, .82);
+  text-decoration: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.sidebar__link:hover { background: rgba(255, 255, 255, .06); color: #ffffff; }
+.sidebar__link.is-active {
+  border-left-color: var(--pj-lime-400);
+  background: rgba(219, 236, 87, .12);
+  color: #ffffff;
+  font-weight: 600;
+}
+.sidebar__backdrop { display: none; }
+
 /* ══ Barra superior ══ */
 .topbar {
   display: flex;
@@ -20,8 +71,17 @@ body {
   top: 0;
   z-index: 50;
 }
-.topbar__logo { height: 34px; display: block; }
-.topbar__divider { width: 1px; height: 28px; background: rgba(255, 255, 255, .25); }
+.topbar__menu-btn {
+  display: none;
+  font-size: 20px;
+  line-height: 1;
+  color: #ffffff;
+  background: rgba(255, 255, 255, .12);
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 11px;
+  cursor: pointer;
+}
 .topbar__title {
   font-family: var(--font-display);
   font-weight: 500;
@@ -30,24 +90,34 @@ body {
 }
 .topbar__right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
 .topbar__date { font-size: 12.5px; color: rgba(255, 255, 255, .7); }
-.topbar__nav { display: flex; gap: 6px; }
 
-.tab-btn {
-  padding: 8px 16px;
-  border-radius: var(--radius-full);
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 12.5px;
-  background: rgba(255, 255, 255, .1);
-  color: rgba(255, 255, 255, .88);
-  transition: filter var(--transition-fast);
+.main { max-width: 1240px; margin: 0 auto; padding: 28px 32px 72px; width: 100%; box-sizing: border-box; flex: 1; }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 250px;
+    z-index: 120;
+    transform: translateX(-100%);
+    transition: transform .22s ease-out;
+    box-shadow: 0 0 44px rgba(26, 7, 29, .4);
+  }
+  .sidebar.is-abierto { transform: none; }
+  .sidebar__backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    background: rgba(26, 26, 26, .5);
+  }
+  .topbar__menu-btn { display: block; }
+  .topbar { padding: 0 16px; gap: 12px; }
+  .topbar__date { display: none; }
 }
-.tab-btn:hover { filter: brightness(0.95); }
-.tab-btn.is-active { background: var(--pj-lime-400); color: var(--pj-purple-700); }
-
-.main { max-width: 1240px; margin: 0 auto; padding: 28px 32px 72px; }
 
 /* ══ Componentes DS ══ */
 
