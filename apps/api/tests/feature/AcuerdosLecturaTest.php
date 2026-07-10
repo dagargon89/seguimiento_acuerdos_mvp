@@ -105,11 +105,18 @@ final class AcuerdosLecturaTest extends CIUnitTestCase
         $this->assertArrayNotHasKey('data', $cuerpo);
     }
 
-    // --- AU-01: responsable ve solo lo suyo -------------------------------
+    // --- AU-01: visibilidad ABIERTA (ADR-007) — responsable ve TODOS los abiertos ---
 
-    public function testAU01ResponsableListaSoloAcuerdosDondeEsResponsableOCorresponsable(): void
+    /**
+     * ADR-007 (2026-07-10): visibilidad de lectura abierta — un responsable ya
+     * no se limita a donde participa, ve TODOS los acuerdos abiertos del
+     * seed (8: 3,4,5,6,7,8,9,10 — 1 y 2 son concluidos, ocultos por default).
+     * Antes de ADR-007 este test verificaba que Rafael (id 5) solo veía [3,4,10]
+     * (donde es responsable o corresponsable); esa regla queda documentada en
+     * el historial de git para una eventual reversión.
+     */
+    public function testAU01VisibilidadAbiertaResponsableVeTodosLosAcuerdosAbiertos(): void
     {
-        // Rafael (id 5): responsable de 4 y 10; corresponsable de 3. No participa en 1,2,5,6,7,8,9.
         $r = $this->como('responsable.dos@demo.test')->get('api/v1/acuerdos?per_page=200');
 
         $r->assertStatus(200);
@@ -117,22 +124,39 @@ final class AcuerdosLecturaTest extends CIUnitTestCase
         $ids    = array_map(static fn (array $a) => $a['id'], $cuerpo['data']);
 
         sort($ids);
-        $this->assertSame([3, 4, 10], $ids);
-        $this->assertSame(3, $cuerpo['meta']['total']);
+        $this->assertSame([3, 4, 5, 6, 7, 8, 9, 10], $ids);
+        $this->assertSame(8, $cuerpo['meta']['total']);
     }
 
-    // --- AU-02: detalle ajeno → 404 --------------------------------------
+    // --- AU-02: visibilidad ABIERTA (ADR-007) — detalle ajeno → 200, pero edición sigue 403 ---
 
-    public function testAU02ResponsablePideAcuerdoAjenoPorIdDevuelve404(): void
+    /**
+     * ADR-007: el detalle de un acuerdo donde el responsable NO participa
+     * responde 200 (visibilidad abierta) — antes de ADR-007 respondía 404.
+     */
+    public function testAU02VisibilidadAbiertaResponsableVeDetalleDeAcuerdoAjeno(): void
     {
         // Acuerdo 6 (área 2, responsable 3): Rafael (id 5) no participa ni es de esa área.
         $r = $this->como('responsable.dos@demo.test')->get('api/v1/acuerdos/6');
 
-        $r->assertStatus(404);
-        $this->assertSame([
-            'error'   => 'no_encontrado',
-            'mensaje' => 'El acuerdo no existe o no es visible para tu cuenta.',
-        ], $this->cuerpo($r));
+        $r->assertStatus(200);
+        $this->assertSame(6, $this->cuerpo($r)['data']['id']);
+    }
+
+    /**
+     * Contraste explícito (brief ADR-007): la visibilidad de LECTURA es
+     * abierta, pero la ESCRITURA sigue restringida exactamente igual que
+     * antes — Rafael (responsable, no coordinador ni Dirección) puede VER el
+     * acuerdo 6 (ajeno) pero su PATCH sigue respondiendo 403.
+     */
+    public function testAU02bLecturaAbiertaPeroEdicionDeAcuerdoAjenoSigueRestringida(): void
+    {
+        $lectura = $this->como('responsable.dos@demo.test')->get('api/v1/acuerdos/6');
+        $lectura->assertStatus(200);
+
+        $edicion = $this->como('responsable.dos@demo.test')->patch('api/v1/acuerdos/6', ['tema' => 'Intento de edición ajena']);
+        $edicion->assertStatus(403);
+        $this->assertSame('sin_permiso', $this->cuerpo($edicion)['error']);
     }
 
     public function testAU02InexistenteDevuelve404IgualQueAjeno(): void
@@ -142,13 +166,14 @@ final class AcuerdosLecturaTest extends CIUnitTestCase
         $r->assertStatus(404);
     }
 
-    // --- AU-03: coordinador ve su área + participaciones ------------------
+    // --- AU-03: visibilidad ABIERTA (ADR-007) — coordinador ve TODOS los acuerdos ---
 
-    public function testAU03CoordinadorListaSuAreaMasParticipacionesSinVerOtrasAreas(): void
+    /**
+     * ADR-007: un coordinador ya no se limita a su área + participaciones,
+     * ve TODOS los acuerdos abiertos del seed, igual que Dirección.
+     */
+    public function testAU03VisibilidadAbiertaCoordinadorVeTodosLosAcuerdosAbiertosSinImportarElArea(): void
     {
-        // Carla (id 2, área 1): ve acuerdos de área 1 (1,2,3,4,8,9,10) + donde participa
-        // fuera de su área (ninguno adicional en el seed). NO ve acuerdos del área 2 (5,6,7)
-        // salvo que participe — no participa en ninguno de esos.
         $r = $this->como('coordinacion.operativa@demo.test')->get('api/v1/acuerdos?per_page=200&estado=todos_abiertos');
 
         $r->assertStatus(200);
@@ -156,18 +181,19 @@ final class AcuerdosLecturaTest extends CIUnitTestCase
         $ids    = array_map(static fn (array $a) => $a['id'], $cuerpo['data']);
         sort($ids);
 
-        // Área 1 abiertos: 3,4,8,9,10 (1 y 2 son concluidos, excluidos por default).
-        $this->assertSame([3, 4, 8, 9, 10], $ids);
-        foreach ($cuerpo['data'] as $a) {
-            $this->assertSame(1, $a['area']['id'], "acuerdo {$a['id']} no debería ser visible (otra área)");
-        }
+        // Abiertos del seed: 3,4,5,6,7,8,9,10 (1 y 2 concluidos, excluidos por default).
+        $this->assertSame([3, 4, 5, 6, 7, 8, 9, 10], $ids);
+
+        // Incluye explícitamente acuerdos de área 2 (antes de ADR-007 no los veía).
+        $areasVisibles = array_unique(array_map(static fn (array $a) => $a['area']['id'], $cuerpo['data']));
+        sort($areasVisibles);
+        $this->assertSame([1, 2], $areasVisibles);
     }
 
-    public function testAU03CoordinadorVeParticipacionFueraDeSuAreaAunqueNoSeaDeElla(): void
+    public function testAU03VisibilidadAbiertaCoordinadorVeConcluidosDeCualquierAreaConElFiltro(): void
     {
-        // Camilo (id 3, área 2) es responsable del acuerdo 6 (su área) y del 2 (área 1,
-        // concluido). Probamos que con estado=concluido ve el 2 aunque sea de otra área
-        // porque es su responsable directo.
+        // ADR-007: Camilo (id 3, área 2) ve el concluido 1 (área 1, resp 2, ajeno)
+        // Y el concluido 2 (área 1, resp 3=Camilo) — visibilidad abierta, no solo participación.
         $r = $this->como('coordinacion.vinculacion@demo.test')->get('api/v1/acuerdos?estado=concluido');
 
         $r->assertStatus(200);
@@ -175,9 +201,7 @@ final class AcuerdosLecturaTest extends CIUnitTestCase
         $ids    = array_map(static fn (array $a) => $a['id'], $cuerpo['data']);
         sort($ids);
 
-        // Concluidos del seed: 1 (área 1, resp 2) y 2 (área 1, resp 3=Camilo).
-        // Camilo ve el 2 (es su responsable) pero NO el 1 (ni de su área, ni participante).
-        $this->assertSame([2], $ids);
+        $this->assertSame([1, 2], $ids);
     }
 
     // --- PA-01: default oculta concluidos ---------------------------------
