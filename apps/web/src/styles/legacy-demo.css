@@ -605,5 +605,48 @@ body {
 .topbar__user-info { display: flex; flex-direction: column; line-height: 1.25; }
 .topbar__user-name { font-size: 12.5px; font-weight: 600; color: #ffffff; }
 .topbar__user-rol { font-size: 10.5px; color: rgba(255, 255, 255, .72); }
-.topbar__salir { font-family: inherit; font-size: 11.5px; font-weight: 600; color: rgba(255, 255, 255, .85); background: rgba(255, 255, 255, .12); border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
-.topbar__salir:hover { background: rgba(255, 255, 255, .22); }
+/* Menú desplegable del usuario (Mi perfil / Salir) */
+.user-menu { position: relative; }
+.user-menu__btn {
+  font-family: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.user-menu__btn:hover,
+.user-menu__btn[aria-expanded='true'] { background: rgba(255, 255, 255, .12); }
+.user-menu__caret { font-size: 11px; color: rgba(255, 255, 255, .75); margin-left: 2px; transition: transform var(--transition-fast); }
+.user-menu__caret.is-abierto { transform: rotate(180deg); }
+.user-menu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 185px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(58, 13, 65, .18);
+  padding: 6px;
+  z-index: 130;
+}
+.user-menu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+.user-menu__item:hover { background: var(--pj-purple-50); color: var(--pj-purple-700); }
+.user-menu__item--salir { color: var(--status-error); }
+.user-menu__item--salir:hover { background: var(--status-error-bg); color: var(--status-error); }
+.user-menu__sep { height: 1px; background: var(--border-default); margin: 4px 6px; }

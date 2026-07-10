@@ -2,8 +2,8 @@
  * Shell de la aplicación: sesión Firebase, topbar 1:1 con el demo vanilla,
  * rutas react-router y toast global.
  */
-import { useEffect, useMemo, useState } from 'react';
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, setTokenProvider } from './lib';
 import type { Sesion } from './lib';
@@ -104,6 +104,73 @@ function AppContent() {
   );
 }
 
+/**
+ * Botón de usuario en la topbar: despliega un menú con "Mi perfil" y "Salir".
+ * Cierra con clic fuera, Esc o al navegar.
+ */
+function MenuUsuario({ nombre, rolLabel, onLogout }: { nombre: string; rolLabel: string; onLogout: () => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const contenedorRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!abierto) return;
+    const onClickFuera = (e: MouseEvent) => {
+      if (contenedorRef.current && !contenedorRef.current.contains(e.target as Node)) setAbierto(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAbierto(false);
+    };
+    document.addEventListener('mousedown', onClickFuera);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClickFuera);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [abierto]);
+
+  return (
+    <div className="user-menu" ref={contenedorRef}>
+      <button
+        type="button"
+        className="topbar__user user-menu__btn"
+        aria-haspopup="menu"
+        aria-expanded={abierto}
+        onClick={() => setAbierto((v) => !v)}
+      >
+        <Avatar nombre={nombre} size="sm" />
+        <span className="topbar__user-info">
+          <span className="topbar__user-name">{nombre}</span>
+          <span className="topbar__user-rol">{rolLabel}</span>
+        </span>
+        <span className={`user-menu__caret${abierto ? ' is-abierto' : ''}`} aria-hidden="true">
+          ▾
+        </span>
+      </button>
+
+      {abierto && (
+        <div className="user-menu__panel" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            className="user-menu__item"
+            onClick={() => {
+              setAbierto(false);
+              void navigate('/perfil');
+            }}
+          >
+            Mi perfil
+          </button>
+          <div className="user-menu__sep" aria-hidden="true" />
+          <button type="button" role="menuitem" className="user-menu__item user-menu__item--salir" onClick={onLogout}>
+            Salir
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Grupos de navegación del sidebar; "Administración" solo se renderiza para Dirección. */
 const NAV_GENERAL = [
   { to: '/panel', label: 'Panel' },
@@ -179,22 +246,7 @@ function Shell({ sesion, onLogout }: { sesion: Sesion; onLogout: () => void }) {
           <div className="topbar__title">Panel de seguimiento de acuerdos</div>
           <div className="topbar__right">
             <div className="topbar__date">Hoy · {fmtL(hoyISO())}</div>
-            <div className="topbar__user">
-              <NavLink
-                to="/perfil"
-                className="topbar__user"
-                style={{ textDecoration: 'none', padding: 0, margin: 0 }}
-              >
-                <Avatar nombre={u.nombre} size="sm" />
-                <span className="topbar__user-info">
-                  <span className="topbar__user-name">{u.nombre}</span>
-                  <span className="topbar__user-rol">{ROL_LABEL[u.rol]}</span>
-                </span>
-              </NavLink>
-              <button type="button" className="topbar__salir" onClick={onLogout}>
-                Salir
-              </button>
-            </div>
+            <MenuUsuario nombre={u.nombre} rolLabel={ROL_LABEL[u.rol]} onLogout={onLogout} />
           </div>
         </header>
 
