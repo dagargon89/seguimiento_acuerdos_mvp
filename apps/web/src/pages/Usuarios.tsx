@@ -10,6 +10,7 @@ import type { AltaUsuario, Rol } from '../lib';
 import { ROL_LABEL, camposError, mensajeError } from '../components/EstadoHelpers';
 import { Avatar } from '../components/Avatar';
 import { Badge } from '../components/Badge';
+import { Select } from '../components/Select';
 import { useSesion } from '../components/SessionContext';
 import { useToast } from '../components/Toast';
 
@@ -181,40 +182,29 @@ export function Usuarios() {
                 <td style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{u.email}</td>
                 <td>
                   {u.rol === 'pendiente' && u.activo ? (
-                    <select
-                      className="select"
-                      aria-label={`Rol para ${u.nombre}`}
+                    <Select
+                      ariaLabel={`Rol para ${u.nombre}`}
+                      buscable={false}
                       value={aprobacionDe(u.id).rol}
-                      onChange={(e) => setAprobacion(u.id, { rol: e.target.value as Rol })}
-                      style={{ minWidth: 130 }}
-                    >
-                      {ROLES_ASIGNABLES.map((r) => (
-                        <option key={r} value={r}>
-                          {ROL_LABEL[r]}
-                        </option>
-                      ))}
-                    </select>
+                      opciones={ROLES_ASIGNABLES.map((r) => ({ value: r, label: ROL_LABEL[r] }))}
+                      onChange={(v) => setAprobacion(u.id, { rol: v as Rol })}
+                      estilo={{ minWidth: 130 }}
+                    />
                   ) : (
                     <span className={`rol-chip rol-chip--${u.rol}`}>{ROL_LABEL[u.rol]}</span>
                   )}
                 </td>
                 <td style={{ fontSize: 12.5 }}>
                   {u.rol === 'pendiente' && u.activo ? (
-                    <select
-                      className="select"
-                      aria-label={`Área para ${u.nombre}`}
+                    <Select
+                      ariaLabel={`Área para ${u.nombre}`}
                       value={aprobacionDe(u.id).area_id}
                       disabled={aprobacionDe(u.id).rol !== 'coordinador'}
-                      onChange={(e) => setAprobacion(u.id, { area_id: e.target.value })}
-                      style={{ minWidth: 110 }}
-                    >
-                      <option value="">—</option>
-                      {areas.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.nombre}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="—"
+                      opciones={areas.map((a) => ({ value: String(a.id), label: a.nombre }))}
+                      onChange={(v) => setAprobacion(u.id, { area_id: v })}
+                      estilo={{ minWidth: 110 }}
+                    />
                   ) : (
                     areaNombre(u.area_id) ?? '—'
                   )}
@@ -312,33 +302,27 @@ export function Usuarios() {
             <label className="field__label" htmlFor="nu-rol">
               Rol
             </label>
-            <select className="select" id="nu-rol" value={nuevo.rol} onChange={(e) => setCampo('rol', e.target.value as Rol)}>
-              {ROLES_ASIGNABLES.map((r) => (
-                <option key={r} value={r}>
-                  {ROL_LABEL[r]}
-                </option>
-              ))}
-            </select>
+            <Select
+              id="nu-rol"
+              buscable={false}
+              value={nuevo.rol}
+              opciones={ROLES_ASIGNABLES.map((r) => ({ value: r, label: ROL_LABEL[r] }))}
+              onChange={(v) => setCampo('rol', v as Rol)}
+            />
           </div>
           <div className="field">
             <label className="field__label" htmlFor="nu-area">
               Área {nuevo.rol === 'coordinador' && <span className="req">*</span>}
             </label>
-            <select
-              className="select"
+            <Select
               id="nu-area"
               value={nuevo.area_id}
               disabled={nuevo.rol !== 'coordinador'}
-              style={altaCampos.area_id ? { borderColor: 'var(--status-error)' } : undefined}
-              onChange={(e) => setCampo('area_id', e.target.value)}
-            >
-              <option value="">—</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nombre}
-                </option>
-              ))}
-            </select>
+              placeholder="—"
+              opciones={areas.map((a) => ({ value: String(a.id), label: a.nombre }))}
+              estilo={altaCampos.area_id ? { borderColor: 'var(--red)' } : undefined}
+              onChange={(v) => setCampo('area_id', v)}
+            />
           </div>
         </div>
         <div style={{ marginTop: 18 }}>

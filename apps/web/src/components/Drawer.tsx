@@ -11,6 +11,7 @@ import { fmtF, fmtL, hoyISO, shiftISO } from '../lib/fechas';
 import { EST, mensajeError, vencimientoRelativo } from './EstadoHelpers';
 import { Avatar } from './Avatar';
 import { Badge } from './Badge';
+import { DatePicker } from './DatePicker';
 import { chipEnvio, tipoRecordatorioLabel } from './recordatorioVm';
 import { useSesion } from './SessionContext';
 import { useToast } from './Toast';
@@ -347,13 +348,11 @@ export function Drawer({ id, onClose }: DrawerProps) {
                     <label className="field__label" htmlFor="avance-fecha">
                       Nueva fecha compromiso
                     </label>
-                    <input
+                    <DatePicker
                       id="avance-fecha"
-                      className="input"
-                      type="date"
                       min={shiftISO(hoyISO(), 1)}
                       value={nuevaFecha}
-                      onChange={(e) => setNuevaFecha(e.target.value)}
+                      onChange={setNuevaFecha}
                     />
                   </div>
                 )}

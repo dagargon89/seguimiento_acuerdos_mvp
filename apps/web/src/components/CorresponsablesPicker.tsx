@@ -4,6 +4,7 @@
  */
 import type { Usuario } from '../lib';
 import { Avatar } from './Avatar';
+import { Select } from './Select';
 
 interface CorresponsablesPickerProps {
   directorio: Usuario[];
@@ -75,21 +76,14 @@ export function CorresponsablesPicker({
           ))}
         </div>
       )}
-      <select
-        className={compacto ? 'cell-input cell-input--select' : 'select'}
+      <Select
+        variante={compacto ? 'cell' : 'normal'}
         value=""
-        aria-label="Agregar corresponsable"
-        onChange={(e) => agregar(e.target.value)}
-      >
-        <option value="">
-          {chips.length > 0 ? '+ Agregar corresponsable…' : 'Corresponsables (opcional)…'}
-        </option>
-        {elegibles.map((u) => (
-          <option key={u.id} value={u.id}>
-            {u.nombre}
-          </option>
-        ))}
-      </select>
+        ariaLabel="Agregar corresponsable"
+        placeholder={chips.length > 0 ? '+ Agregar corresponsable…' : 'Corresponsables (opcional)…'}
+        opciones={elegibles.map((u) => ({ value: String(u.id), label: u.nombre }))}
+        onChange={agregar}
+      />
     </div>
   );
 }

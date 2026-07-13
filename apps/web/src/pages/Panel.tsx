@@ -18,6 +18,7 @@ import { Avatar } from '../components/Avatar';
 import { Badge } from '../components/Badge';
 import { Drawer } from '../components/Drawer';
 import { ModeSwitch } from '../components/ModeSwitch';
+import { Select } from '../components/Select';
 import { StatCard } from '../components/StatCard';
 
 type Modo = 'tabla' | 'kanban' | 'reunion' | 'gantt' | 'calendario';
@@ -124,30 +125,29 @@ export function Panel() {
             onChange={(e) => setBusqueda(e.target.value)}
           />
         </div>
-        <select
-          className="select"
-          aria-label="Filtrar por estado"
+        <Select
+          variante="toolbar"
+          ariaLabel="Filtrar por estado"
+          buscable={false}
           value={filtroEstado}
-          onChange={(e) => setFiltroEstado(e.target.value as FiltroEstado)}
-        >
-          <option value="todos_abiertos">Abiertos (default)</option>
-          <option value="en_proceso">En proceso</option>
-          <option value="vencido">Vencido</option>
-          <option value="concluido">Concluido</option>
-        </select>
-        <select
-          className="select"
-          aria-label="Filtrar por responsable"
-          value={filtroResp}
-          onChange={(e) => setFiltroResp(Number(e.target.value))}
-        >
-          <option value={0}>Responsable: todos</option>
-          {responsables.map(([id, nombre]) => (
-            <option key={id} value={id}>
-              {nombre}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => setFiltroEstado(v as FiltroEstado)}
+          opciones={[
+            { value: 'todos_abiertos', label: 'Abiertos (default)' },
+            { value: 'en_proceso', label: 'En proceso' },
+            { value: 'vencido', label: 'Vencido' },
+            { value: 'concluido', label: 'Concluido' },
+          ]}
+        />
+        <Select
+          variante="toolbar"
+          ariaLabel="Filtrar por responsable"
+          value={String(filtroResp)}
+          onChange={(v) => setFiltroResp(Number(v))}
+          opciones={[
+            { value: '0', label: 'Responsable: todos' },
+            ...responsables.map(([id, nombre]) => ({ value: String(id), label: nombre })),
+          ]}
+        />
         <div className="toolbar__spacer" />
         <button type="button" className="btn btn--accent btn--glow btn--md" onClick={() => navigate('/captura')}>
           + Nuevo acuerdo

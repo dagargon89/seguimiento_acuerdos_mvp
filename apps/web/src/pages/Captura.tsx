@@ -12,7 +12,9 @@ import type { LoteCaptura, NuevoAcuerdo } from '../lib';
 import { fmtF, hoyISO } from '../lib/fechas';
 import { camposError, mensajeError } from '../components/EstadoHelpers';
 import { CorresponsablesPicker } from '../components/CorresponsablesPicker';
+import { DatePicker } from '../components/DatePicker';
 import { ModeSwitch } from '../components/ModeSwitch';
+import { Select } from '../components/Select';
 import { useSesion } from '../components/SessionContext';
 import { useToast } from '../components/Toast';
 
@@ -203,12 +205,12 @@ export function Captura() {
             <label className="field__label" htmlFor={`f-resp-${i}`}>
               Responsable <span className="req">*</span>
             </label>
-            <select
-              className="select"
+            <Select
               id={`f-resp-${i}`}
               value={f.responsable_id}
-              onChange={(e) => {
-                const id = e.target.value;
+              placeholder="Selecciona…"
+              opciones={usuariosActivos.map((u) => ({ value: String(u.id), label: u.nombre }))}
+              onChange={(id) => {
                 setForms((xs) =>
                   xs.map((x, idx) =>
                     idx === i
@@ -217,14 +219,7 @@ export function Captura() {
                   ),
                 );
               }}
-            >
-              <option value="">Selecciona…</option>
-              {usuariosActivos.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label className="field__label" htmlFor={`f-accion-${i}`}>
@@ -252,41 +247,39 @@ export function Captura() {
             <label className="field__label" htmlFor={`f-fecha-${i}`}>
               Fecha compromiso <span className="req">*</span>
             </label>
-            <input
-              className="input"
-              type="date"
+            <DatePicker
               id={`f-fecha-${i}`}
               min={hoyISO()}
               value={f.fecha}
-              onChange={(e) => setCampo(i, 'fecha', e.target.value)}
+              onChange={(iso) => setCampo(i, 'fecha', iso)}
             />
           </div>
           <div className="field">
             <label className="field__label" htmlFor={`f-area-${i}`}>
               Área <span className="req">*</span>
             </label>
-            <select className="select" id={`f-area-${i}`} value={f.area_id} onChange={(e) => setCampo(i, 'area_id', e.target.value)}>
-              <option value="">Selecciona…</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nombre}
-                </option>
-              ))}
-            </select>
+            <Select
+              id={`f-area-${i}`}
+              value={f.area_id}
+              placeholder="Selecciona…"
+              opciones={areas.map((a) => ({ value: String(a.id), label: a.nombre }))}
+              onChange={(v) => setCampo(i, 'area_id', v)}
+            />
           </div>
           <div className="field">
             <label className="field__label" htmlFor={`f-rec-${i}`}>
               Recordatorios
             </label>
-            <select
-              className="select"
+            <Select
               id={`f-rec-${i}`}
+              buscable={false}
               value={f.recModo}
-              onChange={(e) => setCampo(i, 'recModo', e.target.value as 'global' | 'custom')}
-            >
-              <option value="global">Esquema global ({esquemaGlobal})</option>
-              <option value="custom">Personalizado</option>
-            </select>
+              opciones={[
+                { value: 'global', label: `Esquema global (${esquemaGlobal})` },
+                { value: 'custom', label: 'Personalizado' },
+              ]}
+              onChange={(v) => setCampo(i, 'recModo', v as 'global' | 'custom')}
+            />
             {f.recModo === 'custom' && (
               <input
                 className="input"
@@ -369,12 +362,13 @@ export function Captura() {
                 />
               </td>
               <td>
-                <select
-                  className="cell-input cell-input--select"
-                  aria-label={`Responsable del renglón ${i + 1}`}
+                <Select
+                  variante="cell"
+                  ariaLabel={`Responsable del renglón ${i + 1}`}
                   value={f.responsable_id}
-                  onChange={(e) => {
-                    const id = e.target.value;
+                  placeholder="Selecciona… *"
+                  opciones={usuariosActivos.map((u) => ({ value: String(u.id), label: u.nombre }))}
+                  onChange={(id) => {
                     setForms((xs) =>
                       xs.map((x, idx) =>
                         idx === i
@@ -383,38 +377,25 @@ export function Captura() {
                       ),
                     );
                   }}
-                >
-                  <option value="">Selecciona… *</option>
-                  {usuariosActivos.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nombre}
-                    </option>
-                  ))}
-                </select>
+                />
               </td>
               <td>
-                <select
-                  className="cell-input cell-input--select"
-                  aria-label={`Área del renglón ${i + 1}`}
+                <Select
+                  variante="cell"
+                  ariaLabel={`Área del renglón ${i + 1}`}
                   value={f.area_id}
-                  onChange={(e) => setCampo(i, 'area_id', e.target.value)}
-                >
-                  <option value="">Selecciona… *</option>
-                  {areas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.nombre}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Selecciona… *"
+                  opciones={areas.map((a) => ({ value: String(a.id), label: a.nombre }))}
+                  onChange={(v) => setCampo(i, 'area_id', v)}
+                />
               </td>
               <td>
-                <input
-                  className="cell-input"
-                  type="date"
-                  aria-label={`Fecha compromiso del renglón ${i + 1}`}
+                <DatePicker
+                  variante="cell"
+                  ariaLabel={`Fecha compromiso del renglón ${i + 1}`}
                   min={hoyISO()}
                   value={f.fecha}
-                  onChange={(e) => setCampo(i, 'fecha', e.target.value)}
+                  onChange={(iso) => setCampo(i, 'fecha', iso)}
                 />
               </td>
               <td style={{ padding: '4px 6px' }}>
@@ -427,15 +408,17 @@ export function Captura() {
                 />
               </td>
               <td>
-                <select
-                  className="cell-input cell-input--select"
-                  aria-label={`Recordatorios del renglón ${i + 1}`}
+                <Select
+                  variante="cell"
+                  buscable={false}
+                  ariaLabel={`Recordatorios del renglón ${i + 1}`}
                   value={f.recModo}
-                  onChange={(e) => setCampo(i, 'recModo', e.target.value as 'global' | 'custom')}
-                >
-                  <option value="global">Esquema global ({esquemaGlobal})</option>
-                  <option value="custom">Personalizado</option>
-                </select>
+                  opciones={[
+                    { value: 'global', label: `Esquema global (${esquemaGlobal})` },
+                    { value: 'custom', label: 'Personalizado' },
+                  ]}
+                  onChange={(v) => setCampo(i, 'recModo', v as 'global' | 'custom')}
+                />
                 {f.recModo === 'custom' && (
                   <input
                     className="cell-input"

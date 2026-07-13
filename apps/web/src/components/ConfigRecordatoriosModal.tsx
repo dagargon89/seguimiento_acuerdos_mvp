@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib';
 import type { ConfigRecordatorios } from '../lib';
 import { camposError, mensajeError } from './EstadoHelpers';
+import { Select } from './Select';
 import { useToast } from './Toast';
 
 interface ConfigRecordatoriosModalProps {
@@ -154,16 +155,17 @@ export function ConfigRecordatoriosModal({ config, onClose }: ConfigRecordatorio
             <label className="field__label" htmlFor="cfg-frec">
               Frecuencia del resumen periódico
             </label>
-            <select
+            <Select
               id="cfg-frec"
-              className="select"
+              buscable={false}
               value={frecuencia}
-              onChange={(e) => setFrecuencia(e.target.value as ConfigRecordatorios['resumen_frecuencia'])}
-            >
-              <option value="semanal">Semanal</option>
-              <option value="quincenal">Quincenal</option>
-              <option value="mensual">Mensual</option>
-            </select>
+              opciones={[
+                { value: 'semanal', label: 'Semanal' },
+                { value: 'quincenal', label: 'Quincenal' },
+                { value: 'mensual', label: 'Mensual' },
+              ]}
+              onChange={(v) => setFrecuencia(v as ConfigRecordatorios['resumen_frecuencia'])}
+            />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
             <button type="button" className="btn btn--accent btn--md" onClick={guardar} disabled={guardarMut.isPending}>
