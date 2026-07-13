@@ -72,18 +72,21 @@ class UsuariosController extends BaseController
         if (! is_string($rol) || ! in_array($rol, self::ROLES, true)) {
             $campos['rol'] = 'Rol inválido';
         }
-        if ($rol === 'coordinador') {
-            if ($areaId === null || ! in_array((int) $areaId, $this->idsAreasActivas(), true)) {
-                $campos['area_id'] = 'Una coordinación requiere un área activa';
-            }
+        // El área puede asignarse a cualquier rol (ADR-012). La coordinación la
+        // EXIGE (CHECK chk_coordinador_area del DDL); si se envía para cualquier
+        // rol, debe ser un área activa.
+        $areaVacia = $areaId === null || $areaId === '';
+        if ($rol === 'coordinador' && $areaVacia) {
+            $campos['area_id'] = 'Una coordinación requiere un área activa';
+        } elseif (! $areaVacia && ! in_array((int) $areaId, $this->idsAreasActivas(), true)) {
+            $campos['area_id'] = 'Área inactiva o inexistente';
         }
 
         if ($campos !== []) {
             return $this->errorValidacion('Revisa los campos del alta.', $campos);
         }
 
-        // Solo coordinación lleva área (CHECK chk_coordinador_area del DDL); los demás roles la ignoran.
-        $areaFinal = $rol === 'coordinador' ? (int) $areaId : null;
+        $areaFinal = $areaVacia ? null : (int) $areaId;
 
         $db = Database::connect();
         $db->transException(true)->transStart();
@@ -186,15 +189,8 @@ class UsuariosController extends BaseController
             };
         }
 
-        // Al cambiar el rol a uno no-coordinación, el área heredada se limpia
-        // (mantiene la fila coherente; el CHECK chk_coordinador_area solo prohíbe
-        // coordinador SIN área, no un no-coordinador CON área, pero no queremos
-        // dejar un área colgada tras un cambio de rol).
-        if (array_key_exists('rol', $update) && $update['rol'] !== 'coordinador'
-            && ! array_key_exists('area_id', $update) && $fila['area_id'] !== null) {
-            $update['area_id'] = null;
-        }
-
+        // El área es válida para cualquier rol (ADR-012): NO se limpia sola al
+        // cambiar de rol. Para quitarla, se envía `area_id: null` explícito.
         if ($update === []) {
             return $this->response->setJSON(['data' => Usuario::desdeFila($fila)->aArray()]);
         }

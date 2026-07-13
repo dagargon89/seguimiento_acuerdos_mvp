@@ -30,9 +30,10 @@ use Throwable;
  * POST /acuerdos/lote, PATCH /acuerdos/{id}, PUT .../corresponsables,
  * POST .../avances — ESCRITURA (Tarea 6, S1.5).
  * PATCH .../concluir, PATCH .../reabrir, GET /checklist — CONCLUSIÓN/
- * REAPERTURA + checklist de validación (Tarea 7, S1.6). Regla central:
- * **solo Dirección concluye/reabre** (403 + auditoría del intento para otros
- * roles).
+ * REAPERTURA + checklist de validación (Tarea 7, S1.6). Regla (ADR-012):
+ * **Dirección concluye cualquier acuerdo; el coordinador concluye los de su
+ * área**; **reabrir/eliminar siguen siendo solo de Dirección** (403 +
+ * auditoría del intento para quien no tenga permiso).
  */
 class AcuerdosController extends BaseController
 {
@@ -625,12 +626,12 @@ class AcuerdosController extends BaseController
     }
 
     /**
-     * PATCH /acuerdos/{id}/concluir (doc 05 §2.2, RF-06) — **SOLO Dirección**
-     * (regla central de CLAUDE.md). Cualquier otro rol → 403 **y se audita el
-     * intento** (doc 05 §4: "los 403 de concluir/reabrir también se auditan").
-     * Efecto: estado='concluido', concluido_por_id/at (respeta el CHECK del
-     * DDL), avance `tipo='validacion'` con la nota, google_sync → pendiente.
-     * Todo en transacción. `estado` nunca se acepta del cliente.
+     * PATCH /acuerdos/{id}/concluir (doc 05 §2.2, RF-06, ADR-012) — Dirección
+     * concluye cualquier acuerdo; el **coordinador concluye los de su área**
+     * (`puedeConcluir`). Quien no tenga permiso → 403 **y se audita el intento**
+     * (doc 05 §4). Efecto: estado='concluido', concluido_por_id/at (respeta el
+     * CHECK del DDL), avance `tipo='validacion'` con la nota, google_sync →
+     * pendiente. Todo en transacción. `estado` nunca se acepta del cliente.
      */
     public function concluir(string $id): ResponseInterface
     {
@@ -642,8 +643,9 @@ class AcuerdosController extends BaseController
             return $this->noEncontrado();
         }
 
-        // Solo Dirección concluye. El 403 de un no-Dirección se AUDITA (intento de abuso).
-        if ($actor['rol'] !== 'direccion') {
+        // Dirección concluye cualquier acuerdo; el coordinador solo los de su área
+        // (ADR-012). Todo intento denegado se AUDITA (posible abuso).
+        if (! $this->puedeConcluir($actor, $fila)) {
             (new AuditoriaModel())->registrar(
                 (int) $actor['id'],
                 'intento_concluir',
@@ -653,7 +655,7 @@ class AcuerdosController extends BaseController
                 $this->request->getIPAddress(),
             );
 
-            return $this->sinPermiso('Solo Dirección puede concluir un acuerdo.');
+            return $this->sinPermiso('No tienes permiso para concluir este acuerdo.');
         }
 
         if ($fila['estado'] === 'concluido') {
@@ -869,26 +871,34 @@ class AcuerdosController extends BaseController
     }
 
     /**
-     * GET /checklist (doc 05 §2.4, RF-06) — **SOLO Dirección**. Lista los
-     * acuerdos ABIERTOS (en_proceso + vencido; NO concluidos), priorizados:
-     * vencidos primero, luego por `fecha_compromiso` ASC. Cada item lleva el
-     * acuerdo (forma `Acuerdo`), `total_avances` y `ultimo_avance` (o null).
-     * Sin N+1: corresponsables y avances se agregan con `whereIn` sobre la lista
-     * de ids.
+     * GET /checklist (doc 05 §2.4, RF-06, ADR-012) — Dirección o coordinador.
+     * Lista los acuerdos ABIERTOS (en_proceso + vencido; NO concluidos) que el
+     * actor puede concluir: Dirección ve todos; el **coordinador solo los de su
+     * área**. Priorizados: vencidos primero, luego por `fecha_compromiso` ASC.
+     * Cada item lleva el acuerdo (forma `Acuerdo`), `total_avances` y
+     * `ultimo_avance` (o null). Sin N+1: corresponsables y avances se agregan
+     * con `whereIn` sobre la lista de ids.
      */
     public function checklist(): ResponseInterface
     {
         $actor = service('usuarioActual')->obtener();
-        if ($actor['rol'] !== 'direccion') {
-            return $this->sinPermiso('El checklist de validación es solo para Dirección.');
+        if (! in_array($actor['rol'], ['direccion', 'coordinador'], true)) {
+            return $this->sinPermiso('El checklist de validación es solo para Dirección y Coordinación.');
         }
 
         $hoy        = $this->hoy();
         $estadoExpr = AcuerdoModel::estadoDerivadoExpr($hoy);
 
         // Solo abiertos; orden: vencidos primero (0), luego por fecha ASC.
-        $filas = (new AcuerdoModel())->builderConJoins($hoy)
-            ->where("({$estadoExpr}) IN ('en_proceso','vencido')", null, false)
+        $builder = (new AcuerdoModel())->builderConJoins($hoy)
+            ->where("({$estadoExpr}) IN ('en_proceso','vencido')", null, false);
+
+        // El coordinador solo valida los acuerdos de su área (mismo criterio que puedeConcluir).
+        if ($actor['rol'] === 'coordinador') {
+            $builder->where('acuerdos.area_id', (int) $actor['area_id']);
+        }
+
+        $filas = $builder
             ->orderBy("CASE WHEN ({$estadoExpr}) = 'vencido' THEN 0 ELSE 1 END", 'ASC', false)
             ->orderBy('acuerdos.fecha_compromiso', 'ASC')
             ->orderBy('acuerdos.id', 'ASC')
@@ -1296,6 +1306,23 @@ class AcuerdosController extends BaseController
         }
 
         if ((int) ($acuerdo['capturado_por_id'] ?? 0) === (int) $actor['id']) {
+            return true;
+        }
+
+        return $actor['rol'] === 'coordinador' && ((int) $acuerdo['area_id']) === (int) $actor['area_id'];
+    }
+
+    /**
+     * Concluir (RF-06, ADR-012): Dirección concluye cualquier acuerdo; el
+     * coordinador solo los de SU área (`acuerdo.area_id == actor.area_id`).
+     * Reabrir/eliminar siguen siendo exclusivos de Dirección.
+     *
+     * @param array<string, mixed> $actor
+     * @param array<string, mixed> $acuerdo Fila con al menos area_id.
+     */
+    private function puedeConcluir(array $actor, array $acuerdo): bool
+    {
+        if ($actor['rol'] === 'direccion') {
             return true;
         }
 

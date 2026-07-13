@@ -2,6 +2,9 @@
  * Usuarios y permisos 1:1 con renderUsuarios del demo, ahora contra el
  * contrato: baja/reactivación con editarUsuario y alta con crearUsuario
  * (solo Dirección; el mock rechaza 403/422 y se muestra como toast/alert).
+ *
+ * ADR-012: el área puede asignarse a CUALQUIER rol (no solo coordinación) y se
+ * puede editar el rol/área de un usuario ya activo desde esta misma tabla.
  */
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -41,6 +44,8 @@ export function Usuarios() {
   const [altaCampos, setAltaCampos] = useState<Record<string, string>>({});
   // Selección de rol/área por cada usuario pendiente (id → aprobación en edición).
   const [aprobaciones, setAprobaciones] = useState<Record<number, Aprobacion>>({});
+  // Edición inline de usuarios activos (id presente → esa fila está en modo edición).
+  const [ediciones, setEdiciones] = useState<Record<number, Aprobacion>>({});
 
   const usuariosQ = useQuery({ queryKey: ['usuarios'], queryFn: () => api.listUsuarios() });
   const areasQ = useQuery({ queryKey: ['areas'], queryFn: () => api.listAreas() });
@@ -54,6 +59,8 @@ export function Usuarios() {
 
   const areas = areasQ.data ?? [];
   const areaNombre = (id: number | null) => (id === null ? null : areas.find((a) => a.id === id)?.nombre ?? '—');
+  const opcionesArea = areas.map((a) => ({ value: String(a.id), label: a.nombre }));
+  const opcionesRol = ROLES_ASIGNABLES.map((r) => ({ value: r, label: ROL_LABEL[r] }));
 
   const invalidar = () => void queryClient.invalidateQueries({ queryKey: ['usuarios'] });
 
@@ -66,6 +73,7 @@ export function Usuarios() {
     onError: (e) => toast(mensajeError(e), 'error'),
   });
 
+  // ── Aprobación de pendientes ─────────────────────────────────────────────
   const aprobarMut = useMutation({
     mutationFn: ({ id, rol, area_id }: { id: number; rol: Rol; area_id: number | null }) =>
       api.editarUsuario(id, { rol, area_id }),
@@ -86,9 +94,7 @@ export function Usuarios() {
   const setAprobacion = (id: number, cambios: Partial<Aprobacion>) => {
     setAprobaciones((prev) => {
       const actual = prev[id] ?? { rol: 'responsable' as Rol, area_id: '' };
-      const sig = { ...actual, ...cambios };
-      if (cambios.rol && cambios.rol !== 'coordinador') sig.area_id = '';
-      return { ...prev, [id]: sig };
+      return { ...prev, [id]: { ...actual, ...cambios } };
     });
   };
 
@@ -98,9 +104,45 @@ export function Usuarios() {
       toast('Una coordinación necesita un área asignada.', 'error');
       return;
     }
-    aprobarMut.mutate({ id, rol: a.rol, area_id: a.rol === 'coordinador' ? Number(a.area_id) : null });
+    aprobarMut.mutate({ id, rol: a.rol, area_id: a.area_id ? Number(a.area_id) : null });
   };
 
+  // ── Edición inline de usuarios activos ───────────────────────────────────
+  const editarMut = useMutation({
+    mutationFn: ({ id, rol, area_id }: { id: number; rol: Rol; area_id: number | null }) =>
+      api.editarUsuario(id, { rol, area_id }),
+    onSuccess: (u) => {
+      toast(`Se actualizaron el rol y el área de ${u.nombre}.`);
+      cancelarEdicion(u.id);
+      invalidar();
+    },
+    onError: (e) => toast(mensajeError(e), 'error'),
+  });
+
+  const iniciarEdicion = (id: number, rol: Rol, area_id: number | null) =>
+    setEdiciones((prev) => ({ ...prev, [id]: { rol, area_id: area_id === null ? '' : String(area_id) } }));
+
+  const cancelarEdicion = (id: number) =>
+    setEdiciones((prev) => {
+      const sig = { ...prev };
+      delete sig[id];
+      return sig;
+    });
+
+  const setEdicion = (id: number, cambios: Partial<Aprobacion>) =>
+    setEdiciones((prev) => ({ ...prev, [id]: { ...prev[id], ...cambios } }));
+
+  const guardarEdicion = (id: number) => {
+    const e = ediciones[id];
+    if (!e) return;
+    if (e.rol === 'coordinador' && !e.area_id) {
+      toast('Una coordinación necesita un área asignada.', 'error');
+      return;
+    }
+    editarMut.mutate({ id, rol: e.rol, area_id: e.area_id ? Number(e.area_id) : null });
+  };
+
+  // ── Alta directa ─────────────────────────────────────────────────────────
   const altaMut = useMutation({
     mutationFn: (alta: AltaUsuario) => api.crearUsuario(alta),
     onSuccess: (u) => {
@@ -128,16 +170,12 @@ export function Usuarios() {
       nombre: nuevo.nombre.trim(),
       email: nuevo.email.trim(),
       rol: nuevo.rol,
-      area_id: nuevo.rol === 'coordinador' ? Number(nuevo.area_id) : null,
+      area_id: nuevo.area_id ? Number(nuevo.area_id) : null,
     });
   };
 
   const setCampo = <K extends keyof FormAlta>(campo: K, valor: FormAlta[K]) => {
-    setNuevo((n) => {
-      const sig = { ...n, [campo]: valor };
-      if (campo === 'rol' && valor !== 'coordinador') sig.area_id = '';
-      return sig;
-    });
+    setNuevo((n) => ({ ...n, [campo]: valor }));
     if (altaError) setAltaError(null);
   };
 
@@ -171,79 +209,123 @@ export function Usuarios() {
             </tr>
           </thead>
           <tbody>
-            {usuariosOrdenados.map((u) => (
-              <tr key={u.id} style={{ cursor: 'default', opacity: u.activo ? 1 : 0.5 }}>
-                <td>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    <Avatar nombre={u.nombre} size="md" />
-                    <span style={{ fontSize: 13, fontWeight: 500 }}>{u.nombre}</span>
-                  </span>
-                </td>
-                <td style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{u.email}</td>
-                <td>
-                  {u.rol === 'pendiente' && u.activo ? (
-                    <Select
-                      ariaLabel={`Rol para ${u.nombre}`}
-                      buscable={false}
-                      value={aprobacionDe(u.id).rol}
-                      opciones={ROLES_ASIGNABLES.map((r) => ({ value: r, label: ROL_LABEL[r] }))}
-                      onChange={(v) => setAprobacion(u.id, { rol: v as Rol })}
-                      estilo={{ minWidth: 130 }}
-                    />
-                  ) : (
-                    <span className={`rol-chip rol-chip--${u.rol}`}>{ROL_LABEL[u.rol]}</span>
-                  )}
-                </td>
-                <td style={{ fontSize: 12.5 }}>
-                  {u.rol === 'pendiente' && u.activo ? (
-                    <Select
-                      ariaLabel={`Área para ${u.nombre}`}
-                      value={aprobacionDe(u.id).area_id}
-                      disabled={aprobacionDe(u.id).rol !== 'coordinador'}
-                      placeholder="—"
-                      opciones={areas.map((a) => ({ value: String(a.id), label: a.nombre }))}
-                      onChange={(v) => setAprobacion(u.id, { area_id: v })}
-                      estilo={{ minWidth: 110 }}
-                    />
-                  ) : (
-                    areaNombre(u.area_id) ?? '—'
-                  )}
-                </td>
-                <td>
-                  {u.activo ? (
-                    <Badge variant="success" size="sm" label="Activo" />
-                  ) : (
-                    <Badge variant="neutral" size="sm" label="Baja" />
-                  )}
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  {u.id === sesion?.usuario.id ? (
-                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Tu cuenta</span>
-                  ) : (
-                    <span style={{ display: 'inline-flex', gap: 8 }}>
-                      {u.rol === 'pendiente' && u.activo && (
-                        <button
-                          type="button"
-                          className="btn btn--accent btn--sm"
-                          disabled={aprobarMut.isPending}
-                          onClick={() => aprobar(u.id)}
-                        >
-                          {aprobarMut.isPending ? 'Aprobando…' : 'Aprobar'}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="btn btn--ghost btn--sm"
-                        disabled={estadoMut.isPending}
-                        onClick={() => estadoMut.mutate({ id: u.id, activo: !u.activo })}
-                      >
-                        {u.activo ? (u.rol === 'pendiente' ? 'Rechazar' : 'Dar de baja') : 'Reactivar'}
-                      </button>
+            {usuariosOrdenados.map((u) => {
+              const esPendiente = u.rol === 'pendiente' && u.activo;
+              const editando = ediciones[u.id] !== undefined;
+              const esPropio = u.id === sesion?.usuario.id;
+              // Valores de los selects según el modo de la fila.
+              const rolSel = esPendiente ? aprobacionDe(u.id).rol : ediciones[u.id]?.rol ?? u.rol;
+              const areaSel = esPendiente ? aprobacionDe(u.id).area_id : ediciones[u.id]?.area_id ?? '';
+              const setRol = (v: string) =>
+                esPendiente ? setAprobacion(u.id, { rol: v as Rol }) : setEdicion(u.id, { rol: v as Rol });
+              const setArea = (v: string) =>
+                esPendiente ? setAprobacion(u.id, { area_id: v }) : setEdicion(u.id, { area_id: v });
+              const editableRolArea = esPendiente || editando;
+
+              return (
+                <tr key={u.id} style={{ cursor: 'default', opacity: u.activo ? 1 : 0.5 }}>
+                  <td>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <Avatar nombre={u.nombre} size="md" />
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>{u.nombre}</span>
                     </span>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{u.email}</td>
+                  <td>
+                    {editableRolArea ? (
+                      <Select
+                        ariaLabel={`Rol para ${u.nombre}`}
+                        buscable={false}
+                        value={rolSel}
+                        opciones={opcionesRol}
+                        onChange={setRol}
+                        estilo={{ minWidth: 130 }}
+                      />
+                    ) : (
+                      <span className={`rol-chip rol-chip--${u.rol}`}>{ROL_LABEL[u.rol]}</span>
+                    )}
+                  </td>
+                  <td style={{ fontSize: 12.5 }}>
+                    {editableRolArea ? (
+                      <Select
+                        ariaLabel={`Área para ${u.nombre}`}
+                        value={areaSel}
+                        placeholder="—"
+                        opciones={opcionesArea}
+                        onChange={setArea}
+                        estilo={{ minWidth: 110 }}
+                      />
+                    ) : (
+                      areaNombre(u.area_id) ?? '—'
+                    )}
+                  </td>
+                  <td>
+                    {u.activo ? (
+                      <Badge variant="success" size="sm" label="Activo" />
+                    ) : (
+                      <Badge variant="neutral" size="sm" label="Baja" />
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    {esPropio ? (
+                      <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Tu cuenta</span>
+                    ) : (
+                      <span style={{ display: 'inline-flex', gap: 8 }}>
+                        {esPendiente && (
+                          <button
+                            type="button"
+                            className="btn btn--accent btn--sm"
+                            disabled={aprobarMut.isPending}
+                            onClick={() => aprobar(u.id)}
+                          >
+                            {aprobarMut.isPending ? 'Aprobando…' : 'Aprobar'}
+                          </button>
+                        )}
+                        {editando && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn btn--accent btn--sm"
+                              disabled={editarMut.isPending}
+                              onClick={() => guardarEdicion(u.id)}
+                            >
+                              {editarMut.isPending ? 'Guardando…' : 'Guardar'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn--ghost btn--sm"
+                              disabled={editarMut.isPending}
+                              onClick={() => cancelarEdicion(u.id)}
+                            >
+                              Cancelar
+                            </button>
+                          </>
+                        )}
+                        {!esPendiente && !editando && u.activo && (
+                          <button
+                            type="button"
+                            className="btn btn--ghost btn--sm"
+                            onClick={() => iniciarEdicion(u.id, u.rol, u.area_id)}
+                          >
+                            Editar
+                          </button>
+                        )}
+                        {!editando && (
+                          <button
+                            type="button"
+                            className="btn btn--ghost btn--sm"
+                            disabled={estadoMut.isPending}
+                            onClick={() => estadoMut.mutate({ id: u.id, activo: !u.activo })}
+                          >
+                            {u.activo ? (u.rol === 'pendiente' ? 'Rechazar' : 'Dar de baja') : 'Reactivar'}
+                          </button>
+                        )}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -306,7 +388,7 @@ export function Usuarios() {
               id="nu-rol"
               buscable={false}
               value={nuevo.rol}
-              opciones={ROLES_ASIGNABLES.map((r) => ({ value: r, label: ROL_LABEL[r] }))}
+              opciones={opcionesRol}
               onChange={(v) => setCampo('rol', v as Rol)}
             />
           </div>
@@ -317,9 +399,8 @@ export function Usuarios() {
             <Select
               id="nu-area"
               value={nuevo.area_id}
-              disabled={nuevo.rol !== 'coordinador'}
               placeholder="—"
-              opciones={areas.map((a) => ({ value: String(a.id), label: a.nombre }))}
+              opciones={opcionesArea}
               estilo={altaCampos.area_id ? { borderColor: 'var(--red)' } : undefined}
               onChange={(v) => setCampo('area_id', v)}
             />

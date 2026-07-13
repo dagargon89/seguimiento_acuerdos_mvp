@@ -113,6 +113,45 @@ final class AdminUsuariosAreasTest extends CIUnitTestCase
         $this->assertSame(1, $this->cuerpo($r)['data']['area_id']);
     }
 
+    // ── ADR-012: el área puede asignarse a cualquier rol ──────────────────
+
+    public function testAltaResponsableConAreaEs201YPersisteArea(): void
+    {
+        // Antes el área se forzaba a null en no-coordinadores; ahora se acepta (ADR-012).
+        $r = $this->como('direccion@demo.test')->post('api/v1/usuarios', [
+            'nombre' => 'Resp Con Area', 'email' => 'resp.conarea@demo.test', 'rol' => 'responsable', 'area_id' => 2,
+        ]);
+
+        $r->assertStatus(201);
+        $this->assertSame(2, $this->cuerpo($r)['data']['area_id']);
+
+        $fila = Database::connect()->table('usuarios')->where('email', 'resp.conarea@demo.test')->get()->getRowArray();
+        $this->assertSame(2, (int) $fila['area_id']);
+    }
+
+    public function testAltaConAreaInexistenteEs422(): void
+    {
+        $r = $this->como('direccion@demo.test')->post('api/v1/usuarios', [
+            'nombre' => 'Area Mala', 'email' => 'area.mala@demo.test', 'rol' => 'responsable', 'area_id' => 9999,
+        ]);
+
+        $r->assertStatus(422);
+        $this->assertArrayHasKey('area_id', $this->cuerpo($r)['campos']);
+    }
+
+    public function testEditarAsignaAreaAResponsableEs200YPersiste(): void
+    {
+        // Rafael (id 5, responsable, sin área en el seed) recibe un área.
+        $r = $this->como('direccion@demo.test')->patch('api/v1/usuarios/5', ['area_id' => 1]);
+
+        $r->assertStatus(200);
+        $this->assertSame(1, $this->cuerpo($r)['data']['area_id']);
+
+        $fila = Database::connect()->table('usuarios')->where('id', 5)->get()->getRowArray();
+        $this->assertSame(1, (int) $fila['area_id']);
+        $this->assertSame('responsable', $fila['rol']);
+    }
+
     // ── AD-01: alta con email duplicado → 422 ─────────────────────────────
 
     public function testAD01AltaEmailDuplicadoEs422(): void

@@ -268,6 +268,10 @@ function Shell({
 }) {
   const u = sesion.usuario;
   const esDireccion = u.rol === 'direccion';
+  const esCoordinador = u.rol === 'coordinador';
+  const puedeChecklist = esDireccion || esCoordinador; // ADR-012: coordinación valida su área
+  // Administración: Dirección ve todo; coordinación solo el Checklist (de su área).
+  const navAdmin = esDireccion ? NAV_ADMIN : esCoordinador ? NAV_ADMIN.filter((i) => i.to === '/checklist') : [];
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [colapsado, setColapsado] = useState(() => localStorage.getItem(COLAPSADO_KEY) === '1');
   const cerrarMenu = () => setMenuAbierto(false);
@@ -319,12 +323,12 @@ function Shell({
             {renderLinks(NAV_GENERAL)}
           </div>
 
-          {esDireccion && (
+          {navAdmin.length > 0 && (
             <div className="sidebar__grupo">
               <div className="sidebar__eyebrow">
                 <span className="sidebar__texto">Administración</span>
               </div>
-              {renderLinks(NAV_ADMIN)}
+              {renderLinks(navAdmin)}
             </div>
           )}
         </nav>
@@ -377,7 +381,7 @@ function Shell({
             <Route path="/panel" element={<Panel />} />
             <Route path="/captura" element={<Captura />} />
             <Route path="/recordatorios" element={<Recordatorios />} />
-            <Route path="/checklist" element={esDireccion ? <Checklist /> : <Navigate to="/panel" replace />} />
+            <Route path="/checklist" element={puedeChecklist ? <Checklist /> : <Navigate to="/panel" replace />} />
             <Route path="/usuarios" element={esDireccion ? <Usuarios /> : <Navigate to="/panel" replace />} />
             <Route path="/areas" element={esDireccion ? <Areas /> : <Navigate to="/panel" replace />} />
             <Route path="/perfil" element={<Perfil />} />

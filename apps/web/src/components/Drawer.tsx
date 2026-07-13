@@ -187,6 +187,12 @@ export function Drawer({ id, onClose }: DrawerProps) {
     sel !== undefined &&
     u !== undefined &&
     (esDireccion || u.id === sel.capturado_por.id || (u.rol === 'coordinador' && u.area_id === sel.area.id));
+  // Concluir: Dirección (cualquiera) o coordinación del área del acuerdo (ADR-012).
+  // Reabrir sigue siendo solo Dirección.
+  const puedeConcluir =
+    sel !== undefined &&
+    u !== undefined &&
+    (esDireccion || (u.rol === 'coordinador' && u.area_id === sel.area.id));
   const usuariosActivos = (usuariosQ.data ?? []).filter((x) => x.activo);
   const areas = areasQ.data ?? [];
 
@@ -559,27 +565,29 @@ export function Drawer({ id, onClose }: DrawerProps) {
               </form>
             )}
 
-            {esDireccion && (
+            {sel.estado !== 'concluido' && puedeConcluir && (
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20 }}>
-                {sel.estado !== 'concluido' ? (
-                  <button
-                    type="button"
-                    className="btn btn--ghost-teal btn--md btn--full"
-                    onClick={concluir}
-                    disabled={concluirMut.isPending}
-                  >
-                    Marcar como concluido
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn btn--ghost btn--md btn--full"
-                    onClick={reabrir}
-                    disabled={reabrirMut.isPending}
-                  >
-                    Reabrir acuerdo
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="btn btn--ghost-teal btn--md btn--full"
+                  onClick={concluir}
+                  disabled={concluirMut.isPending}
+                >
+                  Marcar como concluido
+                </button>
+              </div>
+            )}
+
+            {sel.estado === 'concluido' && esDireccion && (
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--md btn--full"
+                  onClick={reabrir}
+                  disabled={reabrirMut.isPending}
+                >
+                  Reabrir acuerdo
+                </button>
               </div>
             )}
 

@@ -1,5 +1,5 @@
 /**
- * Checklist de validación (nuevo, solo Dirección): acuerdos abiertos con
+ * Checklist de validación (Dirección; coordinación filtrada a su área, ADR-012): acuerdos abiertos con
  * vencidos primero; permite concluir con nota opcional (confirmación inline).
  */
 import { useState } from 'react';
@@ -39,11 +39,11 @@ export function Checklist() {
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto' }}>
       <div className="anim-in" style={{ marginBottom: 28 }}>
-        <div className="section-header__eyebrow">Validación de acuerdos · solo Dirección</div>
+        <div className="section-header__eyebrow">Validación de acuerdos</div>
         <h2 className="section-header__title">Checklist de validación</h2>
         <p className="section-header__subtitle">
-          Solo Dirección puede marcar un acuerdo como concluido. Revisa el último avance de cada compromiso y
-          valídalo; al concluirlo desaparece del panel y se detienen sus recordatorios.
+          Dirección valida cualquier acuerdo; una coordinación valida los de su área. Revisa el último avance de
+          cada compromiso y valídalo; al concluirlo desaparece del panel y se detienen sus recordatorios.
         </p>
       </div>
 

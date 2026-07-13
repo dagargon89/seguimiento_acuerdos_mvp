@@ -201,25 +201,41 @@ final class ConclusionReaperturaTest extends CIUnitTestCase
         $this->assertSame('estado_invalido', $this->cuerpo($r)['error']);
     }
 
-    // ── ME-12: rol no-Dirección concluye → 403 + registro en auditoría ────
+    // ── ME-12 (ADR-012): coordinación concluye SU área; otra área / responsable → 403 auditado ──
 
-    public function testME12CoordinadorConcluirEs403YAuditaElIntento(): void
+    public function testME12CoordinadorConcluyeAcuerdoDeSuArea(): void
     {
-        $antes = Database::connect()->table('acuerdos')->where('id', 4)->get()->getRowArray();
+        // Carla (coordinadora, área 1) concluye el acuerdo 4 (área 1) — permitido (ADR-012).
+        $r = $this->como('coordinacion.operativa@demo.test')->patch('api/v1/acuerdos/4/concluir', ['nota' => 'Validado por coordinación.']);
 
-        // Carla (coordinadora, área 1) intenta concluir el acuerdo 4 (su área) — 403 igual.
-        $r = $this->como('coordinacion.operativa@demo.test')->patch('api/v1/acuerdos/4/concluir', ['nota' => 'no debería poder']);
+        $r->assertStatus(200);
+
+        // La fila quedó concluida con Carla como autora.
+        $despues = Database::connect()->table('acuerdos')->where('id', 4)->get()->getRowArray();
+        $this->assertSame('concluido', $despues['estado']);
+        $this->assertSame(2, (int) $despues['concluido_por_id']); // Carla = id 2.
+
+        // Auditoría 'concluir' (no un intento denegado).
+        $this->assertCount(1, $this->auditoriaDe('concluir', 4));
+        $this->assertCount(0, $this->auditoriaDe('intento_concluir', 4));
+    }
+
+    public function testME12CoordinadorConcluirOtraAreaEs403YAuditaElIntento(): void
+    {
+        $antes = Database::connect()->table('acuerdos')->where('id', 5)->get()->getRowArray();
+
+        // Carla (área 1) intenta concluir el acuerdo 5 (área 2) — 403 + auditoría.
+        $r = $this->como('coordinacion.operativa@demo.test')->patch('api/v1/acuerdos/5/concluir', ['nota' => 'no debería poder']);
 
         $r->assertStatus(403);
         $this->assertSame('sin_permiso', $this->cuerpo($r)['error']);
 
-        // La fila NO cambió: sigue en_proceso, sin autor de conclusión.
-        $despues = Database::connect()->table('acuerdos')->where('id', 4)->get()->getRowArray();
+        // La fila NO cambió: sigue abierta, sin autor de conclusión.
+        $despues = Database::connect()->table('acuerdos')->where('id', 5)->get()->getRowArray();
         $this->assertSame($antes['estado'], $despues['estado']);
         $this->assertNull($despues['concluido_por_id']);
 
-        // El intento 403 dejó fila en auditoria (doc 05 §4: los 403 de concluir se auditan).
-        $intentos = $this->auditoriaDe('intento_concluir', 4);
+        $intentos = $this->auditoriaDe('intento_concluir', 5);
         $this->assertCount(1, $intentos);
         $this->assertSame(2, (int) $intentos[0]['usuario_id']); // Carla = id 2.
     }
@@ -267,14 +283,21 @@ final class ConclusionReaperturaTest extends CIUnitTestCase
         $r->assertStatus(404);
     }
 
-    // ── AU-07: rol no-Dirección accede a GET /checklist → 403 ─────────────
+    // ── AU-07 (ADR-012): coordinación ve el checklist de SU área; responsable → 403 ──
 
-    public function testAU07ChecklistNoDireccionEs403(): void
+    public function testAU07ChecklistCoordinadorSoloSuAreaResponsable403(): void
     {
+        // Carla (coordinadora, área 1) ve el checklist filtrado a su área.
         $r = $this->como('coordinacion.operativa@demo.test')->get('api/v1/checklist');
-        $r->assertStatus(403);
-        $this->assertSame('sin_permiso', $this->cuerpo($r)['error']);
+        $r->assertStatus(200);
+        $ids = array_map(static fn (array $i) => (int) $i['acuerdo']['id'], $this->cuerpo($r)['data']);
+        // No aparecen acuerdos de otra área (5,6,7 son de área 2); sí los abiertos de área 1 (p.ej. 4).
+        $this->assertNotContains(5, $ids);
+        $this->assertNotContains(6, $ids);
+        $this->assertNotContains(7, $ids);
+        $this->assertContains(4, $ids);
 
+        // Un responsable sigue sin acceso al checklist.
         $r2 = $this->como('responsable.uno@demo.test')->get('api/v1/checklist');
         $r2->assertStatus(403);
     }
