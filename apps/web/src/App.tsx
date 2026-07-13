@@ -9,7 +9,7 @@ import { api, setTokenProvider } from './lib';
 import type { Sesion } from './lib';
 import { auth, loginEmailPassword, loginGoogle, logoutFirebase, onAuthStateChanged } from './lib/firebase';
 import { fmtL, hoyISO } from './lib/fechas';
-import { mensajeError, ROL_LABEL, statusError } from './components/EstadoHelpers';
+import { codigoError, mensajeError, ROL_LABEL, statusError } from './components/EstadoHelpers';
 import { Avatar } from './components/Avatar';
 import {
   IconoAreas,
@@ -91,22 +91,58 @@ function AppContent() {
         return;
       }
       setCargandoSesion(true);
-      api
-        .getMe()
-        .then((s) => {
+
+      // Autorregistro con Google (ADR-006): quien entra con Google y todavía no
+      // tiene fila en `usuarios` se da de alta solo como `pendiente` (nombre =
+      // displayName de Google) para que Dirección lo apruebe desde Usuarios. El
+      // alta por email/password la maneja RegistroForm; aquí cubrimos el botón
+      // de Google, que antes solo hacía login y dejaba la cuenta sin registrar.
+      const esGoogle = usuarioFirebase.providerData.some((p) => p.providerId === 'google.com');
+
+      const fallarAcceso = (e: unknown) => {
+        if (statusError(e) === 403) {
+          setErrorAcceso('Tu cuenta no tiene acceso al panel. Contacta a Dirección.');
+        } else {
+          toast(mensajeError(e), 'error');
+        }
+        void logoutFirebase();
+        setSesion(null);
+      };
+
+      const cargar = async () => {
+        try {
           setErrorAcceso(null);
-          setSesion(s);
-        })
-        .catch((e: unknown) => {
-          if (statusError(e) === 403) {
-            setErrorAcceso('Tu cuenta no tiene acceso al panel. Contacta a Dirección.');
-          } else {
-            toast(mensajeError(e), 'error');
+          setSesion(await api.getMe());
+          return;
+        } catch (e: unknown) {
+          // Solo auto-registramos a cuentas Google sin fila; el resto falla igual que antes.
+          if (!esGoogle || codigoError(e) !== 'usuario_no_registrado') {
+            fallarAcceso(e);
+            return;
           }
-          void logoutFirebase();
-          setSesion(null);
-        })
-        .finally(() => setCargandoSesion(false));
+        }
+
+        try {
+          await api.registrarme({
+            nombre: usuarioFirebase.displayName?.trim() || usuarioFirebase.email || 'Usuario',
+          });
+        } catch (e: unknown) {
+          // 409 = la fila ya existe (reintento): seguimos a getMe. Otro error sí es fallo.
+          if (statusError(e) !== 409) {
+            fallarAcceso(e);
+            return;
+          }
+        }
+
+        try {
+          setErrorAcceso(null);
+          setSesion(await api.getMe());
+        } catch (e: unknown) {
+          fallarAcceso(e);
+        }
+      };
+
+      void cargar().finally(() => setCargandoSesion(false));
     });
 
     return unsubscribe;

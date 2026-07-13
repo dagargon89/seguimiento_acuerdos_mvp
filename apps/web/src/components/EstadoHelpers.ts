@@ -85,3 +85,8 @@ export function camposError(e: unknown): Record<string, string> {
 export function statusError(e: unknown): number | null {
   return comoErrorApi(e)?.status ?? null;
 }
+
+/** Código de error del contrato (p.ej. 'usuario_no_registrado', 'cuenta_pendiente'). */
+export function codigoError(e: unknown): string | null {
+  return comoErrorApi(e)?.error ?? null;
+}

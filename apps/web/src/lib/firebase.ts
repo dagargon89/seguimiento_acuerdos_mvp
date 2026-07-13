@@ -32,10 +32,9 @@ export const auth = getAuth(app);
 
 export { onAuthStateChanged };
 
-/** Google Sign-In con dominio sugerido planjuarez.org (RF-01, ADR-002). */
+/** Google Sign-In: cualquier cuenta de Google (el acceso lo gobierna la aprobación en Usuarios, ADR-006). */
 export async function loginGoogle(): Promise<void> {
   const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ hd: 'planjuarez.org' });
   await signInWithPopup(auth, provider);
 }
 
