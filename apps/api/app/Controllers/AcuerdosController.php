@@ -22,6 +22,7 @@ use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\I18n\Time;
 use Config\Database;
+use Throwable;
 
 /**
  * GET /acuerdos, GET /acuerdos/{id} (doc 05 §2.2) — LECTURA (Tarea 5).
@@ -55,6 +56,28 @@ class AcuerdosController extends BaseController
     private function hoy(): string
     {
         return Time::now()->toDateString();
+    }
+
+    /**
+     * Sincronización inmediata con Google Calendar (ADR-009): best-effort
+     * DESPUÉS del commit, para que el evento aparezca al momento en lugar de
+     * esperar la corrida diaria. `CalendarSync::sincronizar()` ya no propaga
+     * fallos de la API (deja la fila `google_sync` en pendiente/error y el job
+     * diario la reintenta); el try/catch defensivo garantiza que ningún
+     * problema inesperado rompa la respuesta HTTP de una escritura confirmada.
+     */
+    private function sincronizarCalendarioAhora(int ...$acuerdoIds): void
+    {
+        foreach ($acuerdoIds as $acuerdoId) {
+            try {
+                service('calendarSync')->sincronizar($acuerdoId);
+            } catch (Throwable $e) {
+                log_message('error', 'Sincronización inmediata de calendario falló para acuerdo {id}: {msg}', [
+                    'id'  => $acuerdoId,
+                    'msg' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     public function index(): ResponseInterface
@@ -274,6 +297,8 @@ class AcuerdosController extends BaseController
             ]);
         }
 
+        $this->sincronizarCalendarioAhora(...$idsCreados);
+
         $data = array_map(fn (int $id) => $this->cargarAcuerdoCompleto($id, $hoy)->aArray(), $idsCreados);
 
         return $this->response->setStatusCode(201)->setJSON(['data' => $data]);
@@ -385,6 +410,8 @@ class AcuerdosController extends BaseController
             return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo guardar el cambio.']);
         }
 
+        $this->sincronizarCalendarioAhora((int) $id);
+
         return $this->response->setJSON(['data' => $this->cargarAcuerdoCompleto((int) $id, $hoy)->aArray()]);
     }
 
@@ -461,6 +488,8 @@ class AcuerdosController extends BaseController
         if (! $db->transStatus()) {
             return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo guardar el cambio.']);
         }
+
+        $this->sincronizarCalendarioAhora((int) $id);
 
         return $this->response->setJSON(['data' => $this->cargarDetalleCompleto((int) $id, $hoy)->aArray()]);
     }
@@ -564,6 +593,10 @@ class AcuerdosController extends BaseController
             return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo registrar el avance.']);
         }
 
+        if ($esReprogramacion) {
+            $this->sincronizarCalendarioAhora((int) $id);
+        }
+
         return $this->response->setJSON(['data' => $this->cargarDetalleCompleto((int) $id, $hoy)->aArray()]);
     }
 
@@ -641,6 +674,8 @@ class AcuerdosController extends BaseController
         if (! $db->transStatus()) {
             return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo concluir el acuerdo.']);
         }
+
+        $this->sincronizarCalendarioAhora((int) $id);
 
         return $this->response->setJSON(['data' => $this->cargarAcuerdoCompleto((int) $id, $hoy)->aArray()]);
     }
@@ -720,6 +755,8 @@ class AcuerdosController extends BaseController
         if (! $db->transStatus()) {
             return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo reabrir el acuerdo.']);
         }
+
+        $this->sincronizarCalendarioAhora((int) $id);
 
         return $this->response->setJSON(['data' => $this->cargarAcuerdoCompleto((int) $id, $hoy)->aArray()]);
     }

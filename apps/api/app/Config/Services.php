@@ -97,7 +97,10 @@ class Services extends BaseService
             return static::getSharedInstance('mailer');
         }
 
-        if ((string) env('GOOGLE_APPLICATION_CREDENTIALS') !== '') {
+        // Guardia dura: en tests JAMÁS se resuelve el servicio real aunque el
+        // .env del desarrollador tenga credenciales (los tests de escritura
+        // dispararían red real). Los fakes entran vía injectMock.
+        if (ENVIRONMENT !== 'testing' && (string) env('GOOGLE_APPLICATION_CREDENTIALS') !== '') {
             return new GmailService();
         }
 
@@ -125,7 +128,10 @@ class Services extends BaseService
         $credenciales = (string) env('GOOGLE_APPLICATION_CREDENTIALS');
         $calendarId   = (string) env('GOOGLE_CALENDAR_ID');
 
-        if ($credenciales !== '' && $calendarId !== '') {
+        // Guardia dura: en tests JAMÁS se resuelve el servicio real (misma
+        // razón que en mailer(); con la sincronización inmediata de ADR-009
+        // cada test de escritura tocaría la API real de Calendar).
+        if (ENVIRONMENT !== 'testing' && $credenciales !== '' && $calendarId !== '') {
             return new GoogleCalendarService(new GoogleApiClientCalendarApi(), $calendarId);
         }
 

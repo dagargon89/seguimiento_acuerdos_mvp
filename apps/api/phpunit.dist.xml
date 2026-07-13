@@ -45,6 +45,11 @@
     <php>
         <server name="app.baseURL" value="http://example.com/"/>
         <server name="CODEIGNITER_SCREAM_DEPRECATIONS" value="0"/>
+        <!-- Google (ADR-003/ADR-009): la protección de que los tests JAMÁS
+             usen credenciales reales aunque el .env del desarrollador las
+             tenga vive en Config\Services (guardia ENVIRONMENT === 'testing'
+             en mailer()/calendarSync()) — un <env value=""> aquí NO funciona
+             porque el DotEnv de CI4 trata la cadena vacía como no-definida. -->
         <!-- Directory containing phpunit.xml -->
         <const name="HOMEPATH" value="./"/>
         <!-- Directory containing the Paths config file -->
