@@ -90,6 +90,37 @@ final class PlantillaCorreo
     }
 
     /**
+     * Notificación inmediata de asignación (ADR-010): se envía al capturar el
+     * acuerdo, al responsable y a cada corresponsable.
+     *
+     * @param array<string, mixed> $acuerdo Fila de `acuerdos` (tema, accion,
+     *                                      responsable_nombre, fecha_compromiso, ...).
+     * @param array<string, mixed> $usuario Fila de `usuarios` del destinatario (nombre, ...).
+     * @param bool                 $esCorresponsable false = responsable del acuerdo.
+     *
+     * @return array{asunto: string, html: string}
+     */
+    public function asignacion(array $acuerdo, array $usuario, bool $esCorresponsable): array
+    {
+        $accion = (string) ($acuerdo['accion'] ?? '');
+        $fecha  = (string) ($acuerdo['fecha_compromiso'] ?? '');
+
+        $rol   = $esCorresponsable ? 'corresponsable' : 'responsable';
+        $intro = "Se te asignó como {$rol} el siguiente acuerdo, con fecha compromiso el "
+            . $this->fechaLarga($fecha)
+            . '. Recibirás recordatorios automáticos conforme se acerque la fecha; puedes registrar avances en el panel desde hoy.';
+
+        $html = $this->armarHtml(
+            titulo: 'Nuevo acuerdo asignado',
+            nombreDestinatario: (string) ($usuario['nombre'] ?? ''),
+            intro: $intro,
+            fichaAcuerdo: $this->fichaAcuerdo($acuerdo),
+        );
+
+        return ['asunto' => 'Nuevo acuerdo asignado: ' . $accion, 'html' => $html];
+    }
+
+    /**
      * Resumen periódico (RF-11): lista de acuerdos abiertos del ámbito del
      * destinatario, ordenados por fecha compromiso.
      *

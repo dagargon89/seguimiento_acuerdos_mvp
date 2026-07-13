@@ -114,7 +114,7 @@ CREATE TABLE recordatorios_enviados (
   id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
   acuerdo_id       INT UNSIGNED NULL,
   usuario_id       INT UNSIGNED NOT NULL,
-  tipo             ENUM('previo','dia','vencido','resumen') NOT NULL,
+  tipo             ENUM('previo','dia','vencido','resumen','asignacion') NOT NULL,
   programado_para  DATE         NOT NULL,
   enviado_at       DATETIME     NULL,
   estado           ENUM('enviado','fallido') NOT NULL,

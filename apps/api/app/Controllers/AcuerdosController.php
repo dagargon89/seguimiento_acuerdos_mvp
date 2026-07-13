@@ -6,6 +6,7 @@ use App\Entities\Acuerdo;
 use App\Entities\AcuerdoDetalle;
 use App\Entities\Avance;
 use App\Entities\UsuarioRef;
+use App\Libraries\Recordatorios\NotificadorAsignacion;
 use App\Libraries\Recordatorios\Programador;
 use App\Models\AcuerdoCorresponsableModel;
 use App\Models\AcuerdoModel;
@@ -73,6 +74,28 @@ class AcuerdosController extends BaseController
                 service('calendarSync')->sincronizar($acuerdoId);
             } catch (Throwable $e) {
                 log_message('error', 'Sincronización inmediata de calendario falló para acuerdo {id}: {msg}', [
+                    'id'  => $acuerdoId,
+                    'msg' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Notificación inmediata de asignación (ADR-010): correo al responsable y
+     * corresponsables al capturar. Best-effort DESPUÉS del commit — el propio
+     * NotificadorAsignacion no propaga fallos por destinatario; este try/catch
+     * cubre cualquier imprevisto para no romper la respuesta HTTP.
+     */
+    private function notificarAsignaciones(int ...$acuerdoIds): void
+    {
+        $notificador = new NotificadorAsignacion();
+
+        foreach ($acuerdoIds as $acuerdoId) {
+            try {
+                $notificador->notificar($acuerdoId);
+            } catch (Throwable $e) {
+                log_message('error', 'Notificación de asignación falló para acuerdo {id}: {msg}', [
                     'id'  => $acuerdoId,
                     'msg' => $e->getMessage(),
                 ]);
@@ -298,6 +321,7 @@ class AcuerdosController extends BaseController
         }
 
         $this->sincronizarCalendarioAhora(...$idsCreados);
+        $this->notificarAsignaciones(...$idsCreados);
 
         $data = array_map(fn (int $id) => $this->cargarAcuerdoCompleto($id, $hoy)->aArray(), $idsCreados);
 

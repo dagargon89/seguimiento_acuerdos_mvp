@@ -5,6 +5,7 @@ namespace App\Libraries\Google;
 use Google\Client as GoogleClient;
 use Google\Service\Calendar as GoogleCalendar;
 use Google\Service\Calendar\Event as GoogleCalendarEvent;
+use Google\Service\Calendar\EventAttendee as GoogleCalendarEventAttendee;
 use Google\Service\Calendar\EventDateTime as GoogleCalendarEventDateTime;
 use RuntimeException;
 
@@ -53,7 +54,10 @@ final class GoogleApiClientCalendarApi implements CalendarApi
     {
         $event = $this->mapearEvento($evento);
 
-        $creado = $this->calendarService->events->insert($calendarId, $event);
+        // sendUpdates=all: Google envía la invitación nativa a los attendees
+        // (responsable/corresponsables) — el evento aparece en SU calendario
+        // personal sin necesidad de suscribirse al compartido (ADR-010).
+        $creado = $this->calendarService->events->insert($calendarId, $event, ['sendUpdates' => 'all']);
 
         $id = $creado->getId();
         if ($id === null || $id === '') {
@@ -72,7 +76,7 @@ final class GoogleApiClientCalendarApi implements CalendarApi
         // patch (nunca insert/update completo): reconcilia solo los campos
         // presentes, evita pisar campos que no gestionamos (RF-09: nunca se
         // crea un evento nuevo cuando ya existe calendar_event_id).
-        $this->calendarService->events->patch($calendarId, $eventId, $event);
+        $this->calendarService->events->patch($calendarId, $eventId, $event, ['sendUpdates' => 'all']);
     }
 
     public function eliminarEvento(string $calendarId, string $eventId): void
@@ -102,6 +106,13 @@ final class GoogleApiClientCalendarApi implements CalendarApi
 
         if (isset($evento['colorId'])) {
             $event->setColorId((string) $evento['colorId']);
+        }
+
+        if (isset($evento['attendees']) && is_array($evento['attendees'])) {
+            $event->setAttendees(array_map(
+                static fn (string $email) => new GoogleCalendarEventAttendee(['email' => $email]),
+                $evento['attendees'],
+            ));
         }
 
         return $event;

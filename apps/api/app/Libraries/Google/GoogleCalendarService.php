@@ -44,7 +44,7 @@ final class GoogleCalendarService implements CalendarSync
         $db = Database::connect();
 
         $acuerdo = $db->table('acuerdos')
-            ->select('acuerdos.id, acuerdos.tema, acuerdos.accion, acuerdos.estado, acuerdos.fecha_compromiso, acuerdos.responsable_id, usuarios.nombre AS responsable_nombre')
+            ->select('acuerdos.id, acuerdos.tema, acuerdos.accion, acuerdos.estado, acuerdos.fecha_compromiso, acuerdos.responsable_id, usuarios.nombre AS responsable_nombre, usuarios.email AS responsable_email, usuarios.activo AS responsable_activo')
             ->join('usuarios', 'usuarios.id = acuerdos.responsable_id', 'left')
             ->where('acuerdos.id', $acuerdoId)
             ->get()->getRowArray();
@@ -109,9 +109,10 @@ final class GoogleCalendarService implements CalendarSync
         $fin    = $inicio->modify('+1 day');
 
         $evento = [
-            'summary' => $titulo,
-            'start'   => ['date' => $inicio->format('Y-m-d')],
-            'end'     => ['date' => $fin->format('Y-m-d')],
+            'summary'   => $titulo,
+            'start'     => ['date' => $inicio->format('Y-m-d')],
+            'end'       => ['date' => $fin->format('Y-m-d')],
+            'attendees' => $this->invitados($acuerdo),
         ];
 
         if ($concluido) {
@@ -119,5 +120,37 @@ final class GoogleCalendarService implements CalendarSync
         }
 
         return $evento;
+    }
+
+    /**
+     * Invitados del evento (ADR-010, cambio previsto en ADR-003): responsable
+     * activo + corresponsables activos. Se reconstruye completo en cada sync,
+     * así el `patch` reconcilia altas/bajas de corresponsables o cambio de
+     * responsable; Google conserva el responseStatus de quienes permanecen.
+     *
+     * @param array<string, mixed> $acuerdo
+     *
+     * @return list<string> emails únicos
+     */
+    private function invitados(array $acuerdo): array
+    {
+        $emails = [];
+
+        if ((int) ($acuerdo['responsable_activo'] ?? 0) === 1 && (string) ($acuerdo['responsable_email'] ?? '') !== '') {
+            $emails[] = (string) $acuerdo['responsable_email'];
+        }
+
+        $corresponsables = Database::connect()->table('acuerdo_corresponsables ac')
+            ->select('u.email')
+            ->join('usuarios u', 'u.id = ac.usuario_id')
+            ->where('ac.acuerdo_id', (int) $acuerdo['id'])
+            ->where('u.activo', 1)
+            ->get()->getResultArray();
+
+        foreach ($corresponsables as $c) {
+            $emails[] = (string) $c['email'];
+        }
+
+        return array_values(array_unique($emails));
     }
 }

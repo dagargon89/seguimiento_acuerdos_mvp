@@ -7,7 +7,7 @@
 export type Rol = 'direccion' | 'coordinador' | 'responsable' | 'pendiente';
 export type EstadoAcuerdo = 'en_proceso' | 'vencido' | 'concluido';
 export type TipoAvance = 'avance' | 'reprogramacion' | 'validacion' | 'reapertura';
-export type TipoRecordatorio = 'previo' | 'dia' | 'vencido' | 'resumen';
+export type TipoRecordatorio = 'previo' | 'dia' | 'vencido' | 'resumen' | 'asignacion';
 export type EstadoEnvio = 'enviado' | 'fallido';
 export type EstadoSync = 'pendiente' | 'sincronizado' | 'error';
 

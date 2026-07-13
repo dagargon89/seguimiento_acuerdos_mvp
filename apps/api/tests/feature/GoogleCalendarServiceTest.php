@@ -252,4 +252,26 @@ final class GoogleCalendarServiceTest extends CIUnitTestCase
         $filaFinal = $this->googleSyncDe($id);
         $this->assertSame('sincronizado', $filaFinal['estado']);
     }
+
+    // ── GC-06 (ADR-010): el evento invita al responsable y corresponsables ──
+
+    public function testGC06EventoIncluyeComoInvitadosAResponsableYCorresponsablesActivos(): void
+    {
+        // Responsable 6 = responsable.tres@demo.test; corresponsables: 5 (activo)
+        // y 7 (persona.baja@demo.test, INACTIVA → debe excluirse).
+        $id = $this->crearAcuerdo('2026-07-20', responsableId: 6);
+        $this->conn->table('acuerdo_corresponsables')->insert(['acuerdo_id' => $id, 'usuario_id' => 5]);
+        $this->conn->table('acuerdo_corresponsables')->insert(['acuerdo_id' => $id, 'usuario_id' => 7]);
+        $this->crearGoogleSync($id);
+
+        $this->servicio()->sincronizar($id);
+
+        $this->assertSame(1, $this->api->llamadasCrear());
+        $evento = $this->api->creados[0]['evento'];
+        $this->assertSame(
+            ['responsable.tres@demo.test', 'responsable.dos@demo.test'],
+            $evento['attendees'],
+            'invita al responsable y corresponsables activos; excluye inactivos',
+        );
+    }
 }
