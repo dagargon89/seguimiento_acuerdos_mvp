@@ -2,9 +2,9 @@
 /* Google Fonts loaded via styles.css @import */
 
 :root {
-  /* ── Font families ── */
-  --font-display:  'Fredoka', 'Nunito', sans-serif;   /* Chunky rounded — brand voice */
-  --font-body:     'Montserrat', 'Helvetica Neue', Arial, sans-serif; /* Professional body */
+  /* ── Font families (Propuesta C · Cívica Nocturna) ── */
+  --font-display:  'Space Grotesk', 'Helvetica Neue', Arial, sans-serif; /* Titulares y numerales */
+  --font-body:     'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; /* Cuerpo */
   --font-mono:     'Courier New', Courier, monospace;
 
   /* ── Font sizes (type scale) ── */

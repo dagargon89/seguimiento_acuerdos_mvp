@@ -18,15 +18,25 @@ body {
   font-size: var(--text-base);
   font-weight: var(--weight-regular);
   line-height: var(--leading-relaxed);
-  color: var(--text-primary);
-  background-color: var(--surface-bg);
+  color: var(--text);
+  background-color: var(--bg);
+  -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-semibold);
   line-height: var(--leading-tight);
-  color: var(--text-brand);
+  color: var(--text);
+}
+
+::placeholder {
+  color: var(--muted);
+}
+
+select option {
+  background: var(--surface);
+  color: var(--text);
 }
 
 a {

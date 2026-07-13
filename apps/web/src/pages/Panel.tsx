@@ -98,14 +98,22 @@ export function Panel() {
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20, marginBottom: 26 }}>
-        <StatCard value={enProceso.length} label="En proceso" sublabel="acuerdos abiertos en curso" variant="brand" />
-        <StatCard value={vencidos.length} label="Vencidos" sublabel="requieren seguimiento" />
-        <StatCard value={porVencer.length} label="Por vencer" sublabel="en los próximos 7 días" />
-        <StatCard value={totalConcluidos} label="Concluidos" sublabel="validados por Dirección" variant="accent" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 18, marginBottom: 30 }}>
+        <div className="anim-in">
+          <StatCard value={enProceso.length} label="En proceso" sublabel="acuerdos abiertos en curso" variant="proceso" />
+        </div>
+        <div className="anim-in anim-in--1">
+          <StatCard value={vencidos.length} label="Vencidos" sublabel="requieren seguimiento" variant="vencido" />
+        </div>
+        <div className="anim-in anim-in--2">
+          <StatCard value={porVencer.length} label="Por vencer" sublabel="en los próximos 7 días" variant="porvencer" />
+        </div>
+        <div className="anim-in anim-in--3">
+          <StatCard value={totalConcluidos} label="Concluidos" sublabel="validados por Dirección" variant="concluido" />
+        </div>
       </div>
 
-      <div className="toolbar">
+      <div className="toolbar anim-in anim-in--1">
         <ModeSwitch opciones={MODOS} activo={modo} onChange={setModo} />
         <div className="toolbar__search">
           <input
@@ -141,7 +149,7 @@ export function Panel() {
           ))}
         </select>
         <div className="toolbar__spacer" />
-        <button type="button" className="btn btn--accent btn--md" onClick={() => navigate('/captura')}>
+        <button type="button" className="btn btn--accent btn--glow btn--md" onClick={() => navigate('/captura')}>
           + Nuevo acuerdo
         </button>
       </div>
@@ -198,7 +206,7 @@ function VistaTabla({
   onAbrir: (id: number) => void;
 }) {
   return (
-    <div className="panel-card">
+    <div className="panel-card anim-in anim-in--2">
       <table className="acuerdos-table">
         <thead>
           <tr>
@@ -232,19 +240,21 @@ function VistaTabla({
                   {a.corresponsables.length > 0 && (
                     <span style={{ display: 'inline-flex', gap: 3, marginLeft: 8, verticalAlign: 'middle' }}>
                       {a.corresponsables.map((c) => (
-                        <Avatar key={c.id} nombre={c.nombre} size="sm" title={`Corresponsable: ${c.nombre}`} />
+                        <Avatar key={c.id} nombre={c.nombre} size="sm" tono="blue" title={`Corresponsable: ${c.nombre}`} />
                       ))}
                     </span>
                   )}
                 </td>
                 <td>
-                  <div style={{ fontWeight: 500 }}>{fmtF(a.fecha_compromiso)}</div>
-                  <div style={{ fontSize: 11.5, marginTop: 2, color }}>{rel}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 13 }}>
+                    {fmtF(a.fecha_compromiso)}
+                  </div>
+                  <div style={{ fontSize: 11.5, marginTop: 3, color }}>{rel}</div>
                 </td>
                 <td>
                   <Badge variant={est.variant} size="sm" label={est.label} />
                 </td>
-                <td style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{prox ? fmtF(prox) : '—'}</td>
+                <td style={{ fontSize: 12.5, color: 'var(--muted)' }}>{prox ? fmtF(prox) : '—'}</td>
                 <td>
                   <span
                     style={{
@@ -286,13 +296,13 @@ function VistaKanban({
     ? ['en_proceso', 'vencido', 'concluido']
     : ['en_proceso', 'vencido'];
   return (
-    <div className="kanban">
+    <div className="kanban anim-in anim-in--2">
       {cols.map((k) => {
         const items = lista.filter((a) => a.estado === k);
         return (
           <div key={k} className="kanban__col">
             <div className="kanban__head">
-              <span className="kanban__dot" style={{ background: EST[k].dot }} />
+              <span className="kanban__dot" style={{ background: EST[k].dot, boxShadow: `0 0 8px ${EST[k].dot}` }} />
               <span className="kanban__label">{EST[k].label}</span>
               <span className="kanban__count">{items.length}</span>
             </div>
@@ -344,7 +354,7 @@ function VistaReunion({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: numb
   return (
     <>
       {grupos.map((g) => (
-        <section key={g.nombre} className="reunion-group">
+        <section key={g.nombre} className="reunion-group anim-in">
           <div className="reunion-group__head">
             <h3 className="reunion-group__title">{g.nombre}</h3>
             <span className="reunion-group__count">
@@ -354,16 +364,27 @@ function VistaReunion({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: numb
           <div className="panel-card">
             {g.items.map((a) => (
               <div key={a.id} className="reunion-row" onClick={() => onAbrir(a.id)}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', flex: 'none', background: EST[a.estado].dot }} />
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    flex: 'none',
+                    background: EST[a.estado].dot,
+                    boxShadow: `0 0 8px ${EST[a.estado].dot}`,
+                  }}
+                />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 500 }}>{a.accion}</div>
-                  <div className="tema-label" style={{ fontSize: 11, marginTop: 3, display: 'block' }}>
+                  <div className="tema-label" style={{ fontSize: 10.5, marginTop: 3, display: 'block' }}>
                     {a.tema ?? 'Sin tema'}
                   </div>
                 </div>
-                <span style={{ width: 160, fontSize: 12.5, color: 'var(--text-secondary)' }}>{a.responsable.nombre}</span>
-                <span style={{ width: 120, fontSize: 12.5, fontWeight: 500 }}>{fmtF(a.fecha_compromiso)}</span>
-                <span style={{ width: 110, fontSize: 12, fontWeight: 600, color: EST[a.estado].color }}>
+                <span style={{ width: 160, fontSize: 12.5, color: 'var(--text2)' }}>{a.responsable.nombre}</span>
+                <span style={{ width: 110, fontFamily: 'var(--font-display)', fontSize: 12.5, fontWeight: 600 }}>
+                  {fmtF(a.fecha_compromiso)}
+                </span>
+                <span style={{ width: 100, fontSize: 12, fontWeight: 600, color: EST[a.estado].color }}>
                   {EST[a.estado].label}
                 </span>
               </div>
@@ -381,9 +402,6 @@ interface GanttRow {
   gLeft: string;
   gWidth: string;
   gBg: string;
-  gVencido: boolean;
-  gOverLeft: string;
-  gOverWidth: string;
   gDiaLeft: string;
   gLabelLeft: string;
   gTitle: string;
@@ -427,9 +445,6 @@ function VistaGantt({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: number
         gLeft: `${left.toFixed(2)}%`,
         gWidth: `${Math.max(right - left, 1.2).toFixed(2)}%`,
         gBg: EST[a.estado].dot,
-        gVencido: venc,
-        gOverLeft: `${right.toFixed(2)}%`,
-        gOverWidth: `${Math.max(hoyPct - right, 0).toFixed(2)}%`,
         gDiaLeft: `${right.toFixed(2)}%`,
         gLabelLeft: `${(labelAt + 1.2).toFixed(2)}%`,
         gTitle: `${a.accion} · ${a.responsable.nombre} · compromiso: ${fmtF(a.fecha_compromiso)} · ${EST[a.estado].label}`,
@@ -456,28 +471,33 @@ function VistaGantt({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: number
     );
   }
 
-  const rayado = 'repeating-linear-gradient(45deg,#fdecea,#fdecea 4px,#f0a8a0 4px,#f0a8a0 8px)';
   const leyenda: Array<[string, string]> = [
-    ['#8b3093', 'En proceso'],
-    ['#c0392b', 'Vencido'],
-    ['#2e7d50', 'Concluido'],
+    ['var(--blue)', 'En proceso'],
+    ['var(--red)', 'Vencido'],
+    ['var(--teal)', 'Concluido'],
   ];
 
+  const thEyebrow = {
+    fontFamily: 'var(--font-display)',
+    fontSize: 10.5,
+    fontWeight: 600,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '.12em',
+  };
+
   return (
-    <div className="panel-card" style={{ overflowX: 'auto' }}>
+    <div className="panel-card anim-in anim-in--2" style={{ overflowX: 'auto' }}>
       <div style={{ minWidth: 980 }}>
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-default)', background: 'var(--pj-neutral-50)' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
           <div
             style={{
+              ...thEyebrow,
               width: 300,
               flex: 'none',
-              padding: '11px 16px',
-              fontSize: 10.5,
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '.12em',
-              color: 'var(--text-muted)',
-              borderRight: '1px solid var(--border-default)',
+              padding: '11px 18px',
+              color: 'var(--muted)',
+              borderRight: '1px solid var(--border)',
+              boxSizing: 'border-box',
             }}
           >
             Acuerdo
@@ -493,7 +513,7 @@ function VistaGantt({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: number
                   left: w.left,
                   fontSize: 10,
                   fontWeight: 600,
-                  color: 'var(--text-muted)',
+                  color: 'var(--muted)',
                   paddingLeft: 5,
                 }}
               >
@@ -506,15 +526,17 @@ function VistaGantt({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: number
                 top: '50%',
                 transform: 'translate(-50%,-50%)',
                 left: gHoyLeft,
+                fontFamily: 'var(--font-display)',
                 fontSize: 9.5,
                 fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '.08em',
-                background: 'var(--pj-lime-400)',
-                color: 'var(--pj-purple-700)',
-                padding: '3px 9px',
+                background: 'var(--teal)',
+                color: 'var(--on-teal)',
+                padding: '3px 10px',
                 borderRadius: 999,
                 zIndex: 3,
+                boxShadow: '0 0 14px rgba(47,191,165,.4)',
               }}
             >
               Hoy
@@ -522,32 +544,30 @@ function VistaGantt({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: number
           </div>
         </div>
         <div style={{ position: 'relative' }}>
-          <div style={{ position: 'absolute', left: 300, right: 0, top: 0, bottom: 0, pointerEvents: 'none' }}>
-            {gWeeks.map((w) => (
-              <div
-                key={w.left}
-                style={{ position: 'absolute', top: 0, bottom: 0, width: 1, background: 'var(--pj-neutral-100)', left: w.left }}
-              />
-            ))}
-          </div>
           {gGrupos.map((g) => (
             <div key={g.label}>
-              <div style={{ display: 'flex', alignItems: 'center', background: 'var(--pj-purple-50)', borderTop: '1px solid var(--pj-neutral-100)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'rgba(47,191,165,.05)',
+                  borderTop: '1px solid var(--border-subtle)',
+                }}
+              >
                 <div
                   style={{
+                    ...thEyebrow,
                     width: 300,
                     flex: 'none',
-                    padding: '7px 16px',
-                    fontSize: 10.5,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '.12em',
-                    color: 'var(--text-brand)',
+                    padding: '7px 18px',
+                    letterSpacing: '.1em',
+                    color: 'var(--teal)',
+                    boxSizing: 'border-box',
                   }}
                 >
                   {g.label}
                 </div>
-                <div style={{ flex: 1, fontSize: 10.5, color: 'var(--pj-purple-300)' }}>{g.n}</div>
+                <div style={{ flex: 1, fontSize: 10.5, color: 'var(--faint)' }}>{g.n}</div>
               </div>
               {g.items.map((r) => (
                 <div key={r.a.id} className="gantt-row" title={r.gTitle} onClick={() => onAbrir(r.a.id)}>
@@ -555,12 +575,13 @@ function VistaGantt({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: number
                     style={{
                       width: 300,
                       flex: 'none',
-                      padding: '0 16px',
+                      padding: '0 18px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 9,
                       minWidth: 0,
-                      borderRight: '1px solid var(--pj-neutral-100)',
+                      borderRight: '1px solid var(--border-subtle)',
+                      boxSizing: 'border-box',
                     }}
                   >
                     <span style={{ width: 8, height: 8, borderRadius: '50%', flex: 'none', background: EST[r.a.estado].dot }} />
@@ -581,32 +602,20 @@ function VistaGantt({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: number
                   </div>
                   <div style={{ flex: 1, position: 'relative' }}>
                     <div
+                      className="gantt-bar"
                       style={{
                         position: 'absolute',
                         top: '50%',
                         transform: 'translateY(-50%)',
-                        height: 14,
+                        height: 12,
                         borderRadius: 999,
                         left: r.gLeft,
                         width: r.gWidth,
                         background: r.gBg,
-                        opacity: 0.9,
+                        opacity: 0.75,
+                        boxShadow: `0 0 10px ${r.gBg}`,
                       }}
                     />
-                    {r.gVencido && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          height: 14,
-                          borderRadius: '0 999px 999px 0',
-                          left: r.gOverLeft,
-                          width: r.gOverWidth,
-                          background: rayado,
-                        }}
-                      />
-                    )}
                     <div
                       style={{
                         position: 'absolute',
@@ -616,7 +625,7 @@ function VistaGantt({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: number
                         transform: 'translate(-50%,-50%) rotate(45deg)',
                         left: r.gDiaLeft,
                         background: r.gBg,
-                        border: '2px solid #ffffff',
+                        border: '2px solid var(--surface)',
                         boxShadow: `0 0 0 1.5px ${r.gBg}`,
                         zIndex: 2,
                       }}
@@ -629,7 +638,7 @@ function VistaGantt({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: number
                         left: r.gLabelLeft,
                         fontSize: 10.5,
                         fontWeight: 600,
-                        color: 'var(--text-muted)',
+                        color: 'var(--muted)',
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -641,7 +650,18 @@ function VistaGantt({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: number
             </div>
           ))}
           <div style={{ position: 'absolute', left: 300, right: 0, top: 0, bottom: 0, pointerEvents: 'none', zIndex: 2 }}>
-            <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--pj-lime-500)', left: gHoyLeft }} />
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                width: 2,
+                background: 'var(--teal)',
+                opacity: 0.6,
+                left: gHoyLeft,
+                boxShadow: '0 0 8px rgba(47,191,165,.5)',
+              }}
+            />
           </div>
         </div>
         <div
@@ -650,30 +670,22 @@ function VistaGantt({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: number
             alignItems: 'center',
             gap: 20,
             flexWrap: 'wrap',
-            padding: '13px 16px',
-            borderTop: '1px solid var(--border-default)',
-            background: 'var(--pj-neutral-50)',
+            padding: '13px 18px',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--surface2)',
           }}
         >
           {leyenda.map(([c, l]) => (
-            <span key={l} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--text-secondary)' }}>
+            <span key={l} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--text2)' }}>
               <span style={{ width: 22, height: 10, borderRadius: 999, background: c }} />
               {l}
             </span>
           ))}
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--text-secondary)' }}>
-            <span style={{ width: 22, height: 10, borderRadius: 2, background: rayado }} />
-            Días vencidos
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--text-secondary)' }}>
-            <span style={{ width: 8, height: 8, transform: 'rotate(45deg)', background: 'var(--pj-purple-700)' }} />
-            Fecha compromiso
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--text-secondary)' }}>
-            <span style={{ width: 2, height: 14, background: 'var(--pj-lime-500)' }} />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--text2)' }}>
+            <span style={{ width: 2, height: 14, background: 'var(--teal)' }} />
             Hoy
           </span>
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--muted)' }}>
             La barra va de la reunión donde se pactó el acuerdo a su fecha compromiso
           </span>
         </div>
@@ -753,10 +765,9 @@ function VistaCalendario({
       type="button"
       onClick={() => onAbrir(a.id)}
       title={`${a.accion} · ${a.responsable.nombre}`}
-      className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[11px] font-medium leading-tight hover:bg-pj-purple-50"
-      style={{ border: 'none', background: 'var(--pj-neutral-50)', cursor: 'pointer', color: 'var(--text-primary)' }}
+      className="cal-chip"
     >
-      <span style={{ width: 7, height: 7, borderRadius: '50%', flex: 'none', background: EST[a.estado].dot }} />
+      <span style={{ width: 6, height: 6, borderRadius: '50%', flex: 'none', background: EST[a.estado].dot }} />
       <span className="min-w-0 flex-1 truncate">{truncar(a.accion, 40)}</span>
     </button>
   );
@@ -778,9 +789,9 @@ function VistaCalendario({
         <span
           style={{
             fontFamily: 'var(--font-display)',
-            fontWeight: 500,
+            fontWeight: 600,
             fontSize: 17,
-            color: 'var(--text-brand)',
+            color: 'var(--text)',
             textTransform: 'capitalize',
           }}
         >
@@ -798,13 +809,20 @@ function VistaCalendario({
       )}
 
       {/* Rejilla mensual (≥640px) */}
-      <div className="panel-card hidden sm:block">
-        <div className="grid grid-cols-7" style={{ background: 'var(--pj-neutral-50)', borderBottom: '1px solid var(--border-default)' }}>
+      <div className="panel-card anim-in anim-in--1 hidden sm:block">
+        <div className="grid grid-cols-7" style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
           {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((d) => (
             <div
               key={d}
               className="px-2 py-2 text-center"
-              style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: 'var(--text-muted)' }}
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 10.5,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '.1em',
+                color: 'var(--muted)',
+              }}
             >
               {d}
             </div>
@@ -813,7 +831,7 @@ function VistaCalendario({
         <div className="grid grid-cols-7">
           {celdas.map((c, i) => {
             if (!c) {
-              return <div key={`v-${i}`} className="min-h-24" style={{ background: 'var(--pj-neutral-50)', borderTop: '1px solid var(--pj-neutral-100)', borderRight: '1px solid var(--pj-neutral-100)' }} />;
+              return <div key={`v-${i}`} className="min-h-24" style={{ background: 'var(--surface2)', borderTop: '1px solid var(--border-subtle)', borderRight: '1px solid var(--border-subtle)' }} />;
             }
             const acuerdos = porDia.get(c.fecha) ?? [];
             const esHoy = c.fecha === hoyIso;
@@ -824,17 +842,17 @@ function VistaCalendario({
                 key={c.fecha}
                 className="min-h-24 p-1.5"
                 style={{
-                  borderTop: '1px solid var(--pj-neutral-100)',
-                  borderRight: '1px solid var(--pj-neutral-100)',
-                  ...(esHoy ? { boxShadow: 'inset 0 0 0 2px var(--pj-lime-500)' } : {}),
+                  borderTop: '1px solid var(--border-subtle)',
+                  borderRight: '1px solid var(--border-subtle)',
+                  ...(esHoy ? { boxShadow: 'inset 0 0 0 1.5px var(--teal)' } : {}),
                 }}
               >
                 <div
                   className="mb-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold"
                   style={
                     esHoy
-                      ? { background: 'var(--pj-lime-400)', color: 'var(--pj-purple-700)' }
-                      : { color: 'var(--text-secondary)' }
+                      ? { background: 'var(--teal)', color: 'var(--on-teal)' }
+                      : { color: 'var(--text2)' }
                   }
                 >
                   {c.dia}
@@ -846,7 +864,7 @@ function VistaCalendario({
                       type="button"
                       onClick={() => toggleExpandir(c.fecha)}
                       className="text-left text-[10.5px] font-semibold"
-                      style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-brand)', padding: '2px 6px' }}
+                      style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--teal)', padding: '2px 6px' }}
                     >
                       {expandido ? 'Ver menos' : `+${acuerdos.length - 3} más`}
                     </button>
@@ -861,10 +879,10 @@ function VistaCalendario({
       {/* Lista agrupada por día (<640px) */}
       <div className="panel-card sm:hidden">
         {[...porDia.entries()].map(([fecha, acuerdos]) => (
-          <div key={fecha} style={{ borderTop: '1px solid var(--pj-neutral-100)', padding: '10px 14px' }}>
+          <div key={fecha} style={{ borderTop: '1px solid var(--border-subtle)', padding: '10px 14px' }}>
             <div
               className="detail-label"
-              style={{ marginBottom: 6, ...(fecha === hoyIso ? { color: 'var(--pj-purple-700)' } : {}) }}
+              style={{ marginBottom: 6, ...(fecha === hoyIso ? { color: 'var(--teal)' } : {}) }}
             >
               {fmtF(fecha)}
               {fecha === hoyIso ? ' · hoy' : ''}

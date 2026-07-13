@@ -119,29 +119,16 @@ export function Drawer({ id, onClose }: DrawerProps) {
         aria-label="Detalle del acuerdo"
         tabIndex={-1}
       >
-        <div style={{ background: 'var(--pj-purple-700)', padding: '22px 26px', position: 'relative', flex: 'none' }}>
+        <div className="drawer__head">
           <button type="button" className="drawer__close" onClick={onClose} aria-label="Cerrar">
             ✕
           </button>
-          <div
-            style={{
-              fontSize: 10.5,
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '.16em',
-              color: 'var(--pj-lime-400)',
-              marginBottom: 8,
-            }}
-          >
-            Detalle del acuerdo
-          </div>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 20, color: '#ffffff', lineHeight: 1.3 }}>
-            {sel ? sel.tema ?? 'Sin tema' : 'Cargando…'}
-          </div>
+          <div className="drawer__eyebrow">Detalle del acuerdo</div>
+          <div className="drawer__titulo">{sel ? sel.tema ?? 'Sin tema' : 'Cargando…'}</div>
         </div>
 
         {detalleQ.isError && (
-          <div style={{ padding: '24px 26px' }}>
+          <div style={{ padding: '26px 30px' }}>
             <div className="alert alert--error">
               <div className="alert__body">{mensajeError(detalleQ.error)}</div>
             </div>
@@ -149,7 +136,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
         )}
 
         {sel && (
-          <div style={{ padding: '24px 26px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ padding: '26px 30px', display: 'flex', flexDirection: 'column', gap: 22 }}>
             {(() => {
               const est = EST[sel.estado];
               const { rel, color: relColor } = vencimientoRelativo(sel.fecha_compromiso, sel.estado);
@@ -163,7 +150,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
 
             <div>
               <div className="detail-label">Acuerdo / acción</div>
-              <div style={{ fontSize: 14.5, fontWeight: 500, lineHeight: 1.55 }}>{sel.accion}</div>
+              <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.6 }}>{sel.accion}</div>
             </div>
 
             <div>
@@ -191,15 +178,16 @@ export function Drawer({ id, onClose }: DrawerProps) {
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 6,
-                        background: 'var(--pj-purple-100)',
-                        color: 'var(--pj-purple-700)',
+                        background: 'rgba(91,157,245,.14)',
+                        color: 'var(--blue)',
+                        border: '1px solid rgba(91,157,245,.25)',
                         borderRadius: 999,
                         padding: '3px 10px 3px 4px',
                         fontSize: 12,
                         fontWeight: 600,
                       }}
                     >
-                      <Avatar nombre={c.nombre} size="sm" />
+                      <Avatar nombre={c.nombre} size="sm" tono="blue" />
                       {c.nombre}
                     </span>
                   ))}
@@ -249,7 +237,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
               </div>
             </div>
 
-            <div style={{ borderTop: '1px solid var(--pj-neutral-100)', paddingTop: 18 }}>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20 }}>
               <div className="detail-label" style={{ marginBottom: 8 }}>
                 Recordatorios de este acuerdo
               </div>
@@ -266,16 +254,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
                     <span style={{ flex: 1, color: 'var(--text-secondary)' }}>
                       {tipoRecordatorioLabel(r.tipo, r.programado_para, sel.fecha_compromiso)}
                     </span>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 600,
-                        padding: '3px 9px',
-                        borderRadius: 999,
-                        background: c.bg,
-                        color: c.color,
-                      }}
-                    >
+                    <span className={c.className} style={{ fontSize: 10, padding: '3px 9px' }}>
                       {c.label}
                     </span>
                   </div>
@@ -288,23 +267,24 @@ export function Drawer({ id, onClose }: DrawerProps) {
               )}
             </div>
 
-            <div style={{ borderTop: '1px solid var(--pj-neutral-100)', paddingTop: 18 }}>
-              <div className="detail-label" style={{ marginBottom: 8 }}>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+              <div className="detail-label" style={{ marginBottom: 10 }}>
                 Historial de avances
               </div>
               {sel.avances.length === 0 && (
                 <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Aún no hay avances registrados.</div>
               )}
               {sel.avances.map((av) => (
-                <div key={av.id} style={{ padding: '9px 0', borderTop: '1px solid var(--pj-neutral-100)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                <div key={av.id} style={{ padding: '10px 0', borderTop: '1px solid var(--border-subtle)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span
                       style={{
+                        fontFamily: 'var(--font-display)',
                         fontSize: 10,
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         letterSpacing: '.08em',
-                        color: 'var(--text-brand)',
+                        color: 'var(--teal)',
                       }}
                     >
                       {TIPO_AVANCE_LABEL[av.tipo]}
@@ -326,8 +306,8 @@ export function Drawer({ id, onClose }: DrawerProps) {
             {sel.estado !== 'concluido' && (
               <form
                 style={{
-                  borderTop: '1px solid var(--pj-neutral-100)',
-                  paddingTop: 18,
+                  borderTop: '1px solid var(--border)',
+                  paddingTop: 20,
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 12,
@@ -384,11 +364,11 @@ export function Drawer({ id, onClose }: DrawerProps) {
             )}
 
             {esDireccion && (
-              <div style={{ borderTop: '1px solid var(--pj-neutral-100)', paddingTop: 18 }}>
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20 }}>
                 {sel.estado !== 'concluido' ? (
                   <button
                     type="button"
-                    className="btn btn--accent btn--md btn--full"
+                    className="btn btn--ghost-teal btn--md btn--full"
                     onClick={concluir}
                     disabled={concluirMut.isPending}
                   >

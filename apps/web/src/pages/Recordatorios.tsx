@@ -31,39 +31,26 @@ export function Recordatorios() {
     ? `avisos ${cfg.dias_antes.join(', ')} días antes${cfg.dia_compromiso ? ', otro el día del compromiso' : ''} y seguimiento cada ${cfg.vencido_cada_dias} días al vencer (máx. ${cfg.vencido_max_repeticiones})`
     : 'esquema global en carga…';
 
-  const fila = (r: RecordatorioVista, colorDia: string) => {
+  const fila = (r: RecordatorioVista, tile: 'proximo' | 'historial') => {
     const p = r.programado_para.split('-');
     const estadoChip = r.estado_envio ?? (r.enviado ? 'enviado' : 'programado');
     const c = chipEnvio(estadoChip);
     return (
       <div
         key={r.key}
-        style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px', borderTop: '1px solid var(--pj-neutral-100)' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderTop: '1px solid var(--border-subtle)' }}
       >
-        <div style={{ width: 48, flex: 'none', textAlign: 'center' }}>
-          <div style={{ fontSize: 17, fontWeight: 600, color: colorDia, lineHeight: 1.1 }}>{+p[2]}</div>
-          <div style={{ fontSize: 9.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: 'var(--text-muted)' }}>
-            {MESES[+p[1] - 1].slice(0, 3)}
-          </div>
+        <div className={`fecha-tile fecha-tile--${tile}`}>
+          <div className="fecha-tile__dia">{+p[2]}</div>
+          <div className="fecha-tile__mes">{MESES[+p[1] - 1].slice(0, 3)}</div>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--text-muted)', marginBottom: 3 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--muted)', marginBottom: 3 }}>
             {tipoRecordatorioLabel(r.tipo, r.programado_para, r.fecha_compromiso)} · a {nombreCorto(r.destinatario.nombre)}
           </div>
-          <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}>{truncar(r.accion, 70)}</div>
+          <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45 }}>{truncar(r.accion, 70)}</div>
         </div>
-        <span
-          title={r.error ?? undefined}
-          style={{
-            flex: 'none',
-            fontSize: 10.5,
-            fontWeight: 600,
-            padding: '4px 10px',
-            borderRadius: 999,
-            background: c.bg,
-            color: c.color,
-          }}
-        >
+        <span title={r.error ?? undefined} className={c.className}>
           {c.label}
         </span>
         <button type="button" className="btn btn--ghost btn--sm" onClick={() => setEmailRec(r)}>
@@ -75,7 +62,7 @@ export function Recordatorios() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
+      <div className="anim-in" style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
         <div style={{ flex: 1, minWidth: 300 }}>
           <div className="section-header__eyebrow">Automatización</div>
           <h2 className="section-header__title">Recordatorios</h2>
@@ -103,12 +90,12 @@ export function Recordatorios() {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
-        <div>
-          <h3 style={{ margin: '0 0 10px', fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 16, color: 'var(--text-brand)' }}>
+        <div className="anim-in anim-in--1">
+          <h3 style={{ margin: '0 0 10px', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, color: 'var(--text)' }}>
             Próximos envíos
           </h3>
           <div className="panel-card">
-            {(proximosQ.data ?? []).map((r) => fila(r, 'var(--pj-purple-700)'))}
+            {(proximosQ.data ?? []).map((r) => fila(r, 'proximo'))}
             {proximosQ.data?.length === 0 && (
               <div style={{ padding: 24, fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
                 No hay recordatorios programados.
@@ -119,12 +106,12 @@ export function Recordatorios() {
             )}
           </div>
         </div>
-        <div>
-          <h3 style={{ margin: '0 0 10px', fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 16, color: 'var(--text-brand)' }}>
+        <div className="anim-in anim-in--2">
+          <h3 style={{ margin: '0 0 10px', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, color: 'var(--text)' }}>
             Historial de envíos
           </h3>
           <div className="panel-card">
-            {(historialQ.data ?? []).map((r) => fila(r, 'var(--text-secondary)'))}
+            {(historialQ.data ?? []).map((r) => fila(r, 'historial'))}
             {historialQ.data?.length === 0 && (
               <div style={{ padding: 24, fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
                 Aún no se ha enviado ningún recordatorio.

@@ -32,23 +32,20 @@ export function ResumenModal({ onClose }: ResumenModalProps) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="overlay-backdrop" style={{ background: 'rgba(26,26,26,.5)', position: 'fixed' }} onClick={onClose} />
+      <div className="overlay-backdrop" style={{ position: 'fixed' }} onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Resumen periódico"
+        className="modal-card"
         style={{
-          position: 'relative',
           width: 680,
           maxWidth: '92vw',
           maxHeight: '86vh',
           overflowY: 'auto',
-          background: '#ffffff',
-          borderRadius: 12,
-          boxShadow: '0 24px 64px rgba(58,13,65,.35)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border-default)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: 'var(--text-muted)', marginBottom: 5 }}>
               Simulación del resumen periódico por correo
@@ -63,14 +60,14 @@ export function ResumenModal({ onClose }: ResumenModalProps) {
             ✕
           </button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 22px', borderBottom: '1px solid var(--pj-neutral-100)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 22px', borderBottom: '1px solid var(--border-subtle)' }}>
           <span
             style={{
               width: 36,
               height: 36,
               borderRadius: '50%',
-              background: 'var(--pj-purple-700)',
-              color: 'var(--pj-lime-400)',
+              background: 'var(--teal)',
+              color: 'var(--on-teal)',
               fontSize: 12,
               fontWeight: 700,
               display: 'inline-flex',
@@ -104,23 +101,23 @@ export function ResumenModal({ onClose }: ResumenModalProps) {
                 Este es el resumen de los acuerdos abiertos de {ambito}, por persona responsable.
               </p>
               <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 16, fontSize: 13 }}>
-                <span><strong style={{ color: '#53155a' }}>{r.en_proceso}</strong> en proceso</span>
-                <span><strong style={{ color: '#c0392b' }}>{r.vencidos}</strong> vencidos</span>
-                <span><strong style={{ color: '#b45309' }}>{r.por_vencer_7d}</strong> por vencer (≤7 días)</span>
-                <span><strong style={{ color: '#2e7d50' }}>{r.concluidos}</strong> concluidos</span>
+                <span><strong style={{ color: 'var(--blue)' }}>{r.en_proceso}</strong> en proceso</span>
+                <span><strong style={{ color: 'var(--red)' }}>{r.vencidos}</strong> vencidos</span>
+                <span><strong style={{ color: 'var(--amber)' }}>{r.por_vencer_7d}</strong> por vencer (≤7 días)</span>
+                <span><strong style={{ color: 'var(--teal)' }}>{r.concluidos}</strong> concluidos</span>
               </div>
               <div>
                 {r.por_responsable.map((p) => (
                   <div
                     key={p.responsable.id}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: '1px solid var(--pj-neutral-100)', fontSize: 13 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: '1px solid var(--border-subtle)', fontSize: 13 }}
                   >
                     <Avatar nombre={p.responsable.nombre} size="md" />
                     <span style={{ flex: 1, minWidth: 0, fontWeight: 500 }}>{p.responsable.nombre}</span>
-                    <span style={{ width: 110, flex: 'none', color: '#53155a', fontWeight: 600 }}>
+                    <span style={{ width: 110, flex: 'none', color: 'var(--blue)', fontWeight: 600 }}>
                       {p.en_proceso} en proceso
                     </span>
-                    <span style={{ width: 95, flex: 'none', color: p.vencidos > 0 ? '#c0392b' : 'var(--text-muted)', fontWeight: 600 }}>
+                    <span style={{ width: 95, flex: 'none', color: p.vencidos > 0 ? 'var(--red)' : 'var(--muted)', fontWeight: 600 }}>
                       {p.vencidos} {p.vencidos === 1 ? 'vencido' : 'vencidos'}
                     </span>
                     <span style={{ width: 110, flex: 'none', color: 'var(--text-secondary)' }}>

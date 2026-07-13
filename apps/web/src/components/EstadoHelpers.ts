@@ -15,9 +15,9 @@ export interface EstadoMeta {
 }
 
 export const EST: Record<EstadoAcuerdo, EstadoMeta> = {
-  en_proceso: { label: 'En proceso', variant: 'brand', color: '#53155a', dot: '#8b3093' },
-  vencido: { label: 'Vencido', variant: 'error', color: '#c0392b', dot: '#c0392b' },
-  concluido: { label: 'Concluido', variant: 'success', color: '#2e7d50', dot: '#2e7d50' },
+  en_proceso: { label: 'En proceso', variant: 'brand', color: 'var(--blue)', dot: 'var(--blue)' },
+  vencido: { label: 'Vencido', variant: 'error', color: 'var(--red)', dot: 'var(--red)' },
+  concluido: { label: 'Concluido', variant: 'success', color: 'var(--teal)', dot: 'var(--teal)' },
 };
 
 export const ROL_LABEL: Record<Rol, string> = {
@@ -32,14 +32,14 @@ export function vencimientoRelativo(
   fechaISO: string,
   estado: EstadoAcuerdo = 'en_proceso',
 ): { rel: string; color: string } {
-  if (estado === 'concluido') return { rel: 'Entregado', color: '#2e7d50' };
+  if (estado === 'concluido') return { rel: 'Entregado', color: 'var(--teal)' };
   const dd = diasDesdeHoy(fechaISO);
   if (dd < 0) {
-    return { rel: dd === -1 ? 'Venció ayer' : `Venció hace ${-dd} días`, color: '#c0392b' };
+    return { rel: dd === -1 ? 'Venció ayer' : `Venció hace ${-dd} días`, color: 'var(--red)' };
   }
-  if (dd === 0) return { rel: 'Vence hoy', color: '#b45309' };
-  if (dd === 1) return { rel: 'Vence mañana', color: '#b45309' };
-  return { rel: `Vence en ${dd} días`, color: '#737373' };
+  if (dd === 0) return { rel: 'Vence hoy', color: 'var(--amber)' };
+  if (dd === 1) return { rel: 'Vence mañana', color: 'var(--amber)' };
+  return { rel: `Vence en ${dd} días`, color: 'var(--muted)' };
 }
 
 export function iniciales(nombre: string): string {

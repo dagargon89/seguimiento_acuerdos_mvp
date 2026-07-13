@@ -163,14 +163,23 @@ export function Captura() {
     return (
       <div
         key={i}
-        className={`panel-card captura-bloque${invalido ? ' captura-bloque--invalido' : ''}`}
-        style={{ padding: '24px 28px', marginBottom: 16 }}
+        className={`panel-card captura-bloque anim-in${invalido ? ' captura-bloque--invalido' : ''}`}
+        style={{ padding: '26px 30px', marginBottom: 16 }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: 'var(--text-brand)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <span
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 11,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '.12em',
+              color: 'var(--teal)',
+            }}
+          >
             Acuerdo {i + 1} de {total}
           </span>
-          <div style={{ flex: 1, height: 1, background: 'var(--pj-neutral-100)' }} />
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
           {total > 1 && (
             <button type="button" className="captura-bloque__quitar" onClick={() => quitar(i)} title="Quitar este acuerdo">
               ✕ Quitar
@@ -468,8 +477,8 @@ export function Captura() {
   );
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 22 }}>
+    <div style={{ maxWidth: esHoja ? undefined : 820, margin: '0 auto' }}>
+      <div className="anim-in" style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
         <div style={{ flex: 1, minWidth: 300 }}>
           <div className="section-header__eyebrow">Formato de Reunión Operativa</div>
           <h2 className="section-header__title">Capturar acuerdos</h2>
@@ -504,9 +513,9 @@ export function Captura() {
         {esHoja ? '+ Agregar renglón' : '+ Agregar otro acuerdo'}
       </button>
 
-      <div className="panel-card" style={{ padding: '18px 28px', marginTop: 16 }}>
+      <div className="panel-card" style={{ padding: '18px 30px', marginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button type="button" className="btn btn--accent btn--md" onClick={guardar} disabled={guardarMut.isPending}>
+          <button type="button" className="btn btn--accent btn--glow btn--md" onClick={guardar} disabled={guardarMut.isPending}>
             {guardarMut.isPending ? 'Guardando…' : total === 1 ? 'Guardar acuerdo' : `Guardar ${total} acuerdos`}
           </button>
           <button type="button" className="btn btn--ghost btn--md" onClick={() => void navigate('/panel')}>

@@ -3,8 +3,8 @@
 | Campo | Valor |
 |---|---|
 | Documento | 05 — Especificación de API REST |
-| Versión | 1.4 — **CONGELADA** (2026-07-10, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). |
-| Fecha | 2026-07-10 |
+| Versión | 1.5 — **CONGELADA** (2026-07-13, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). |
+| Fecha | 2026-07-13 |
 | Depende de | 01_SRS, 02_arquitectura, 03_modelo_de_datos |
 
 ## 1. Convenciones
@@ -164,6 +164,7 @@
 | `POST /usuarios` | **Solo Dirección** | Alta: nombre, email, rol, area_id |
 | `PATCH /usuarios/{id}` | **Solo Dirección** | Editar / activar / desactivar (422 si es el último dirección activo) |
 | `GET /areas` | Todos | Catálogo de áreas activas (id, nombre, activa) |
+| `GET /areas?todas=1` | **Solo Dirección** | Catálogo completo, activas e inactivas (para la sección de administración; 403 en otro rol) |
 | `POST /areas` | **Solo Dirección** | Alta de área: `{ "nombre": "..." }` |
 | `PATCH /areas/{id}` | **Solo Dirección** | Editar nombre y/o activar/desactivar |
 
@@ -180,7 +181,7 @@
 // respuesta
 { "data": { "id": 3, "nombre": "Nuevo nombre", "activa": false } }
 ```
-*Seguridad:* `POST`/`PATCH /areas` solo Dirección (403 en otro rol); `nombre` requerido y único (422). Añadido en v1.2 (ADR-004).
+*Seguridad:* `POST`/`PATCH /areas` y `GET /areas?todas=1` solo Dirección (403 en otro rol); `nombre` requerido y único (422). Añadido en v1.2 (ADR-004); `?todas=1` en v1.5 (ADR-008).
 
 ### 2.7 Resumen
 
@@ -194,7 +195,7 @@
 
 ## 3. Interfaz del cliente (`lib/api.ts` — CONGELADA)
 
-> **CONGELADA (v1.4, 2026-07-10).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005). v1.4 añade `registrarme` (ADR-006).
+> **CONGELADA (v1.5, 2026-07-13).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005). v1.4 añade `registrarme` (ADR-006). v1.5 añade el parámetro `todas` a `listAreas` (ADR-008).
 
 ```typescript
 export interface ApiClient {
@@ -228,7 +229,7 @@ export interface ApiClient {
   listUsuarios(): Promise<Usuario[]>;
   crearUsuario(alta: AltaUsuario): Promise<Usuario>; // solo dirección
   editarUsuario(id: number, cambios: EdicionUsuario): Promise<Usuario>; // solo dirección
-  listAreas(): Promise<Area[]>;
+  listAreas(todas?: boolean): Promise<Area[]>; // todas=true incluye inactivas — solo dirección (ADR-008)
   crearArea(alta: AltaArea): Promise<Area>; // solo dirección
   editarArea(id: number, cambios: EdicionArea): Promise<Area>; // solo dirección
 }

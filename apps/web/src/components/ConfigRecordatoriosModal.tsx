@@ -76,23 +76,20 @@ export function ConfigRecordatoriosModal({ config, onClose }: ConfigRecordatorio
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="overlay-backdrop" style={{ background: 'rgba(26,26,26,.5)', position: 'fixed' }} onClick={onClose} />
+      <div className="overlay-backdrop" style={{ position: 'fixed' }} onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Configurar avisos"
+        className="modal-card"
         style={{
-          position: 'relative',
           width: 520,
           maxWidth: '92vw',
           maxHeight: '86vh',
           overflowY: 'auto',
-          background: '#ffffff',
-          borderRadius: 12,
-          boxShadow: '0 24px 64px rgba(58,13,65,.35)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border-default)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: 'var(--text-muted)', marginBottom: 5 }}>
               Configuración · solo Dirección

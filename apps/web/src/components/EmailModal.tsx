@@ -56,23 +56,20 @@ export function EmailModal({ rec, onClose }: EmailModalProps) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="overlay-backdrop" style={{ background: 'rgba(26,26,26,.5)', position: 'fixed' }} onClick={onClose} />
+      <div className="overlay-backdrop" style={{ position: 'fixed' }} onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Vista previa del correo"
+        className="modal-card"
         style={{
-          position: 'relative',
           width: 640,
           maxWidth: '92vw',
           maxHeight: '86vh',
           overflowY: 'auto',
-          background: '#ffffff',
-          borderRadius: 12,
-          boxShadow: '0 24px 64px rgba(58,13,65,.35)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border-default)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: 'var(--text-muted)', marginBottom: 5 }}>
               Simulación del correo que llegaría
@@ -83,14 +80,14 @@ export function EmailModal({ rec, onClose }: EmailModalProps) {
             ✕
           </button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 22px', borderBottom: '1px solid var(--pj-neutral-100)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 22px', borderBottom: '1px solid var(--border-subtle)' }}>
           <span
             style={{
               width: 36,
               height: 36,
               borderRadius: '50%',
-              background: 'var(--pj-purple-700)',
-              color: 'var(--pj-lime-400)',
+              background: 'var(--teal)',
+              color: 'var(--on-teal)',
               fontSize: 12,
               fontWeight: 700,
               display: 'inline-flex',
@@ -111,13 +108,19 @@ export function EmailModal({ rec, onClose }: EmailModalProps) {
           <div style={{ fontSize: 12, color: 'var(--text-muted)', flex: 'none' }}>{fmtF(rec.programado_para)} · 9:00</div>
         </div>
         <div style={{ padding: '0 0 26px' }}>
-          <div style={{ background: 'var(--pj-purple-700)', padding: '20px 26px' }}>
+          <div
+            style={{
+              background:
+                'linear-gradient(135deg, rgba(47,191,165,.14), rgba(91,157,245,.08)), var(--sidebar-bg)',
+              padding: '20px 26px',
+            }}
+          >
             <img
               src="/assets/logo-horizontal-white.png"
               alt="Participa Juárez"
               style={{ height: 26, display: 'block', marginBottom: 12 }}
             />
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 19, color: '#ffffff' }}>{titulo}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 19, color: '#e9ecf2' }}>{titulo}</div>
           </div>
           <div style={{ padding: '22px 26px 0' }}>
             <p style={{ margin: '0 0 12px', fontSize: 14 }}>Hola, {nombreCorto(rec.destinatario.nombre)}:</p>
@@ -125,8 +128,8 @@ export function EmailModal({ rec, onClose }: EmailModalProps) {
             {rec.acuerdo_id !== null && (
               <div
                 style={{
-                  background: 'var(--pj-neutral-50)',
-                  border: '1px solid var(--border-default)',
+                  background: 'var(--surface2)',
+                  border: '1px solid var(--border)',
                   borderRadius: 10,
                   padding: '16px 18px',
                   display: 'flex',
@@ -155,12 +158,12 @@ export function EmailModal({ rec, onClose }: EmailModalProps) {
               <span
                 style={{
                   display: 'inline-block',
-                  background: 'var(--pj-lime-400)',
-                  color: 'var(--pj-purple-700)',
+                  background: 'var(--teal)',
+                  color: 'var(--on-teal)',
                   fontWeight: 600,
                   fontSize: 13.5,
                   padding: '11px 26px',
-                  borderRadius: 999,
+                  borderRadius: 10,
                 }}
               >
                 Abrir panel de seguimiento

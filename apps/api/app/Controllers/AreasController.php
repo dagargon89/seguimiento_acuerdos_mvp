@@ -10,9 +10,11 @@ use Config\Database;
 
 /**
  * GET /areas (doc 05 §2.6) — catálogo de áreas activas, visible para cualquier
- * usuario autenticado. POST/PATCH /areas (ADR-004, contrato v1.2, Tarea 7 /
- * S1.6) — **solo Dirección**: alta con `nombre` requerido y único; edición del
- * nombre (único) y/o `activa`.
+ * usuario autenticado; con `?todas=1` (contrato v1.5, ADR-008) **solo Dirección** recibe
+ * también las inactivas (para reactivarlas desde la sección de administración).
+ * POST/PATCH /areas (ADR-004, contrato v1.2, Tarea 7 / S1.6) — **solo
+ * Dirección**: alta con `nombre` requerido y único; edición del nombre (único)
+ * y/o `activa`.
  */
 class AreasController extends BaseController
 {
@@ -21,7 +23,19 @@ class AreasController extends BaseController
 
     public function index(): ResponseInterface
     {
-        $filas = (new AreaModel())->where('activa', 1)->orderBy('nombre', 'ASC')->findAll();
+        $incluirInactivas = $this->request->getGet('todas') === '1';
+        if ($incluirInactivas) {
+            $actor = service('usuarioActual')->obtener();
+            if ($actor['rol'] !== 'direccion') {
+                return $this->sinPermiso('Solo Dirección puede consultar las áreas inactivas.');
+            }
+        }
+
+        $model = new AreaModel();
+        if (! $incluirInactivas) {
+            $model->where('activa', 1);
+        }
+        $filas = $model->orderBy('nombre', 'ASC')->findAll();
 
         $data = array_map(static fn (array $f) => Area::desdeFila($f)->aArray(), $filas);
 

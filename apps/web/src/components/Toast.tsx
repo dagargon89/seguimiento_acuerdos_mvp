@@ -46,33 +46,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div
-        aria-live="polite"
-        role="status"
-        style={{
-          position: 'fixed',
-          bottom: 20,
-          right: 20,
-          zIndex: 200,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
-          width: 380,
-          maxWidth: '90vw',
-        }}
-      >
+      <div aria-live="polite" role="status" className="toast-stack">
         {items.map((t) => (
-          <div key={t.id} className={`alert alert--${t.tipo}`} style={{ boxShadow: 'var(--shadow-lg)' }}>
-            <div className="alert__body">
-              {t.titulo ? <div className="alert__title">{t.titulo}</div> : null}
+          <div key={t.id} className={`toast toast--${t.tipo}`}>
+            <span>
+              {t.titulo ? <strong>{t.titulo} · </strong> : null}
               {t.texto}
-            </div>
-            <button
-              type="button"
-              className="alert__close"
-              aria-label="Cerrar"
-              onClick={() => quitar(t.id)}
-            >
+            </span>
+            <button type="button" className="toast__close" aria-label="Cerrar" onClick={() => quitar(t.id)}>
               ✕
             </button>
           </div>

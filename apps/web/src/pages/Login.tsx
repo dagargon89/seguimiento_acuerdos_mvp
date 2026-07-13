@@ -205,7 +205,7 @@ function LoginReal({
             disabled={entrando}
           />
         </div>
-        <button type="submit" className="btn btn--ghost btn--full btn--md" disabled={entrando}>
+        <button type="submit" className="btn btn--ghost-teal btn--full btn--md" disabled={entrando}>
           {entrando ? 'Entrando…' : 'Entrar con correo'}
         </button>
       </form>

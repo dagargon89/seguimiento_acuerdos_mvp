@@ -37,8 +37,8 @@ export function Checklist() {
   const items = checklistQ.data ?? [];
 
   return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
+    <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+      <div className="anim-in" style={{ marginBottom: 28 }}>
         <div className="section-header__eyebrow">Validación de acuerdos · solo Dirección</div>
         <h2 className="section-header__title">Checklist de validación</h2>
         <p className="section-header__subtitle">
@@ -53,22 +53,32 @@ export function Checklist() {
         </div>
       )}
 
-      <div className="panel-card">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {items.map(({ acuerdo: a, total_avances, ultimo_avance }) => {
           const { rel, color } = vencimientoRelativo(a.fecha_compromiso, a.estado);
           const esVencido = a.estado === 'vencido';
           return (
             <div
               key={a.id}
+              className="anim-in"
               style={{
-                borderTop: '1px solid var(--pj-neutral-100)',
-                padding: '14px 18px',
-                background: esVencido ? 'var(--status-error-bg)' : undefined,
+                background: 'var(--surface)',
+                border: `1px solid ${esVencido ? 'rgba(240,101,74,.35)' : 'var(--border)'}`,
+                borderRadius: 14,
+                padding: '20px 24px',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
                 <span
-                  style={{ width: 8, height: 8, borderRadius: '50%', flex: 'none', marginTop: 6, background: EST[a.estado].dot }}
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: '50%',
+                    flex: 'none',
+                    marginTop: 7,
+                    background: EST[a.estado].dot,
+                    boxShadow: `0 0 8px ${EST[a.estado].dot}`,
+                  }}
                 />
                 <div
                   style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
@@ -79,17 +89,19 @@ export function Checklist() {
                     if (e.key === 'Enter') setSelId(a.id);
                   }}
                 >
-                  <div className="tema-label" style={{ display: 'block', marginBottom: 3 }}>
+                  <div className="tema-label" style={{ display: 'block', marginBottom: 4 }}>
                     {a.tema ?? 'Sin tema'}
                   </div>
-                  <div style={{ fontSize: 13.5, fontWeight: 500, lineHeight: 1.45 }}>{a.accion}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>{a.accion}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 8, flexWrap: 'wrap' }}>
                     <Avatar nombre={a.responsable.nombre} size="sm" />
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{a.responsable.nombre}</span>
+                    <span style={{ fontSize: 12.5, color: 'var(--text2)' }}>{a.responsable.nombre}</span>
                     {a.corresponsables.map((c) => (
-                      <Avatar key={c.id} nombre={c.nombre} size="sm" title={`Corresponsable: ${c.nombre}`} />
+                      <Avatar key={c.id} nombre={c.nombre} size="sm" tono="blue" title={`Corresponsable: ${c.nombre}`} />
                     ))}
-                    <span style={{ fontSize: 12, fontWeight: 500 }}>· {fmtF(a.fecha_compromiso)}</span>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 12.5, fontWeight: 600 }}>
+                      · {fmtF(a.fecha_compromiso)}
+                    </span>
                     <span style={{ fontSize: 12, fontWeight: 600, color }}>{rel}</span>
                     {a.enlace && (
                       <a
@@ -97,13 +109,13 @@ export function Checklist() {
                         target="_blank"
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-link)' }}
+                        style={{ fontSize: 12, fontWeight: 600, color: 'var(--teal)' }}
                       >
                         Producto ↗
                       </a>
                     )}
                   </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
                     {total_avances === 0
                       ? 'Sin avances registrados'
                       : `${total_avances} ${total_avances === 1 ? 'avance' : 'avances'} · último: ${truncar(ultimo_avance?.descripcion ?? '', 90)}`}
@@ -113,7 +125,8 @@ export function Checklist() {
                   {confirmando !== a.id && (
                     <button
                       type="button"
-                      className="btn btn--accent btn--sm"
+                      className="btn btn--accent"
+                      style={{ padding: '10px 18px', fontSize: 12.5 }}
                       onClick={() => {
                         setConfirmando(a.id);
                         setNota('');
@@ -128,10 +141,10 @@ export function Checklist() {
                 <div
                   style={{
                     marginTop: 12,
-                    marginLeft: 22,
+                    marginLeft: 25,
                     padding: '14px 16px',
-                    background: '#ffffff',
-                    border: '1px solid var(--border-default)',
+                    background: 'var(--surface2)',
+                    border: '1px solid var(--border)',
                     borderRadius: 10,
                     display: 'flex',
                     flexDirection: 'column',
@@ -170,12 +183,14 @@ export function Checklist() {
           );
         })}
         {items.length === 0 && !checklistQ.isLoading && (
-          <div style={{ padding: 28, fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
+          <div className="panel-card" style={{ padding: 28, fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
             No hay acuerdos pendientes de validar.
           </div>
         )}
         {checklistQ.isLoading && (
-          <div style={{ padding: 28, fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>Cargando…</div>
+          <div className="panel-card" style={{ padding: 28, fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
+            Cargando…
+          </div>
         )}
       </div>
 

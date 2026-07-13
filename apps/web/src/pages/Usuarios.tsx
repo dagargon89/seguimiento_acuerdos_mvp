@@ -141,8 +141,8 @@ export function Usuarios() {
   };
 
   return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
+    <div style={{ maxWidth: 920, margin: '0 auto' }}>
+      <div className="anim-in" style={{ marginBottom: 28 }}>
         <div className="section-header__eyebrow">Administración · solo Dirección</div>
         <h2 className="section-header__title">Usuarios y permisos</h2>
         <p className="section-header__subtitle">
@@ -157,7 +157,7 @@ export function Usuarios() {
         </div>
       )}
 
-      <div className="panel-card" style={{ marginBottom: 20 }}>
+      <div className="panel-card anim-in anim-in--1" style={{ marginBottom: 22 }}>
         <table className="acuerdos-table">
           <thead>
             <tr>
@@ -171,7 +171,7 @@ export function Usuarios() {
           </thead>
           <tbody>
             {usuariosOrdenados.map((u) => (
-              <tr key={u.id} style={{ cursor: 'default', opacity: u.activo ? 1 : 0.65 }}>
+              <tr key={u.id} style={{ cursor: 'default', opacity: u.activo ? 1 : 0.5 }}>
                 <td>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                     <Avatar nombre={u.nombre} size="md" />
@@ -266,8 +266,16 @@ export function Usuarios() {
         </div>
       )}
 
-      <div className="panel-card" style={{ padding: '24px 28px' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: 'var(--text-brand)', marginBottom: 16 }}>
+      <div className="panel-card anim-in anim-in--2" style={{ padding: '26px 30px' }}>
+        <div
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontWeight: 600,
+            fontSize: 16,
+            color: 'var(--text)',
+            marginBottom: 18,
+          }}
+        >
           Dar de alta a una persona
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>

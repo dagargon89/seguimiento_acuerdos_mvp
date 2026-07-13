@@ -356,4 +356,37 @@ final class AdminUsuariosAreasTest extends CIUnitTestCase
         $r = $this->como('responsable.uno@demo.test')->patch('api/v1/areas/1', ['nombre' => 'Intento']);
         $r->assertStatus(403);
     }
+
+    // ── AR-05: GET /areas?todas=1 (contrato v1.5, ADR-008) — solo Dirección ve inactivas ──
+
+    public function testAR05TodasIncluyeInactivasParaDireccion(): void
+    {
+        $this->como('direccion@demo.test')->patch('api/v1/areas/2', ['activa' => false]);
+
+        $r = $this->como('direccion@demo.test')->get('api/v1/areas?todas=1');
+        $r->assertStatus(200);
+
+        $data = $this->cuerpo($r)['data'];
+        $porId = array_column($data, null, 'id');
+        $this->assertArrayHasKey(2, $porId);
+        $this->assertFalse($porId[2]['activa']);
+        $this->assertTrue($porId[1]['activa']);
+    }
+
+    public function testAR05TodasNoDireccionEs403(): void
+    {
+        $r = $this->como('responsable.uno@demo.test')->get('api/v1/areas?todas=1');
+        $r->assertStatus(403);
+        $this->assertSame('sin_permiso', $this->cuerpo($r)['error']);
+    }
+
+    public function testAR05SinParametroSigueListandoSoloActivas(): void
+    {
+        $this->como('direccion@demo.test')->patch('api/v1/areas/2', ['activa' => false]);
+
+        $r = $this->como('responsable.uno@demo.test')->get('api/v1/areas');
+        $r->assertStatus(200);
+        $ids = array_map(static fn (array $a) => $a['id'], $this->cuerpo($r)['data']);
+        $this->assertNotContains(2, $ids);
+    }
 }

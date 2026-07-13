@@ -23,13 +23,12 @@ export function tipoRecordatorioLabel(
 
 export interface ChipEnvio {
   label: string;
-  bg: string;
-  color: string;
+  className: string;
 }
 
-/** Chip Enviado/Programado/Fallido (colores 1:1 con el demo + fallido en rojo). */
+/** Chip Enviado/Programado/Fallido (paleta Cívica Nocturna vía .chip-envio--*). */
 export function chipEnvio(estado: 'programado' | 'enviado' | 'fallido'): ChipEnvio {
-  if (estado === 'enviado') return { label: 'Enviado', bg: '#e8f5ee', color: '#2e7d50' };
-  if (estado === 'fallido') return { label: 'Fallido', bg: '#fdecea', color: '#c0392b' };
-  return { label: 'Programado', bg: '#f3e8f4', color: '#53155a' };
+  if (estado === 'enviado') return { label: 'Enviado', className: 'chip-envio chip-envio--enviado' };
+  if (estado === 'fallido') return { label: 'Fallido', className: 'chip-envio chip-envio--fallido' };
+  return { label: 'Programado', className: 'chip-envio chip-envio--programado' };
 }

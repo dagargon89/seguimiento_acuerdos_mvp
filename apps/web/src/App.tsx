@@ -12,11 +12,14 @@ import { fmtL, hoyISO } from './lib/fechas';
 import { mensajeError, ROL_LABEL, statusError } from './components/EstadoHelpers';
 import { Avatar } from './components/Avatar';
 import {
+  IconoAreas,
   IconoCaptura,
   IconoChecklist,
   IconoColapsar,
+  IconoLuna,
   IconoPanel,
   IconoRecordatorios,
+  IconoSol,
   IconoUsuarios,
 } from './components/Iconos';
 import { SessionContext } from './components/SessionContext';
@@ -28,7 +31,15 @@ import { Captura } from './pages/Captura';
 import { Recordatorios } from './pages/Recordatorios';
 import { Checklist } from './pages/Checklist';
 import { Usuarios } from './pages/Usuarios';
+import { Areas } from './pages/Areas';
 import { Perfil } from './pages/Perfil';
+
+// Cableado del ID token de Firebase (ADR-002) a nivel de módulo: queda listo
+// ANTES de que cualquier query se dispare, y se vuelve a aplicar cuando Vite
+// recarga en caliente `api.real.ts` (el HMR resetea el estado del módulo; si
+// esto viviera en un useEffect, no se re-ejecutaría y toda petición fallaría
+// con "Configura el proveedor de token…").
+setTokenProvider(async () => (await auth.currentUser?.getIdToken()) ?? '');
 
 export default function App() {
   return (
@@ -38,10 +49,27 @@ export default function App() {
   );
 }
 
+/** Tema Cívica Nocturna: oscuro por defecto, variante clara persistida (1:1 con el prototipo). */
+const TEMA_KEY = 'pj-tema';
+type Tema = 'dark' | 'light';
+
+function useTema(): { tema: Tema; alternarTema: () => void } {
+  const [tema, setTema] = useState<Tema>(() => (localStorage.getItem(TEMA_KEY) === 'light' ? 'light' : 'dark'));
+
+  useEffect(() => {
+    document.body.classList.toggle('light', tema === 'light');
+    localStorage.setItem(TEMA_KEY, tema);
+  }, [tema]);
+
+  const alternarTema = useMemo(() => () => setTema((t) => (t === 'dark' ? 'light' : 'dark')), []);
+  return { tema, alternarTema };
+}
+
 function AppContent() {
   const [sesion, setSesion] = useState<Sesion | null>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
   const [errorAcceso, setErrorAcceso] = useState<string | null>(null);
+  const { tema, alternarTema } = useTema();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -54,10 +82,8 @@ function AppContent() {
     [queryClient],
   );
 
-  // Cableado de Firebase Auth (ADR-002).
+  // Resolución de la sesión con el backend al cambiar el estado de Firebase Auth (ADR-002).
   useEffect(() => {
-    setTokenProvider(async () => (await auth.currentUser?.getIdToken()) ?? '');
-
     const unsubscribe = onAuthStateChanged(auth, (usuarioFirebase) => {
       if (!usuarioFirebase) {
         setSesion(null);
@@ -103,7 +129,7 @@ function AppContent() {
         sesion.usuario.rol === 'pendiente' ? (
           <PendienteAprobacion onLogout={contexto.logout} />
         ) : (
-          <Shell sesion={sesion} onLogout={contexto.logout} />
+          <Shell sesion={sesion} tema={tema} onAlternarTema={alternarTema} onLogout={contexto.logout} />
         )
       ) : (
         <Login errorAcceso={errorAcceso} onLoginGoogle={loginGoogle} onLoginEmailPassword={loginEmailPassword} />
@@ -188,11 +214,22 @@ const NAV_GENERAL = [
 const NAV_ADMIN = [
   { to: '/checklist', label: 'Checklist', Icono: IconoChecklist },
   { to: '/usuarios', label: 'Usuarios', Icono: IconoUsuarios },
+  { to: '/areas', label: 'Áreas', Icono: IconoAreas },
 ];
 
 const COLAPSADO_KEY = 'pj-sidebar-colapsado';
 
-function Shell({ sesion, onLogout }: { sesion: Sesion; onLogout: () => void }) {
+function Shell({
+  sesion,
+  tema,
+  onAlternarTema,
+  onLogout,
+}: {
+  sesion: Sesion;
+  tema: Tema;
+  onAlternarTema: () => void;
+  onLogout: () => void;
+}) {
   const u = sesion.usuario;
   const esDireccion = u.rol === 'direccion';
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -256,6 +293,11 @@ function Shell({ sesion, onLogout }: { sesion: Sesion; onLogout: () => void }) {
           )}
         </nav>
 
+        <div className="sidebar__hoy">
+          <div className="sidebar__hoy-label">Hoy</div>
+          <div className="sidebar__hoy-fecha">{fmtL(hoyISO())}</div>
+        </div>
+
         <button
           type="button"
           className="sidebar__colapsar"
@@ -281,7 +323,15 @@ function Shell({ sesion, onLogout }: { sesion: Sesion; onLogout: () => void }) {
           </button>
           <div className="topbar__title">Panel de seguimiento de acuerdos</div>
           <div className="topbar__right">
-            <div className="topbar__date">Hoy · {fmtL(hoyISO())}</div>
+            <button
+              type="button"
+              className="tema-btn"
+              onClick={onAlternarTema}
+              title={tema === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
+              aria-label={tema === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
+            >
+              {tema === 'light' ? <IconoLuna /> : <IconoSol />}
+            </button>
             <MenuUsuario nombre={u.nombre} rolLabel={ROL_LABEL[u.rol]} onLogout={onLogout} />
           </div>
         </header>
@@ -293,6 +343,7 @@ function Shell({ sesion, onLogout }: { sesion: Sesion; onLogout: () => void }) {
             <Route path="/recordatorios" element={<Recordatorios />} />
             <Route path="/checklist" element={esDireccion ? <Checklist /> : <Navigate to="/panel" replace />} />
             <Route path="/usuarios" element={esDireccion ? <Usuarios /> : <Navigate to="/panel" replace />} />
+            <Route path="/areas" element={esDireccion ? <Areas /> : <Navigate to="/panel" replace />} />
             <Route path="/perfil" element={<Perfil />} />
             <Route path="*" element={<Navigate to="/panel" replace />} />
           </Routes>

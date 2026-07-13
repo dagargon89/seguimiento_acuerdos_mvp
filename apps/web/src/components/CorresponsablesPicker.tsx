@@ -44,15 +44,16 @@ export function CorresponsablesPicker({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                background: 'var(--pj-purple-100)',
-                color: 'var(--pj-purple-700)',
+                background: 'rgba(91,157,245,.14)',
+                color: 'var(--blue)',
+                border: '1px solid rgba(91,157,245,.25)',
                 borderRadius: 999,
                 padding: compacto ? '2px 8px 2px 3px' : '3px 10px 3px 4px',
                 fontSize: compacto ? 11 : 12,
                 fontWeight: 600,
               }}
             >
-              <Avatar nombre={u.nombre} size="sm" />
+              <Avatar nombre={u.nombre} size="sm" tono="blue" />
               {u.nombre}
               <button
                 type="button"

@@ -64,6 +64,17 @@ export function IconoChecklist(props: IconoProps) {
   );
 }
 
+/** Áreas: capas apiladas (catálogo organizacional). */
+export function IconoAreas(props: IconoProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="m12 3 9 5-9 5-9-5z" />
+      <path d="m3.5 12.5 8.5 4.7 8.5-4.7" />
+      <path d="m3.5 16.5 8.5 4.7 8.5-4.7" />
+    </svg>
+  );
+}
+
 /** Usuarios: dos personas. */
 export function IconoUsuarios(props: IconoProps) {
   return (
@@ -71,6 +82,25 @@ export function IconoUsuarios(props: IconoProps) {
       <circle cx="9" cy="8.5" r="3.5" />
       <path d="M3.5 20c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
       <path d="M16 5.6a3.5 3.5 0 0 1 0 5.8M17.5 15.4c1.8.8 3 2.4 3 4.6" />
+    </svg>
+  );
+}
+
+/** Tema claro: sol (se muestra en modo oscuro para cambiar a claro). */
+export function IconoSol(props: IconoProps) {
+  return (
+    <svg {...base({ size: 16, ...props })}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </svg>
+  );
+}
+
+/** Tema oscuro: luna (se muestra en modo claro para cambiar a oscuro). */
+export function IconoLuna(props: IconoProps) {
+  return (
+    <svg {...base({ size: 16, ...props })}>
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
     </svg>
   );
 }

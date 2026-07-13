@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib';
 import { ROL_LABEL, camposError, mensajeError } from '../components/EstadoHelpers';
+import { Avatar } from '../components/Avatar';
 import { useSesion } from '../components/SessionContext';
 import { useToast } from '../components/Toast';
 import { cambiarPassword, proveedorEsPassword } from '../lib/firebase';
@@ -88,21 +89,33 @@ export function Perfil() {
   if (!usuario) return null;
 
   return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
-        <div className="section-header__eyebrow">Mi cuenta</div>
-        <h2 className="section-header__title">Perfil</h2>
-        <p className="section-header__subtitle">Consulta tus datos y administra tu acceso al panel.</p>
+    <div style={{ maxWidth: 640, margin: '0 auto' }}>
+      <div className="anim-in" style={{ marginBottom: 28 }}>
+        <div className="section-header__eyebrow">Tu cuenta</div>
+        <h2 className="section-header__title">Mi perfil</h2>
       </div>
 
-      <div className="panel-card" style={{ padding: '24px 28px', marginBottom: 20 }}>
+      <div className="panel-card anim-in anim-in--1" style={{ padding: '26px 30px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 22 }}>
+          <Avatar nombre={usuario.nombre} size="xl" />
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>{usuario.nombre}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{usuario.email}</div>
+          </div>
+          <span className={`rol-chip rol-chip--${usuario.rol}`} style={{ marginLeft: 'auto' }}>
+            {ROL_LABEL[usuario.rol]}
+          </span>
+        </div>
+
         <div
           style={{
-            fontSize: 11,
+            fontSize: 10.5,
             fontWeight: 600,
             textTransform: 'uppercase',
-            letterSpacing: '.14em',
-            color: 'var(--text-brand)',
+            letterSpacing: '.1em',
+            color: 'var(--muted)',
+            borderTop: '1px solid var(--border)',
+            paddingTop: 20,
             marginBottom: 16,
           }}
         >
@@ -157,14 +170,14 @@ export function Perfil() {
         </div>
       </div>
 
-      <div className="panel-card" style={{ padding: '24px 28px' }}>
+      <div className="panel-card anim-in anim-in--2" style={{ padding: '26px 30px' }}>
         <div
           style={{
-            fontSize: 11,
+            fontSize: 10.5,
             fontWeight: 600,
             textTransform: 'uppercase',
-            letterSpacing: '.14em',
-            color: 'var(--text-brand)',
+            letterSpacing: '.1em',
+            color: 'var(--muted)',
             marginBottom: 16,
           }}
         >

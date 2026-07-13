@@ -86,7 +86,8 @@ export const realClient: ApiClient = {
   crearUsuario: async (alta: AltaUsuario) => (await req<{ data: Usuario }>('POST', '/usuarios', alta)).data,
   editarUsuario: async (id, cambios: EdicionUsuario) =>
     (await req<{ data: Usuario }>('PATCH', `/usuarios/${id}`, cambios)).data,
-  listAreas: async () => (await req<{ data: Area[] }>('GET', '/areas')).data,
+  listAreas: async (todas = false) =>
+    (await req<{ data: Area[] }>('GET', todas ? '/areas?todas=1' : '/areas')).data,
   crearArea: async (alta: AltaArea) => (await req<{ data: Area }>('POST', '/areas', alta)).data,
   editarArea: async (id, cambios: EdicionArea) =>
     (await req<{ data: Area }>('PATCH', `/areas/${id}`, cambios)).data,

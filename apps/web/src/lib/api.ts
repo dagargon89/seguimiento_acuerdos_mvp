@@ -59,7 +59,7 @@ export interface ApiClient {
   listUsuarios(): Promise<Usuario[]>;
   crearUsuario(alta: AltaUsuario): Promise<Usuario>; // solo dirección
   editarUsuario(id: number, cambios: EdicionUsuario): Promise<Usuario>; // solo dirección
-  listAreas(): Promise<Area[]>;
+  listAreas(todas?: boolean): Promise<Area[]>; // todas=true incluye inactivas — solo dirección (ADR-008)
   crearArea(alta: AltaArea): Promise<Area>; // solo dirección
   editarArea(id: number, cambios: EdicionArea): Promise<Area>; // solo dirección
 }
