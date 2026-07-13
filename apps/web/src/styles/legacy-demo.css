@@ -272,6 +272,8 @@ body {
 .btn--ghost:hover { background: var(--hover); color: var(--text); }
 .btn--ghost-teal { background: transparent; color: var(--teal); border: 1px solid rgba(47, 191, 165, .35); }
 .btn--ghost-teal:hover { background: rgba(47, 191, 165, .08); color: var(--teal); }
+.btn--ghost-rojo { background: transparent; color: var(--red); border: 1px solid rgba(240, 101, 74, .35); }
+.btn--ghost-rojo:hover { background: rgba(240, 101, 74, .08); color: var(--red); }
 .btn--full { width: 100%; }
 
 /* Badge (estados: en proceso azul · vencido rojo · concluido teal) */

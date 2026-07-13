@@ -18,6 +18,14 @@ final class FakeCalendarSync implements CalendarSync
         $this->sincronizados[] = $acuerdoId;
     }
 
+    /** @var list<string> event_ids eliminados (ADR-011) */
+    public array $eventosEliminados = [];
+
+    public function eliminarEventoPorId(string $calendarEventId): void
+    {
+        $this->eventosEliminados[] = $calendarEventId;
+    }
+
     public function llamadas(): int
     {
         return count($this->sincronizados);

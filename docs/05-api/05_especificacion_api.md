@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Documento | 05 — Especificación de API REST |
-| Versión | 1.6 — **CONGELADA** (2026-07-13, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010; aditivo, sin cambios en `ApiClient`). |
+| Versión | 1.7 — **CONGELADA** (2026-07-13, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). |
 | Fecha | 2026-07-13 |
 | Depende de | 01_SRS, 02_arquitectura, 03_modelo_de_datos |
 
@@ -80,7 +80,8 @@
 | `GET /acuerdos` | Todos | Listado visible para el actor. Query: `estado` (`en_proceso\|vencido\|concluido\|todos_abiertos`), `responsable_id`, `q` (busca en tema+acción+responsable), `desde`/`hasta` (rango de `fecha_compromiso`, para la vista calendario), `page`, `per_page`. **Default sin `estado`: solo abiertos (`en_proceso`+`vencido`) — los concluidos exigen filtro explícito** (RF-03.3) |
 | `GET /acuerdos/{id}` | Visibilidad | Detalle con corresponsables, avances y recordatorios del acuerdo |
 | `POST /acuerdos/lote` | Todos | Captura transaccional de 1..N acuerdos (RF-02) |
-| `PATCH /acuerdos/{id}` | Dirección, coordinación del área | Editar tema/acción/área/responsable/enlace/observaciones/`recordatorio_dias` |
+| `PATCH /acuerdos/{id}` | Dirección, coordinación del área o quien lo capturó (ADR-011) | Editar tema/acción/área/responsable/enlace/observaciones/`recordatorio_dias` |
+| `DELETE /acuerdos/{id}` | **Solo Dirección** (403 auditado) | Borrado definitivo con cascada (avances, corresponsables, recordatorios, sync) + eliminación del evento de calendario; auditado con la ficha del acuerdo (ADR-011, v1.7). Respuesta 204 |
 | `PUT /acuerdos/{id}/corresponsables` | Dirección, coordinación del área | Reemplaza el conjunto de corresponsables |
 | `POST /acuerdos/{id}/avances` | Responsable, corresponsables, coordinación, dirección | Avance; con `nueva_fecha` = reprogramación (vencido→en_proceso) |
 | `PATCH /acuerdos/{id}/concluir` | **Solo Dirección** | Concluir con nota (RF-06) |
@@ -208,7 +209,8 @@ export interface ApiClient {
   listAcuerdos(filtros: FiltrosAcuerdos): Promise<Paginado<Acuerdo>>;
   getAcuerdo(id: number): Promise<AcuerdoDetalle>;
   capturarLote(lote: LoteCaptura): Promise<Acuerdo[]>;
-  editarAcuerdo(id: number, cambios: EdicionAcuerdo): Promise<Acuerdo>;
+  editarAcuerdo(id: number, cambios: EdicionAcuerdo): Promise<Acuerdo>; // dirección, coordinación del área o quien lo capturó (ADR-011)
+  eliminarAcuerdo(id: number): Promise<void>; // solo dirección (ADR-011)
   setCorresponsables(id: number, usuarioIds: number[]): Promise<AcuerdoDetalle>;
   registrarAvance(id: number, avance: NuevoAvance): Promise<AcuerdoDetalle>;
   concluirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // solo dirección

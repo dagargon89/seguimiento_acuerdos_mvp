@@ -35,6 +35,8 @@ $routes->group('api/v1', ['filter' => ['cors', 'firebaseauth', 'throttle']], sta
     $routes->post('acuerdos/lote', 'AcuerdosController::lote');
     $routes->options('acuerdos/lote', 'AcuerdosController::lote');
     $routes->patch('acuerdos/(:num)', 'AcuerdosController::update/$1');
+    // Borrado definitivo (ADR-011, contrato v1.7) — solo Dirección (403 auditado).
+    $routes->delete('acuerdos/(:num)', 'AcuerdosController::eliminar/$1');
     $routes->put('acuerdos/(:num)/corresponsables', 'AcuerdosController::corresponsables/$1');
     $routes->options('acuerdos/(:num)/corresponsables', 'AcuerdosController::corresponsables/$1');
     $routes->post('acuerdos/(:num)/avances', 'AcuerdosController::avances/$1');

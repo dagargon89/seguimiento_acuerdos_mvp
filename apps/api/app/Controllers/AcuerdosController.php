@@ -786,6 +786,89 @@ class AcuerdosController extends BaseController
     }
 
     /**
+     * DELETE /acuerdos/{id} (ADR-011, contrato v1.7) — **SOLO Dirección**.
+     * Borrado definitivo: la BD limpia dependientes por cascada (avances,
+     * corresponsables, recordatorios, google_sync — DDL doc 03) y el evento
+     * de calendario se elimina best-effort tras el commit. El 403 de un
+     * no-Dirección se audita (mismo criterio que concluir/reabrir); la
+     * eliminación exitosa se audita con la ficha del acuerdo para conservar
+     * rastro de QUÉ se borró.
+     */
+    public function eliminar(string $id): ResponseInterface
+    {
+        $actor = service('usuarioActual')->obtener();
+
+        $fila = (new AcuerdoModel())->find((int) $id);
+        if ($fila === null) {
+            return $this->noEncontrado();
+        }
+
+        if ($actor['rol'] !== 'direccion') {
+            (new AuditoriaModel())->registrar(
+                (int) $actor['id'],
+                'intento_eliminar',
+                'acuerdo',
+                (int) $id,
+                ['rol' => $actor['rol'], 'resultado' => 'denegado'],
+                $this->request->getIPAddress(),
+            );
+
+            return $this->sinPermiso('Solo Dirección puede eliminar un acuerdo.');
+        }
+
+        $db = Database::connect();
+
+        // El id del evento y la ficha para el aviso se toman ANTES del delete
+        // (la cascada borra google_sync y corresponsables).
+        $sync    = $db->table('google_sync')->select('calendar_event_id')->where('acuerdo_id', (int) $id)->get()->getRowArray();
+        $eventId = $sync['calendar_event_id'] ?? null;
+        $aviso   = (new NotificadorAsignacion())->datosParaAvisoDeEliminacion((int) $id);
+
+        $db->transException(true)->transStart();
+
+        (new AuditoriaModel())->registrar(
+            (int) $actor['id'],
+            'eliminar',
+            'acuerdo',
+            (int) $id,
+            ['accion' => $fila['accion'], 'estado' => $fila['estado'], 'fecha_compromiso' => $fila['fecha_compromiso']],
+            $this->request->getIPAddress(),
+        );
+        $db->table('acuerdos')->where('id', (int) $id)->delete();
+
+        $db->transComplete();
+
+        if (! $db->transStatus()) {
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo eliminar el acuerdo.']);
+        }
+
+        if ($eventId !== null && $eventId !== '') {
+            try {
+                service('calendarSync')->eliminarEventoPorId((string) $eventId);
+            } catch (Throwable $e) {
+                log_message('error', 'Fallo al eliminar el evento de calendario del acuerdo {id}: {msg}', [
+                    'id'  => $id,
+                    'msg' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Aviso por correo al responsable y corresponsables (ADR-011), best-effort.
+        if ($aviso !== null) {
+            try {
+                (new NotificadorAsignacion())->avisarEliminacion($aviso);
+            } catch (Throwable $e) {
+                log_message('error', 'Fallo al avisar la eliminación del acuerdo {id}: {msg}', [
+                    'id'  => $id,
+                    'msg' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $this->response->setStatusCode(204);
+    }
+
+    /**
      * GET /checklist (doc 05 §2.4, RF-06) — **SOLO Dirección**. Lista los
      * acuerdos ABIERTOS (en_proceso + vencido; NO concluidos), priorizados:
      * vencidos primero, luego por `fecha_compromiso` ASC. Cada item lleva el
@@ -1198,15 +1281,21 @@ class AcuerdosController extends BaseController
 
     /**
      * Editar campos estructurales (tema/acción/responsable/área/enlace/
-     * observaciones/recordatorio_dias) y corresponsables: Dirección o
-     * coordinación DEL ÁREA del acuerdo (doc 05 §2.2, SRS matriz de roles).
+     * observaciones/recordatorio_dias) y corresponsables: Dirección,
+     * coordinación DEL ÁREA del acuerdo (doc 05 §2.2, SRS matriz de roles),
+     * o quien CAPTURÓ el acuerdo (ADR-011: cada quien puede corregir lo que
+     * registró).
      *
      * @param array<string, mixed> $actor
-     * @param array<string, mixed> $acuerdo Fila con al menos area_id.
+     * @param array<string, mixed> $acuerdo Fila con al menos area_id y capturado_por_id.
      */
     private function puedeEditarEstructura(array $actor, array $acuerdo): bool
     {
         if ($actor['rol'] === 'direccion') {
+            return true;
+        }
+
+        if ((int) ($acuerdo['capturado_por_id'] ?? 0) === (int) $actor['id']) {
             return true;
         }
 

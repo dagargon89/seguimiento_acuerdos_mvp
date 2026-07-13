@@ -38,7 +38,8 @@ export interface ApiClient {
   listAcuerdos(filtros: FiltrosAcuerdos): Promise<Paginado<Acuerdo>>;
   getAcuerdo(id: number): Promise<AcuerdoDetalle>;
   capturarLote(lote: LoteCaptura): Promise<Acuerdo[]>;
-  editarAcuerdo(id: number, cambios: EdicionAcuerdo): Promise<Acuerdo>;
+  editarAcuerdo(id: number, cambios: EdicionAcuerdo): Promise<Acuerdo>; // dirección, coordinación del área o quien lo capturó (ADR-011)
+  eliminarAcuerdo(id: number): Promise<void>; // solo dirección (ADR-011)
   setCorresponsables(id: number, usuarioIds: number[]): Promise<AcuerdoDetalle>;
   registrarAvance(id: number, avance: NuevoAvance): Promise<AcuerdoDetalle>;
   concluirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // solo dirección

@@ -61,6 +61,9 @@ export const realClient: ApiClient = {
     (await req<{ data: Acuerdo[] }>('POST', '/acuerdos/lote', lote)).data,
   editarAcuerdo: async (id, cambios: EdicionAcuerdo) =>
     (await req<{ data: Acuerdo }>('PATCH', `/acuerdos/${id}`, cambios)).data,
+  eliminarAcuerdo: async (id) => {
+    await req<null>('DELETE', `/acuerdos/${id}`);
+  },
   setCorresponsables: async (id, usuarioIds) =>
     (await req<{ data: AcuerdoDetalle }>('PUT', `/acuerdos/${id}/corresponsables`, { usuarios_ids: usuarioIds })).data,
   registrarAvance: async (id, avance: NuevoAvance) =>

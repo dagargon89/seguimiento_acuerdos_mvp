@@ -5,13 +5,14 @@ namespace App\Libraries\Correo;
 use CodeIgniter\I18n\Time;
 
 /**
- * Plantillas de correo 1:1 con el demo (`EmailModal.tsx` +
- * `recordatorioVm.ts` en `apps/web/src/components`). S2.2.
+ * Plantillas de correo del panel (S2.2), con la identidad Cívica Nocturna
+ * (Propuesta C, 2026-07-13): encabezado nocturno #0B0F15 con acento teal,
+ * cuerpo claro (seguro para clientes de correo) con la paleta clara del tema
+ * y CTA teal sólido — espejo del `EmailModal.tsx` del frontend.
  *
  * Genera asunto + cuerpo HTML por tipo de recordatorio (`previo`/`dia`/
- * `vencido`) y el resumen periódico (`resumen`), replicando textualmente los
- * `subject`/`intro` que arma el componente React, para que la vista previa
- * del frontend y el correo real que manda `GmailService` luzcan igual.
+ * `vencido`), la asignación inmediata (ADR-010), el aviso de eliminación
+ * (ADR-011) y el resumen periódico (`resumen`).
  *
  * Seguridad (OWASP A03): TODO contenido dinámico proveniente de datos de
  * usuario (acción, tema, responsable, estado, nombre, etc.) se escapa con
@@ -20,8 +21,16 @@ use CodeIgniter\I18n\Time;
  */
 final class PlantillaCorreo
 {
-    private const MORADO = '#53155a';
-    private const LIMA   = '#dbec57';
+    // Paleta Cívica Nocturna (tokens de apps/web/src/styles/tokens/colors.css).
+    private const HEADER_BG  = '#0b0f15'; // panel de marca nocturno (sidebar/login)
+    private const TEAL_BRILLO = '#2fbfa5'; // acento sobre fondo oscuro y CTA
+    private const ON_TEAL    = '#06251d'; // texto sobre teal sólido
+    private const TEAL_CLARO = '#0fa188'; // teal legible sobre blanco
+    private const TEXTO      = '#17222b';
+    private const TEXTO2     = '#51606e';
+    private const MUTED      = '#7c8a99';
+    private const BORDE      = '#d8e0e8';
+    private const SUPERFICIE = '#f7f9fb';
 
     private const MESES = [
         1 => 'enero', 2 => 'febrero', 3 => 'marzo', 4 => 'abril',
@@ -29,10 +38,11 @@ final class PlantillaCorreo
         9 => 'septiembre', 10 => 'octubre', 11 => 'noviembre', 12 => 'diciembre',
     ];
 
+    // Colores de estado en su variante clara (el cuerpo del correo es claro).
     private const ESTADOS = [
-        'en_proceso' => ['label' => 'En proceso', 'color' => '#53155a'],
-        'vencido'    => ['label' => 'Vencido', 'color' => '#c0392b'],
-        'concluido'  => ['label' => 'Concluido', 'color' => '#2e7d50'],
+        'en_proceso' => ['label' => 'En proceso', 'color' => '#2e6ed9'],
+        'vencido'    => ['label' => 'Vencido', 'color' => '#d9482e'],
+        'concluido'  => ['label' => 'Concluido', 'color' => '#0fa188'],
     ];
 
     /**
@@ -121,6 +131,34 @@ final class PlantillaCorreo
     }
 
     /**
+     * Aviso de eliminación (ADR-011): Dirección borró el acuerdo; se avisa al
+     * responsable y corresponsables para que no lo esperen ni lo busquen.
+     *
+     * @param array<string, mixed> $acuerdo Ficha del acuerdo TAL COMO ERA antes de borrarse.
+     * @param array<string, mixed> $usuario Fila de `usuarios` del destinatario (nombre, ...).
+     * @param bool                 $esCorresponsable false = responsable del acuerdo.
+     *
+     * @return array{asunto: string, html: string}
+     */
+    public function eliminacion(array $acuerdo, array $usuario, bool $esCorresponsable): array
+    {
+        $accion = (string) ($acuerdo['accion'] ?? '');
+
+        $rol   = $esCorresponsable ? 'corresponsable' : 'responsable';
+        $intro = "Dirección eliminó el siguiente acuerdo, en el que participabas como {$rol}. "
+            . 'Ya no recibirás recordatorios de este compromiso y su evento salió del calendario.';
+
+        $html = $this->armarHtml(
+            titulo: 'Acuerdo eliminado',
+            nombreDestinatario: (string) ($usuario['nombre'] ?? ''),
+            intro: $intro,
+            fichaAcuerdo: $this->fichaAcuerdo($acuerdo),
+        );
+
+        return ['asunto' => 'Acuerdo eliminado: ' . $accion, 'html' => $html];
+    }
+
+    /**
      * Resumen periódico (RF-11): lista de acuerdos abiertos del ámbito del
      * destinatario, ordenados por fecha compromiso.
      *
@@ -168,30 +206,30 @@ final class PlantillaCorreo
         $responsable  = esc((string) ($acuerdo['responsable_nombre'] ?? $acuerdo['responsable']['nombre'] ?? '…'));
         $fecha        = esc($acuerdo['fecha_compromiso'] ?? '' ? $this->fechaLarga((string) $acuerdo['fecha_compromiso']) : '—');
         $estadoInterno = (string) ($acuerdo['estado'] ?? '');
-        $estadoMeta    = self::ESTADOS[$estadoInterno] ?? ['label' => '…', 'color' => '#737373'];
+        $estadoMeta    = self::ESTADOS[$estadoInterno] ?? ['label' => '…', 'color' => '#7c8a99'];
         $estadoLabel   = esc($estadoMeta['label']);
         $estadoColor   = esc($estadoMeta['color']);
 
         return <<<HTML
-            <div style="background:#fafafa;border:1px solid #e5e5e5;border-radius:10px;padding:16px 18px;margin-bottom:22px;">
+            <div style="background:#f7f9fb;border:1px solid #d8e0e8;border-radius:12px;padding:16px 18px;margin-bottom:22px;">
                 <div style="display:flex;gap:10px;font-size:13px;margin-bottom:9px;">
-                    <span style="width:130px;flex:none;font-weight:600;color:#737373;">Acuerdo</span>
+                    <span style="width:130px;flex:none;font-weight:600;color:#7c8a99;">Acuerdo</span>
                     <span style="font-weight:600;">{$accion}</span>
                 </div>
                 <div style="display:flex;gap:10px;font-size:13px;margin-bottom:9px;">
-                    <span style="width:130px;flex:none;font-weight:600;color:#737373;">Tema</span>
+                    <span style="width:130px;flex:none;font-weight:600;color:#7c8a99;">Tema</span>
                     <span>{$tema}</span>
                 </div>
                 <div style="display:flex;gap:10px;font-size:13px;margin-bottom:9px;">
-                    <span style="width:130px;flex:none;font-weight:600;color:#737373;">Responsable</span>
+                    <span style="width:130px;flex:none;font-weight:600;color:#7c8a99;">Responsable</span>
                     <span>{$responsable}</span>
                 </div>
                 <div style="display:flex;gap:10px;font-size:13px;margin-bottom:9px;">
-                    <span style="width:130px;flex:none;font-weight:600;color:#737373;">Fecha compromiso</span>
+                    <span style="width:130px;flex:none;font-weight:600;color:#7c8a99;">Fecha compromiso</span>
                     <span style="font-weight:600;">{$fecha}</span>
                 </div>
                 <div style="display:flex;gap:10px;font-size:13px;">
-                    <span style="width:130px;flex:none;font-weight:600;color:#737373;">Estado actual</span>
+                    <span style="width:130px;flex:none;font-weight:600;color:#7c8a99;">Estado actual</span>
                     <span style="font-weight:600;color:{$estadoColor};">{$estadoLabel}</span>
                 </div>
             </div>
@@ -206,7 +244,7 @@ final class PlantillaCorreo
     private function listaResumen(array $acuerdos): string
     {
         if ($acuerdos === []) {
-            return '<p style="margin:0 0 22px;font-size:13.5px;color:#737373;">No hay acuerdos abiertos en tu ámbito.</p>';
+            return '<p style="margin:0 0 22px;font-size:13.5px;color:#7c8a99;">No hay acuerdos abiertos en tu ámbito.</p>';
         }
 
         $filas = '';
@@ -216,17 +254,17 @@ final class PlantillaCorreo
             $responsable = esc((string) ($acuerdo['responsable_nombre'] ?? $acuerdo['responsable']['nombre'] ?? '…'));
             $fecha       = esc($acuerdo['fecha_compromiso'] ?? '' ? $this->fechaLarga((string) $acuerdo['fecha_compromiso']) : '—');
             $estadoInterno = (string) ($acuerdo['estado'] ?? '');
-            $estadoMeta    = self::ESTADOS[$estadoInterno] ?? ['label' => '…', 'color' => '#737373'];
+            $estadoMeta    = self::ESTADOS[$estadoInterno] ?? ['label' => '…', 'color' => '#7c8a99'];
             $estadoLabel   = esc($estadoMeta['label']);
             $estadoColor   = esc($estadoMeta['color']);
 
             $filas .= <<<HTML
                 <tr>
-                    <td style="padding:10px 12px;border-bottom:1px solid #e5e5e5;font-size:13px;font-weight:600;">{$accion}</td>
-                    <td style="padding:10px 12px;border-bottom:1px solid #e5e5e5;font-size:13px;">{$tema}</td>
-                    <td style="padding:10px 12px;border-bottom:1px solid #e5e5e5;font-size:13px;">{$responsable}</td>
-                    <td style="padding:10px 12px;border-bottom:1px solid #e5e5e5;font-size:13px;font-weight:600;">{$fecha}</td>
-                    <td style="padding:10px 12px;border-bottom:1px solid #e5e5e5;font-size:13px;font-weight:600;color:{$estadoColor};">{$estadoLabel}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #d8e0e8;font-size:13px;font-weight:600;">{$accion}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #d8e0e8;font-size:13px;">{$tema}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #d8e0e8;font-size:13px;">{$responsable}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #d8e0e8;font-size:13px;font-weight:600;">{$fecha}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #d8e0e8;font-size:13px;font-weight:600;color:{$estadoColor};">{$estadoLabel}</td>
                 </tr>
                 HTML;
         }
@@ -235,11 +273,11 @@ final class PlantillaCorreo
             <table style="width:100%;border-collapse:collapse;margin-bottom:22px;">
                 <thead>
                     <tr>
-                        <th style="text-align:left;padding:8px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#737373;border-bottom:1px solid #e5e5e5;">Acuerdo</th>
-                        <th style="text-align:left;padding:8px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#737373;border-bottom:1px solid #e5e5e5;">Tema</th>
-                        <th style="text-align:left;padding:8px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#737373;border-bottom:1px solid #e5e5e5;">Responsable</th>
-                        <th style="text-align:left;padding:8px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#737373;border-bottom:1px solid #e5e5e5;">Fecha compromiso</th>
-                        <th style="text-align:left;padding:8px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#737373;border-bottom:1px solid #e5e5e5;">Estado</th>
+                        <th style="text-align:left;padding:8px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#7c8a99;border-bottom:1px solid #d8e0e8;">Acuerdo</th>
+                        <th style="text-align:left;padding:8px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#7c8a99;border-bottom:1px solid #d8e0e8;">Tema</th>
+                        <th style="text-align:left;padding:8px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#7c8a99;border-bottom:1px solid #d8e0e8;">Responsable</th>
+                        <th style="text-align:left;padding:8px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#7c8a99;border-bottom:1px solid #d8e0e8;">Fecha compromiso</th>
+                        <th style="text-align:left;padding:8px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#7c8a99;border-bottom:1px solid #d8e0e8;">Estado</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -272,25 +310,32 @@ final class PlantillaCorreo
         $urlPanel   = esc($this->urlPanel());
         $cuerpo     = $fichaAcuerdo ?? ($listaAcuerdos !== null ? $this->listaResumen($listaAcuerdos) : '');
 
+        $headerBg  = self::HEADER_BG;
+        $tealAcento = self::TEAL_BRILLO;
+        $onTeal    = self::ON_TEAL;
+        $texto     = self::TEXTO;
+        $texto2    = self::TEXTO2;
+        $muted     = self::MUTED;
+
         return <<<HTML
-            <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:24px 0;">
-                <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;">
-                    <div style="background:{$this->colorMorado()};padding:20px 26px;">
-                        <div style="font-size:13px;font-weight:700;color:{$this->colorLima()};letter-spacing:.04em;margin-bottom:10px;">
+            <div style="font-family:Arial,Helvetica,sans-serif;background:#f2f5f8;padding:24px 0;">
+                <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid {$this->colorBorde()};border-radius:14px;overflow:hidden;">
+                    <div style="background:{$headerBg};padding:20px 26px;">
+                        <div style="font-size:11px;font-weight:700;color:{$tealAcento};letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px;">
                             Panel de acuerdos &middot; Participa Ju&aacute;rez
                         </div>
-                        <div style="font-weight:600;font-size:19px;color:#ffffff;">{$tituloEsc}</div>
+                        <div style="font-weight:600;font-size:19px;color:#e9ecf2;">{$tituloEsc}</div>
                     </div>
                     <div style="padding:22px 26px 26px;">
-                        <p style="margin:0 0 12px;font-size:14px;color:#1a1a1a;">Hola, {$nombreEsc}:</p>
-                        <p style="margin:0 0 18px;font-size:13.5px;line-height:1.65;color:#404040;">{$introEsc}</p>
+                        <p style="margin:0 0 12px;font-size:14px;color:{$texto};">Hola, {$nombreEsc}:</p>
+                        <p style="margin:0 0 18px;font-size:13.5px;line-height:1.65;color:{$texto2};">{$introEsc}</p>
                         {$cuerpo}
                         <div style="text-align:center;margin-bottom:22px;">
-                            <a href="{$urlPanel}" style="display:inline-block;background:{$this->colorLima()};color:{$this->colorMorado()};font-weight:600;font-size:13.5px;padding:11px 26px;border-radius:999px;text-decoration:none;">
+                            <a href="{$urlPanel}" style="display:inline-block;background:{$tealAcento};color:{$onTeal};font-weight:600;font-size:13.5px;padding:11px 26px;border-radius:10px;text-decoration:none;">
                                 Abrir panel de seguimiento
                             </a>
                         </div>
-                        <p style="margin:0;font-size:11.5px;line-height:1.6;color:#737373;text-align:center;">
+                        <p style="margin:0;font-size:11.5px;line-height:1.6;color:{$muted};text-align:center;">
                             Este correo se generó automáticamente a partir del Formato de Reunión Operativa.<br>
                             Si el acuerdo ya se cumplió, registra el avance en el panel para detener los recordatorios.
                         </p>
@@ -300,14 +345,9 @@ final class PlantillaCorreo
             HTML;
     }
 
-    private function colorMorado(): string
+    private function colorBorde(): string
     {
-        return self::MORADO;
-    }
-
-    private function colorLima(): string
-    {
-        return self::LIMA;
+        return self::BORDE;
     }
 
     /** Primer nombre, réplica de `nombreCorto()` del demo (`EstadoHelpers.ts`). */

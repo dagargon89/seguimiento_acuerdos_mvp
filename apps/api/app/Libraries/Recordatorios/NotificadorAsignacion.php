@@ -77,6 +77,58 @@ final class NotificadorAsignacion
     }
 
     /**
+     * Ficha + destinatarios de un acuerdo, leídos ANTES de borrarlo (ADR-011):
+     * tras el DELETE la cascada elimina corresponsables y no habría a quién
+     * avisar. Devuelve null si el acuerdo no existe.
+     *
+     * @return array{acuerdo: array<string, mixed>, destinatarios: list<array{id: int, email: string, nombre: string, es_corresponsable: bool}>}|null
+     */
+    public function datosParaAvisoDeEliminacion(int $acuerdoId): ?array
+    {
+        $acuerdo = Database::connect()->table('acuerdos')
+            ->select('acuerdos.id, acuerdos.tema, acuerdos.accion, acuerdos.estado, acuerdos.fecha_compromiso, acuerdos.responsable_id, usuarios.nombre AS responsable_nombre')
+            ->join('usuarios', 'usuarios.id = acuerdos.responsable_id', 'left')
+            ->where('acuerdos.id', $acuerdoId)
+            ->get()->getRowArray();
+
+        if ($acuerdo === null) {
+            return null;
+        }
+
+        return [
+            'acuerdo'       => $acuerdo,
+            'destinatarios' => $this->destinatarios($acuerdoId, (int) $acuerdo['responsable_id']),
+        ];
+    }
+
+    /**
+     * Envía el aviso de eliminación con los datos pre-cargados. Sin registro en
+     * `recordatorios_enviados` (el acuerdo ya no existe; el rastro del borrado
+     * vive en `auditoria`). Best-effort por destinatario: un fallo se loguea y
+     * se continúa — jamás propaga.
+     *
+     * @param array{acuerdo: array<string, mixed>, destinatarios: list<array{id: int, email: string, nombre: string, es_corresponsable: bool}>} $datos
+     */
+    public function avisarEliminacion(array $datos): void
+    {
+        $plantilla = new PlantillaCorreo();
+        $mailer    = service('mailer');
+
+        foreach ($datos['destinatarios'] as $dest) {
+            try {
+                $correo = $plantilla->eliminacion($datos['acuerdo'], $dest, $dest['es_corresponsable']);
+                $mailer->enviar($dest['email'], $correo['asunto'], $correo['html']);
+            } catch (Throwable $e) {
+                log_message('error', 'Aviso de eliminación falló para acuerdo {id} → {email}: {msg}', [
+                    'id'    => (int) $datos['acuerdo']['id'],
+                    'email' => $dest['email'],
+                    'msg'   => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
      * Responsable + corresponsables activos del acuerdo, marcando el rol de
      * cada quien para la plantilla.
      *

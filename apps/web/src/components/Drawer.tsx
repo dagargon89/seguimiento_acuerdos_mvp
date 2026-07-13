@@ -6,12 +6,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib';
-import type { AcuerdoDetalle, Avance } from '../lib';
+import type { AcuerdoDetalle, Avance, EdicionAcuerdo } from '../lib';
 import { fmtF, fmtL, hoyISO, shiftISO } from '../lib/fechas';
 import { EST, mensajeError, vencimientoRelativo } from './EstadoHelpers';
 import { Avatar } from './Avatar';
 import { Badge } from './Badge';
+import { CorresponsablesPicker } from './CorresponsablesPicker';
 import { DatePicker } from './DatePicker';
+import { Select } from './Select';
 import { chipEnvio, tipoRecordatorioLabel } from './recordatorioVm';
 import { useSesion } from './SessionContext';
 import { useToast } from './Toast';
@@ -38,10 +40,25 @@ export function Drawer({ id, onClose }: DrawerProps) {
   const [reprogramar, setReprogramar] = useState(false);
   const [nuevaFecha, setNuevaFecha] = useState('');
 
+  // Edición estructural (ADR-011) y eliminación (solo Dirección).
+  const [editando, setEditando] = useState(false);
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
+  const [form, setForm] = useState({
+    tema: '',
+    accion: '',
+    responsable_id: '',
+    area_id: '',
+    enlace: '',
+    observaciones: '',
+    corresponsables: [] as number[],
+  });
+
   const detalleQ = useQuery({
     queryKey: ['acuerdo', id],
     queryFn: () => api.getAcuerdo(id),
   });
+  const usuariosQ = useQuery({ queryKey: ['usuarios'], queryFn: () => api.listUsuarios(), enabled: editando });
+  const areasQ = useQuery({ queryKey: ['areas'], queryFn: () => api.listAreas(), enabled: editando });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -94,6 +111,62 @@ export function Drawer({ id, onClose }: DrawerProps) {
     onError: (e) => toast(mensajeError(e), 'error'),
   });
 
+  const editarMut = useMutation({
+    mutationFn: async () => {
+      const cambios: EdicionAcuerdo = {
+        tema: form.tema.trim() ? form.tema.trim() : null,
+        accion: form.accion.trim(),
+        responsable_id: Number(form.responsable_id),
+        area_id: Number(form.area_id),
+        enlace: form.enlace.trim() ? form.enlace.trim() : null,
+        observaciones: form.observaciones.trim() ? form.observaciones.trim() : null,
+      };
+      await api.editarAcuerdo(id, cambios);
+
+      const actuales = (detalleQ.data?.corresponsables ?? []).map((c) => c.id);
+      const sinCambios =
+        actuales.length === form.corresponsables.length && actuales.every((x) => form.corresponsables.includes(x));
+      if (!sinCambios) await api.setCorresponsables(id, form.corresponsables);
+    },
+    onSuccess: () => {
+      toast('El acuerdo se actualizó.');
+      setEditando(false);
+      invalidar();
+    },
+    onError: (e) => toast(mensajeError(e), 'error'),
+  });
+
+  const eliminarMut = useMutation({
+    mutationFn: () => api.eliminarAcuerdo(id),
+    onSuccess: () => {
+      toast('El acuerdo se eliminó definitivamente y su evento salió del calendario.');
+      invalidar();
+      onClose();
+    },
+    onError: (e) => toast(mensajeError(e), 'error'),
+  });
+
+  const empezarEdicion = (a: AcuerdoDetalle) => {
+    setForm({
+      tema: a.tema ?? '',
+      accion: a.accion,
+      responsable_id: String(a.responsable.id),
+      area_id: String(a.area.id),
+      enlace: a.enlace ?? '',
+      observaciones: a.observaciones ?? '',
+      corresponsables: a.corresponsables.map((c) => c.id),
+    });
+    setEditando(true);
+  };
+
+  const guardarEdicion = () => {
+    if (!form.accion.trim()) {
+      toast('El acuerdo / acción no puede quedar vacío.', 'error');
+      return;
+    }
+    editarMut.mutate();
+  };
+
   const concluir = () => {
     const nota = window.prompt('Nota de validación (opcional):', '');
     if (nota === null) return;
@@ -107,7 +180,15 @@ export function Drawer({ id, onClose }: DrawerProps) {
   };
 
   const sel: AcuerdoDetalle | undefined = detalleQ.data;
-  const esDireccion = sesion?.usuario.rol === 'direccion';
+  const u = sesion?.usuario;
+  const esDireccion = u?.rol === 'direccion';
+  // Edición estructural: Dirección, coordinación del área o quien capturó (ADR-011).
+  const puedeEditar =
+    sel !== undefined &&
+    u !== undefined &&
+    (esDireccion || u.id === sel.capturado_por.id || (u.rol === 'coordinador' && u.area_id === sel.area.id));
+  const usuariosActivos = (usuariosQ.data ?? []).filter((x) => x.activo);
+  const areas = areasQ.data ?? [];
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100 }}>
@@ -145,10 +226,126 @@ export function Drawer({ id, onClose }: DrawerProps) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Badge variant={est.variant} size="md" label={est.label} />
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: relColor }}>{rel}</span>
+                  {puedeEditar && !editando && (
+                    <button
+                      type="button"
+                      className="btn btn--ghost-teal btn--sm"
+                      style={{ marginLeft: 'auto' }}
+                      onClick={() => empezarEdicion(sel)}
+                    >
+                      Editar
+                    </button>
+                  )}
                 </div>
               );
             })()}
 
+            {editando ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div className="detail-label" style={{ marginBottom: 0 }}>
+                  Editar acuerdo
+                </div>
+                <div className="field">
+                  <label className="field__label" htmlFor="ed-tema">
+                    Tema
+                  </label>
+                  <input
+                    id="ed-tema"
+                    className="input"
+                    value={form.tema}
+                    onChange={(e) => setForm((f) => ({ ...f, tema: e.target.value }))}
+                  />
+                </div>
+                <div className="field">
+                  <label className="field__label" htmlFor="ed-accion">
+                    Acuerdo / acción <span className="req">*</span>
+                  </label>
+                  <textarea
+                    id="ed-accion"
+                    className="textarea"
+                    style={{ minHeight: 84 }}
+                    value={form.accion}
+                    onChange={(e) => setForm((f) => ({ ...f, accion: e.target.value }))}
+                  />
+                </div>
+                <div className="field">
+                  <label className="field__label" htmlFor="ed-resp">
+                    Responsable <span className="req">*</span>
+                  </label>
+                  <Select
+                    id="ed-resp"
+                    value={form.responsable_id}
+                    placeholder="Selecciona…"
+                    opciones={usuariosActivos.map((x) => ({ value: String(x.id), label: x.nombre }))}
+                    onChange={(v) =>
+                      setForm((f) => ({
+                        ...f,
+                        responsable_id: v,
+                        corresponsables: f.corresponsables.filter((c) => c !== Number(v)),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <span className="field__label">Corresponsables</span>
+                  <CorresponsablesPicker
+                    directorio={usuariosActivos}
+                    seleccionados={form.corresponsables}
+                    excluirId={form.responsable_id ? Number(form.responsable_id) : null}
+                    onChange={(ids) => setForm((f) => ({ ...f, corresponsables: ids }))}
+                  />
+                </div>
+                <div className="field">
+                  <label className="field__label" htmlFor="ed-area">
+                    Área <span className="req">*</span>
+                  </label>
+                  <Select
+                    id="ed-area"
+                    value={form.area_id}
+                    placeholder="Selecciona…"
+                    opciones={areas.map((a) => ({ value: String(a.id), label: a.nombre }))}
+                    onChange={(v) => setForm((f) => ({ ...f, area_id: v }))}
+                  />
+                </div>
+                <div className="field">
+                  <label className="field__label" htmlFor="ed-enlace">
+                    Enlace a productos
+                  </label>
+                  <input
+                    id="ed-enlace"
+                    className="input"
+                    placeholder="URL del documento en Drive (opcional)"
+                    value={form.enlace}
+                    onChange={(e) => setForm((f) => ({ ...f, enlace: e.target.value }))}
+                  />
+                </div>
+                <div className="field">
+                  <label className="field__label" htmlFor="ed-obs">
+                    Observaciones
+                  </label>
+                  <textarea
+                    id="ed-obs"
+                    className="textarea"
+                    style={{ minHeight: 64 }}
+                    value={form.observaciones}
+                    onChange={(e) => setForm((f) => ({ ...f, observaciones: e.target.value }))}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="button" className="btn btn--accent btn--md" onClick={guardarEdicion} disabled={editarMut.isPending}>
+                    {editarMut.isPending ? 'Guardando…' : 'Guardar cambios'}
+                  </button>
+                  <button type="button" className="btn btn--ghost btn--md" onClick={() => setEditando(false)}>
+                    Cancelar
+                  </button>
+                </div>
+                <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.6, color: 'var(--muted)' }}>
+                  La fecha compromiso se cambia registrando un avance con reprogramación; el estado lo maneja el
+                  sistema y Dirección.
+                </p>
+              </div>
+            ) : (
+              <>
             <div>
               <div className="detail-label">Acuerdo / acción</div>
               <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.6 }}>{sel.accion}</div>
@@ -384,6 +581,53 @@ export function Drawer({ id, onClose }: DrawerProps) {
                   </button>
                 )}
               </div>
+            )}
+
+            {esDireccion && (
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+                {!confirmandoEliminar ? (
+                  <button
+                    type="button"
+                    className="btn btn--ghost-rojo btn--md btn--full"
+                    onClick={() => setConfirmandoEliminar(true)}
+                  >
+                    Eliminar acuerdo…
+                  </button>
+                ) : (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 10,
+                      background: 'rgba(240,101,74,.08)',
+                      border: '1px solid rgba(240,101,74,.3)',
+                      borderRadius: 12,
+                      padding: '14px 16px',
+                    }}
+                  >
+                    <div style={{ fontSize: 13, lineHeight: 1.55 }}>
+                      Se borrará definitivamente el acuerdo con sus avances y recordatorios, y su evento saldrá del
+                      calendario. Esta acción no se puede deshacer.
+                    </div>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button
+                        type="button"
+                        className="btn btn--sm"
+                        style={{ background: 'var(--red)', color: '#ffffff' }}
+                        onClick={() => eliminarMut.mutate()}
+                        disabled={eliminarMut.isPending}
+                      >
+                        {eliminarMut.isPending ? 'Eliminando…' : 'Eliminar definitivamente'}
+                      </button>
+                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => setConfirmandoEliminar(false)}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+              </>
             )}
           </div>
         )}

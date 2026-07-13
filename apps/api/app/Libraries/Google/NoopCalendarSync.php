@@ -19,4 +19,11 @@ final class NoopCalendarSync implements CalendarSync
             'id' => $acuerdoId,
         ]);
     }
+
+    public function eliminarEventoPorId(string $calendarEventId): void
+    {
+        log_message('info', 'NoopCalendarSync: eliminación NO realizada (sin credenciales Google) evento {id}', [
+            'id' => $calendarEventId,
+        ]);
+    }
 }

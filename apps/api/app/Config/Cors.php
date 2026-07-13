@@ -102,7 +102,8 @@ class Cors extends BaseConfig
          *
          * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Methods
          */
-        'allowedMethods' => ['GET', 'POST', 'PATCH', 'PUT', 'OPTIONS'],
+        // DELETE añadido para el borrado de acuerdos (ADR-011, contrato v1.7).
+        'allowedMethods' => ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
 
         /**
          * Set how many seconds the results of a preflight request can be cached.

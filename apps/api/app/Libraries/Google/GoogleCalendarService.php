@@ -122,6 +122,20 @@ final class GoogleCalendarService implements CalendarSync
         return $evento;
     }
 
+    public function eliminarEventoPorId(string $calendarEventId): void
+    {
+        try {
+            $this->api->eliminarEvento($this->calendarId, $calendarEventId);
+        } catch (Throwable $e) {
+            // Best-effort (ADR-011): el acuerdo ya no existe en la BD; un
+            // evento huérfano se limpia a mano desde el calendario.
+            log_message('error', 'No se pudo eliminar el evento {id} de Calendar: {msg}', [
+                'id'  => $calendarEventId,
+                'msg' => $e->getMessage(),
+            ]);
+        }
+    }
+
     /**
      * Invitados del evento (ADR-010, cambio previsto en ADR-003): responsable
      * activo + corresponsables activos. Se reconstruye completo en cada sync,
