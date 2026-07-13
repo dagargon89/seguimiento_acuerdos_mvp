@@ -29,4 +29,11 @@ interface CalendarApi
      * @param array<string, mixed> $evento
      */
     public function actualizarEvento(string $calendarId, string $eventId, array $evento): void;
+
+    /**
+     * Elimina un evento. El flujo de sincronización NO borra eventos (RF-09
+     * los marca [Concluido]); existe para el humo operativo
+     * (`spark google:verificar`), que crea un evento de prueba y lo limpia.
+     */
+    public function eliminarEvento(string $calendarId, string $eventId): void;
 }

@@ -75,6 +75,11 @@ final class GoogleApiClientCalendarApi implements CalendarApi
         $this->calendarService->events->patch($calendarId, $eventId, $event);
     }
 
+    public function eliminarEvento(string $calendarId, string $eventId): void
+    {
+        $this->calendarService->events->delete($calendarId, $eventId);
+    }
+
     /**
      * Traduce el array de evento (forma libre, la construye
      * `GoogleCalendarService`) a `Google\Service\Calendar\Event`. Solo

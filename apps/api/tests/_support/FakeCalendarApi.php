@@ -20,6 +20,9 @@ final class FakeCalendarApi implements CalendarApi
     /** @var list<array{calendarId: string, eventId: string, evento: array<string, mixed>}> */
     public array $actualizados = [];
 
+    /** @var list<array{calendarId: string, eventId: string}> */
+    public array $eliminados = [];
+
     /** Si no es null, crearEvento() la lanza en vez de "crear". */
     public ?Throwable $lanzarErrorEnCrear = null;
 
@@ -50,6 +53,11 @@ final class FakeCalendarApi implements CalendarApi
         }
 
         $this->actualizados[] = ['calendarId' => $calendarId, 'eventId' => $eventId, 'evento' => $evento];
+    }
+
+    public function eliminarEvento(string $calendarId, string $eventId): void
+    {
+        $this->eliminados[] = ['calendarId' => $calendarId, 'eventId' => $eventId];
     }
 
     /** Configura que crearEvento() lance una excepción con el mensaje dado. */
