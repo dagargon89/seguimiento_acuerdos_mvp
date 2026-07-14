@@ -89,7 +89,7 @@ export function Recordatorios() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
+      <div className="grid grid-cols-1 min-[901px]:grid-cols-[1fr_1fr] gap-[24px] items-start">
         <div className="anim-in anim-in--1">
           <h3 style={{ margin: '0 0 10px', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, color: 'var(--text)' }}>
             Próximos envíos

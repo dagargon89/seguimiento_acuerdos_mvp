@@ -188,7 +188,7 @@ export function Captura() {
             </button>
           )}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-[18px]">
           <div className="field">
             <label className="field__label" htmlFor={`f-tema-${i}`}>
               Tema

@@ -204,7 +204,7 @@ export function Areas() {
         >
           Dar de alta un área
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 18, alignItems: 'end' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-[18px] items-end">
           <div className="field">
             <label className="field__label" htmlFor="na-nombre">
               Nombre <span className="req">*</span>

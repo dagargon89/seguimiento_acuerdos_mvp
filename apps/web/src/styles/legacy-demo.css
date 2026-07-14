@@ -233,6 +233,7 @@ body {
   }
   .topbar__menu-btn { display: block; }
   .topbar { padding: 0 16px; gap: 12px; }
+  .main { padding: 20px 16px 64px; }
 
   /* El colapso es solo de desktop: el drawer móvil siempre va completo. */
   .shell--colapsado { grid-template-columns: 1fr; }
@@ -244,6 +245,12 @@ body {
   .shell--colapsado .sidebar__link { justify-content: flex-start; padding: 10px 20px 10px 17px; }
   .shell--colapsado .sidebar__hoy { display: block; }
   .sidebar__colapsar { display: none; }
+}
+
+/* Ajustes de contenido para móvil (el shell ya se adapta a 900px arriba). */
+@media (max-width: 640px) {
+  .toolbar__search { width: 100%; }
+  .reunion-row { flex-wrap: wrap; row-gap: 6px; }
 }
 
 /* ══ Componentes DS ══ */

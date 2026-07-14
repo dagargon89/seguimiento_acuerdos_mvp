@@ -196,8 +196,8 @@ export function Usuarios() {
         </div>
       )}
 
-      <div className="panel-card anim-in anim-in--1" style={{ marginBottom: 22 }}>
-        <table className="acuerdos-table">
+      <div className="panel-card anim-in anim-in--1" style={{ marginBottom: 22, overflowX: 'auto' }}>
+        <table className="acuerdos-table" style={{ minWidth: 760 }}>
           <thead>
             <tr>
               <th>Persona</th>
@@ -350,7 +350,7 @@ export function Usuarios() {
         >
           Dar de alta a una persona
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-[18px]">
           <div className="field">
             <label className="field__label" htmlFor="nu-nombre">
               Nombre completo <span className="req">*</span>

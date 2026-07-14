@@ -399,7 +399,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-[16px]">
               <div>
                 <div className="detail-label">Fecha compromiso</div>
                 <div style={{ fontSize: 13.5, fontWeight: 500 }}>{fmtL(sel.fecha_compromiso)}</div>

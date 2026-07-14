@@ -114,13 +114,13 @@ export function ResumenModal({ onClose }: ResumenModalProps) {
                   >
                     <Avatar nombre={p.responsable.nombre} size="md" />
                     <span style={{ flex: 1, minWidth: 0, fontWeight: 500 }}>{p.responsable.nombre}</span>
-                    <span style={{ width: 110, flex: 'none', color: 'var(--blue)', fontWeight: 600 }}>
+                    <span className="max-sm:hidden" style={{ width: 110, flex: 'none', color: 'var(--blue)', fontWeight: 600 }}>
                       {p.en_proceso} en proceso
                     </span>
                     <span style={{ width: 95, flex: 'none', color: p.vencidos > 0 ? 'var(--red)' : 'var(--muted)', fontWeight: 600 }}>
                       {p.vencidos} {p.vencidos === 1 ? 'vencido' : 'vencidos'}
                     </span>
-                    <span style={{ width: 110, flex: 'none', color: 'var(--text-secondary)' }}>
+                    <span className="max-sm:hidden" style={{ width: 110, flex: 'none', color: 'var(--text-secondary)' }}>
                       {p.por_vencer_7d} por vencer
                     </span>
                   </div>

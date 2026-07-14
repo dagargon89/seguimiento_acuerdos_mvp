@@ -146,7 +146,7 @@ export function EmailModal({ rec, onClose }: EmailModalProps) {
                   valor={rec.fecha_compromiso ? fmtL(rec.fecha_compromiso) : '—'}
                   negrita
                 />
-                <div style={{ display: 'flex', gap: 10, fontSize: 13 }}>
+                <div className="max-sm:flex-wrap" style={{ display: 'flex', gap: 10, fontSize: 13 }}>
                   <span style={{ width: 130, flex: 'none', fontWeight: 600, color: 'var(--text-muted)' }}>Estado actual</span>
                   <span style={{ fontWeight: 600, color: est ? est.color : 'var(--text-secondary)' }}>
                     {est ? est.label : '…'}
@@ -183,7 +183,7 @@ export function EmailModal({ rec, onClose }: EmailModalProps) {
 
 function FilaEmail({ label, valor, negrita = false }: { label: string; valor: string; negrita?: boolean }) {
   return (
-    <div style={{ display: 'flex', gap: 10, fontSize: 13 }}>
+    <div className="max-sm:flex-wrap" style={{ display: 'flex', gap: 10, fontSize: 13 }}>
       <span style={{ width: 130, flex: 'none', fontWeight: 600, color: 'var(--text-muted)' }}>{label}</span>
       <span style={{ fontWeight: negrita ? 600 : 400 }}>{valor}</span>
     </div>

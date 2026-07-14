@@ -99,7 +99,7 @@ export function Panel() {
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 18, marginBottom: 30 }}>
+      <div className="grid grid-cols-2 min-[901px]:grid-cols-[repeat(4,1fr)] gap-[18px] mb-[30px]">
         <div className="anim-in">
           <StatCard value={enProceso.length} label="En proceso" sublabel="acuerdos abiertos en curso" variant="proceso" />
         </div>
@@ -206,8 +206,10 @@ function VistaTabla({
   onAbrir: (id: number) => void;
 }) {
   return (
-    <div className="panel-card anim-in anim-in--2">
-      <table className="acuerdos-table">
+    <>
+    {/* Tabla completa (≥640px) */}
+    <div className="panel-card anim-in anim-in--2 hidden sm:block" style={{ overflowX: 'auto' }}>
+      <table className="acuerdos-table" style={{ minWidth: 720 }}>
         <thead>
           <tr>
             <th>Tema</th>
@@ -279,6 +281,47 @@ function VistaTabla({
         </tbody>
       </table>
     </div>
+
+    {/* Cards apiladas (<640px), mismo detalle al tocar */}
+    <div className="panel-card anim-in anim-in--2 sm:hidden">
+      {lista.map((a) => {
+        const est = EST[a.estado];
+        const { rel, color } = vencimientoRelativo(a.fecha_compromiso, a.estado);
+        return (
+          <div
+            key={a.id}
+            onClick={() => onAbrir(a.id)}
+            style={{ padding: '12px 14px', borderTop: '1px solid var(--border-subtle)', cursor: 'pointer' }}
+          >
+            <div className="tema-label" style={{ display: 'block', marginBottom: 4 }}>
+              {a.tema ?? 'Sin tema'}
+            </div>
+            <div style={{ fontSize: 13.5, fontWeight: 500, lineHeight: 1.45, marginBottom: 8 }}>
+              {truncar(a.accion, 110)}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text2)' }}>
+                <Avatar nombre={a.responsable.nombre} size="sm" />
+                {nombreCorto(a.responsable.nombre)}
+              </span>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 12.5 }}>
+                {fmtF(a.fecha_compromiso)}
+              </span>
+              <span style={{ fontSize: 11.5, color }}>{rel}</span>
+              <span style={{ marginLeft: 'auto' }}>
+                <Badge variant={est.variant} size="sm" label={est.label} />
+              </span>
+            </div>
+          </div>
+        );
+      })}
+      {lista.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 28, fontSize: 13, color: 'var(--text-muted)' }}>
+          No hay acuerdos que coincidan con los filtros.
+        </div>
+      )}
+    </div>
+    </>
   );
 }
 
@@ -380,7 +423,7 @@ function VistaReunion({ lista, onAbrir }: { lista: Acuerdo[]; onAbrir: (id: numb
                     {a.tema ?? 'Sin tema'}
                   </div>
                 </div>
-                <span style={{ width: 160, fontSize: 12.5, color: 'var(--text2)' }}>{a.responsable.nombre}</span>
+                <span className="max-sm:hidden" style={{ width: 160, fontSize: 12.5, color: 'var(--text2)' }}>{a.responsable.nombre}</span>
                 <span style={{ width: 110, fontFamily: 'var(--font-display)', fontSize: 12.5, fontWeight: 600 }}>
                   {fmtF(a.fecha_compromiso)}
                 </span>

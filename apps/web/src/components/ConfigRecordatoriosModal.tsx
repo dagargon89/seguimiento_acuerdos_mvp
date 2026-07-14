@@ -123,7 +123,7 @@ export function ConfigRecordatoriosModal({ config, onClose }: ConfigRecordatorio
             <input type="checkbox" checked={diaCompromiso} onChange={(e) => setDiaCompromiso(e.target.checked)} />
             Enviar aviso el día del compromiso
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-[16px]">
             <div className="field">
               <label className="field__label" htmlFor="cfg-cada">
                 Vencidos: repetir cada (días)
