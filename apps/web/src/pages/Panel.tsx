@@ -99,7 +99,9 @@ export function Panel() {
 
   return (
     <div>
-      <div className="grid grid-cols-2 min-[901px]:grid-cols-[repeat(4,1fr)] gap-[18px] mb-[30px]">
+      {/* El margen va inline: el reset global de base.css (sin @layer) anula
+          las utilidades de margen/padding de Tailwind (mb-[30px] no aplica). */}
+      <div className="grid grid-cols-2 min-[901px]:grid-cols-[repeat(4,1fr)] gap-[18px]" style={{ marginBottom: 30 }}>
         <div className="anim-in">
           <StatCard value={enProceso.length} label="En proceso" sublabel="acuerdos abiertos en curso" variant="proceso" />
         </div>

@@ -251,8 +251,8 @@ body {
 @media (max-width: 640px) {
   .toolbar__search { width: 100%; }
   .reunion-row { flex-wrap: wrap; row-gap: 6px; }
-  /* Aire entre las stat cards y el selector de vistas; el switch envuelve. */
-  .toolbar { margin-top: 26px; row-gap: 10px; }
+  /* El switch de vistas envuelve en pantallas angostas. */
+  .toolbar { row-gap: 10px; }
   .mode-switch { flex-wrap: wrap; }
   /* Login más compacto en teléfono. */
   .login-brand { padding: 24px 20px 20px; }
