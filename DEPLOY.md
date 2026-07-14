@@ -154,6 +154,46 @@ server {
 
 (Con `CI_ENVIRONMENT=production` + `forceGlobalSecureRequests=true`, CI4 agrega HSTS; ver doc 04 §hardening. El directorio `apps/api/writable` debe ser escribible por PHP-FPM.)
 
+#### 2.4.1 Headers de cache para la PWA (OBLIGATORIO con el service worker)
+
+Sin estos headers el navegador cachea `sw.js` e `index.html` por heurística y los usuarios pueden quedarse en un build viejo. Agregar dentro del mismo `server` block, ANTES de `location /`:
+
+```nginx
+# El SW y su punto de entrada NUNCA deben quedar cacheados
+location = /sw.js {
+    add_header Cache-Control "no-cache, must-revalidate";
+}
+location = /index.html {
+    add_header Cache-Control "no-cache, must-revalidate";
+}
+location = /manifest.webmanifest {
+    add_header Cache-Control "no-cache";
+}
+
+# Bundles con hash en el nombre: cache inmutable
+location /assets/ {
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    try_files $uri =404;
+}
+# workbox-<hash>.js vive en la raíz de dist, también lleva hash
+location ~ ^/workbox-.*\.js$ {
+    add_header Cache-Control "public, max-age=31536000, immutable";
+}
+# Iconos sin hash: cache moderado
+location /icons/ {
+    add_header Cache-Control "public, max-age=86400";
+    try_files $uri =404;
+}
+```
+
+Aplicar con `nginx -t && systemctl reload nginx` y verificar:
+
+```bash
+curl -sI https://tu-dominio.org/sw.js | grep -i cache-control        # → no-cache, must-revalidate
+curl -sI https://tu-dominio.org/index.html | grep -i cache-control   # → no-cache, must-revalidate
+curl -sI https://tu-dominio.org/assets/index-*.js | grep -i cache-control  # → immutable
+```
+
 ### 2.5 Cron del job diario
 
 ```cron
@@ -176,6 +216,15 @@ php spark recordatorios:procesar                           # corrida manual sin 
 
 Luego en el navegador: login con Google → capturar un acuerdo de prueba con fecha mañana → debe: aparecer el evento en el calendario de `acuerdos@` **al instante** con responsable/corresponsables como invitados (ADR-009/010), llegar el correo "Nuevo acuerdo asignado" y la invitación de Google. Borrar ese acuerdo de prueba (Drawer → Eliminar) debe quitar el evento y avisar por correo (ADR-011).
 
+**Verificación de la PWA** (una vez desplegada con los headers de 2.4.1):
+
+1. DevTools → Application → Manifest sin errores e "Installability" OK; Service Workers muestra `sw.js` activo.
+2. Las llamadas a `/api/v1/…` NO deben servirse del SW (columna Size ≠ "(ServiceWorker)") ni aparecer en Cache Storage; con "Offline" activado deben fallar (correcto: nunca se cachean).
+3. Login con Google (popup) y con email/password funcionan con el SW activo.
+4. Android/Chrome: menú ⋮ → "Instalar app" → icono "PJ", splash oscuro, modo standalone. iOS/Safari: Compartir → "Agregar a pantalla de inicio". (Riesgo conocido: `signInWithPopup` puede fallar en iOS standalone; el fallback documentado sería `signInWithRedirect`.)
+5. Propagación de deploy: con la app abierta, publicar un cambio visible → en ≤1 h (o al recargar) aparece el banner "Hay una nueva versión del panel"; "Actualizar" trae el cambio, y al cerrar/reabrir la app carga sola la versión nueva.
+6. Offline real: con la app ya visitada, modo avión → abrir: el login carga con el aviso "Sin conexión a internet…".
+
 ---
 
 ## 4. Operación continua
@@ -195,6 +244,7 @@ Luego en el navegador: login con Google → capturar un acuerdo de prueba con fe
 - [ ] `php spark migrate` + SQL de datos iniciales (config + áreas + primer Dirección) — SIN InitialSeeder
 - [ ] Build del frontend con `VITE_API_BASE_URL` y Firebase de producción
 - [ ] nginx con TLS sirviendo SPA + API; `CI_ENVIRONMENT=production` y `forceGlobalSecureRequests=true`
+- [ ] Headers de cache de la PWA (2.4.1): `sw.js` e `index.html` en `no-cache`, `/assets/` inmutable
 - [ ] `CORS_ALLOWED_ORIGINS` con el dominio real
 - [ ] Cron 8:30 (hora Juárez) instalado y `google:verificar` en verde
 - [ ] Backup diario programado y restauración probada

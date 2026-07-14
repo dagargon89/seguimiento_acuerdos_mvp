@@ -1165,3 +1165,28 @@ body {
   opacity: .75;
 }
 .toast__close:hover { opacity: 1; }
+
+/* Banner de actualización del SW (persistente, con acciones) */
+.toast--update {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--teal);
+  box-shadow: 0 0 30px rgba(47, 191, 165, .25);
+}
+.toast-update__btn {
+  flex: none;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  background: var(--teal);
+  color: var(--on-teal);
+}
+.toast-update__btn--despues {
+  background: transparent;
+  color: inherit;
+  opacity: .8;
+}
+.toast-update__btn--despues:hover { opacity: 1; }

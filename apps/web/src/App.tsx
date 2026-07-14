@@ -24,6 +24,7 @@ import {
 } from './components/Iconos';
 import { SessionContext } from './components/SessionContext';
 import { ToastProvider, useToast } from './components/Toast';
+import { ActualizacionSW } from './components/ActualizacionSW';
 import { Login } from './pages/Login';
 import { PendienteAprobacion } from './pages/PendienteAprobacion';
 import { Panel } from './pages/Panel';
@@ -44,6 +45,7 @@ setTokenProvider(async () => (await auth.currentUser?.getIdToken()) ?? '');
 export default function App() {
   return (
     <ToastProvider>
+      <ActualizacionSW />
       <AppContent />
     </ToastProvider>
   );

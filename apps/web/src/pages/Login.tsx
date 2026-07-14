@@ -10,6 +10,19 @@ import { api } from '../lib';
 import { crearCuentaEmailPassword } from '../lib/firebase';
 import { validarRegistro } from '../lib/registro';
 import { mensajeError, statusError } from '../components/EstadoHelpers';
+import { useOnline } from '../components/useOnline';
+
+/** Aviso de sin conexión: el shell carga offline (SW), pero autenticarse no. */
+function AvisoOffline() {
+  return (
+    <div className="alert alert--error" style={{ marginBottom: 16 }}>
+      <div className="alert__body">
+        Sin conexión a internet. Puedes ver esta pantalla, pero necesitas conexión para iniciar sesión y
+        consultar acuerdos.
+      </div>
+    </div>
+  );
+}
 
 interface LoginProps {
   errorAcceso?: string | null;
@@ -122,6 +135,8 @@ function LoginReal({
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const online = useOnline();
+  const deshabilitado = entrando || !online;
 
   const conGoogle = async () => {
     if (entrando) return;
@@ -152,6 +167,7 @@ function LoginReal({
 
   return (
     <>
+      {!online && <AvisoOffline />}
       {(errorAcceso ?? error) && (
         <div className="alert alert--error" style={{ marginBottom: 16 }}>
           <div className="alert__body">{errorAcceso ?? error}</div>
@@ -162,7 +178,7 @@ function LoginReal({
         type="button"
         className="btn btn--accent btn--full btn--md"
         onClick={() => void conGoogle()}
-        disabled={entrando}
+        disabled={deshabilitado}
         style={{ marginBottom: 18 }}
       >
         Entrar con Google
@@ -205,7 +221,7 @@ function LoginReal({
             disabled={entrando}
           />
         </div>
-        <button type="submit" className="btn btn--ghost-teal btn--full btn--md" disabled={entrando}>
+        <button type="submit" className="btn btn--ghost-teal btn--full btn--md" disabled={deshabilitado}>
           {entrando ? 'Entrando…' : 'Entrar con correo'}
         </button>
       </form>
@@ -229,6 +245,7 @@ function RegistroForm() {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cuentaCreada, setCuentaCreada] = useState(false);
+  const online = useOnline();
 
   const registrarme = async () => {
     try {
@@ -277,6 +294,7 @@ function RegistroForm() {
 
   return (
     <>
+      {!online && <AvisoOffline />}
       {error && (
         <div className="alert alert--error" style={{ marginBottom: 16 }}>
           <div className="alert__body">{error}</div>
@@ -354,7 +372,7 @@ function RegistroForm() {
               disabled={enviando}
             />
           </div>
-          <button type="submit" className="btn btn--accent btn--full btn--md" disabled={enviando}>
+          <button type="submit" className="btn btn--accent btn--full btn--md" disabled={enviando || !online}>
             {enviando ? 'Creando cuenta…' : 'Crear cuenta'}
           </button>
         </form>

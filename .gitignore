@@ -16,5 +16,7 @@ apps/api/writable/cache/*
 apps/api/writable/logs/*
 apps/api/writable/session/*
 apps/api/writable/debugbar/*
+# Fuente TTF one-off para generar iconos PWA (ver apps/web/scripts/generar-iconos.mjs)
+apps/web/scripts/*.ttf
 # SO / editor
 .DS_Store
