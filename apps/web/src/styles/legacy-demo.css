@@ -251,6 +251,16 @@ body {
 @media (max-width: 640px) {
   .toolbar__search { width: 100%; }
   .reunion-row { flex-wrap: wrap; row-gap: 6px; }
+  /* Aire entre las stat cards y el selector de vistas; el switch envuelve. */
+  .toolbar { margin-top: 26px; row-gap: 10px; }
+  .mode-switch { flex-wrap: wrap; }
+  /* Login más compacto en teléfono. */
+  .login-brand { padding: 24px 20px 20px; }
+  .login-brand__logo { height: 28px; margin-bottom: 18px; }
+  .login-brand__titulo { font-size: 23px; }
+  .login-brand__sub { font-size: 13.5px; }
+  .login-card { padding: 26px 20px; }
+  .login-card__titulo { font-size: 19px; }
 }
 
 /* ══ Componentes DS ══ */
