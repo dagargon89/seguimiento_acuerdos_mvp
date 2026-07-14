@@ -35,7 +35,7 @@ export interface ApiClient {
   registrarme(datos: RegistroCuenta): Promise<Usuario>; // ADR-006: autorregistro, rol nace `pendiente`
 
   // acuerdos
-  listAcuerdos(filtros: FiltrosAcuerdos): Promise<Paginado<Acuerdo>>;
+  listAcuerdos(filtros: FiltrosAcuerdos): Promise<Paginado<Acuerdo>>; // filtro opcional `mios`: responsable o corresponsable = actor (ADR-013)
   getAcuerdo(id: number): Promise<AcuerdoDetalle>;
   capturarLote(lote: LoteCaptura): Promise<Acuerdo[]>;
   editarAcuerdo(id: number, cambios: EdicionAcuerdo): Promise<Acuerdo>; // dirección, coordinación del área o quien lo capturó (ADR-011)

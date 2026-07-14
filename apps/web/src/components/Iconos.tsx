@@ -54,6 +54,17 @@ export function IconoRecordatorios(props: IconoProps) {
   );
 }
 
+/** Mis acuerdos: persona con palomita (acuerdos designados al usuario). */
+export function IconoMisAcuerdos(props: IconoProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="10" cy="8" r="3.5" />
+      <path d="M4.5 20c0-3 2.5-5 5.5-5 1.2 0 2.3.3 3.2.9" />
+      <path d="m15 17.5 2 2 3.5-4" />
+    </svg>
+  );
+}
+
 /** Checklist: cuadro con palomita. */
 export function IconoChecklist(props: IconoProps) {
   return (

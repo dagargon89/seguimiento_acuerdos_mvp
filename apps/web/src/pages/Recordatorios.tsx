@@ -68,7 +68,7 @@ export function Recordatorios() {
           <h2 className="section-header__title">Recordatorios</h2>
           <p className="section-header__subtitle">
             Se generan automáticamente a partir de la fecha compromiso con el esquema global vigente: {esquema}. Envío
-            simulado a las 9:00 h. Cada persona ve únicamente los recordatorios de los acuerdos que le corresponden.
+            simulado a las 9:00 h. Sección de administración: seguimiento de los avisos automáticos por correo.
           </p>
         </div>
         {(rol === 'direccion' || rol === 'coordinador') && (

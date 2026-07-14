@@ -123,6 +123,18 @@ class AcuerdosController extends BaseController
             $builder->where('acuerdos.responsable_id', (int) $responsableId);
         }
 
+        // Filtro "míos" (ADR-013): acuerdos donde el actor es responsable o
+        // corresponsable. Solo el valor literal '1' lo activa (doc 05 v1.8).
+        if ($this->request->getGet('mios') === '1') {
+            $actorId = (int) $actor['id'];
+            $builder->groupStart()
+                ->where('acuerdos.responsable_id', $actorId)
+                ->orWhereIn('acuerdos.id', static function (BaseBuilder $b) use ($actorId): BaseBuilder {
+                    return $b->select('acuerdo_id')->from('acuerdo_corresponsables')->where('usuario_id', $actorId);
+                })
+                ->groupEnd();
+        }
+
         $desde = $this->request->getGet('desde');
         if ($desde !== null && $desde !== '') {
             $builder->where('acuerdos.fecha_compromiso >=', $desde);

@@ -53,7 +53,7 @@ export const realClient: ApiClient = {
 
   listAcuerdos: (f: FiltrosAcuerdos) =>
     req<Paginado<Acuerdo>>('GET', `/acuerdos${qs({
-      estado: f.estado, responsable_id: f.responsable_id, q: f.q,
+      estado: f.estado, responsable_id: f.responsable_id, mios: f.mios ? 1 : undefined, q: f.q,
       desde: f.desde, hasta: f.hasta, page: f.page, per_page: f.per_page,
     })}`),
   getAcuerdo: async (id) => (await req<{ data: AcuerdoDetalle }>('GET', `/acuerdos/${id}`)).data,

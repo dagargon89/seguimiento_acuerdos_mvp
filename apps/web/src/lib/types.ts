@@ -218,6 +218,7 @@ export interface AcuerdoDetalle extends Acuerdo {
 export interface FiltrosAcuerdos {
   estado?: EstadoAcuerdo | 'todos_abiertos';
   responsable_id?: number;
+  mios?: boolean; // ADR-013: solo acuerdos donde el actor es responsable o corresponsable (wire: mios=1)
   q?: string;
   desde?: string;
   hasta?: string;

@@ -17,6 +17,7 @@ import {
   IconoChecklist,
   IconoColapsar,
   IconoLuna,
+  IconoMisAcuerdos,
   IconoPanel,
   IconoRecordatorios,
   IconoSol,
@@ -28,6 +29,7 @@ import { ActualizacionSW } from './components/ActualizacionSW';
 import { Login } from './pages/Login';
 import { PendienteAprobacion } from './pages/PendienteAprobacion';
 import { Panel } from './pages/Panel';
+import { MisAcuerdos } from './pages/MisAcuerdos';
 import { Captura } from './pages/Captura';
 import { Recordatorios } from './pages/Recordatorios';
 import { Checklist } from './pages/Checklist';
@@ -243,17 +245,20 @@ function MenuUsuario({ nombre, rolLabel, onLogout }: { nombre: string; rolLabel:
   );
 }
 
-/** Grupos de navegación del sidebar; "Administración" solo se renderiza para Dirección. */
+/** Grupos de navegación del sidebar; "Administración" solo para Dirección/Coordinación. */
 const NAV_GENERAL = [
   { to: '/panel', label: 'Panel', Icono: IconoPanel },
+  { to: '/mis-acuerdos', label: 'Mis acuerdos', Icono: IconoMisAcuerdos },
   { to: '/captura', label: 'Capturar acuerdo', Icono: IconoCaptura },
-  { to: '/recordatorios', label: 'Recordatorios', Icono: IconoRecordatorios },
 ];
 const NAV_ADMIN = [
   { to: '/checklist', label: 'Checklist', Icono: IconoChecklist },
+  { to: '/recordatorios', label: 'Recordatorios', Icono: IconoRecordatorios },
   { to: '/usuarios', label: 'Usuarios', Icono: IconoUsuarios },
   { to: '/areas', label: 'Áreas', Icono: IconoAreas },
 ];
+/** Entradas del bloque Administración visibles para la coordinación (ADR-012/013). */
+const NAV_ADMIN_COORDINADOR = new Set(['/checklist', '/recordatorios']);
 
 const COLAPSADO_KEY = 'pj-sidebar-colapsado';
 
@@ -272,8 +277,9 @@ function Shell({
   const esDireccion = u.rol === 'direccion';
   const esCoordinador = u.rol === 'coordinador';
   const puedeChecklist = esDireccion || esCoordinador; // ADR-012: coordinación valida su área
-  // Administración: Dirección ve todo; coordinación solo el Checklist (de su área).
-  const navAdmin = esDireccion ? NAV_ADMIN : esCoordinador ? NAV_ADMIN.filter((i) => i.to === '/checklist') : [];
+  const puedeRecordatorios = esDireccion || esCoordinador; // ADR-013: sección de administración
+  // Administración: Dirección ve todo; coordinación solo Checklist y Recordatorios.
+  const navAdmin = esDireccion ? NAV_ADMIN : esCoordinador ? NAV_ADMIN.filter((i) => NAV_ADMIN_COORDINADOR.has(i.to)) : [];
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [colapsado, setColapsado] = useState(() => localStorage.getItem(COLAPSADO_KEY) === '1');
   const cerrarMenu = () => setMenuAbierto(false);
@@ -381,8 +387,9 @@ function Shell({
         <main className="main">
           <Routes>
             <Route path="/panel" element={<Panel />} />
+            <Route path="/mis-acuerdos" element={<MisAcuerdos />} />
             <Route path="/captura" element={<Captura />} />
-            <Route path="/recordatorios" element={<Recordatorios />} />
+            <Route path="/recordatorios" element={puedeRecordatorios ? <Recordatorios /> : <Navigate to="/panel" replace />} />
             <Route path="/checklist" element={puedeChecklist ? <Checklist /> : <Navigate to="/panel" replace />} />
             <Route path="/usuarios" element={esDireccion ? <Usuarios /> : <Navigate to="/panel" replace />} />
             <Route path="/areas" element={esDireccion ? <Areas /> : <Navigate to="/panel" replace />} />

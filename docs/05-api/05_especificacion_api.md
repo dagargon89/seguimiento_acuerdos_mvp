@@ -3,8 +3,8 @@
 | Campo | Valor |
 |---|---|
 | Documento | 05 — Especificación de API REST |
-| Versión | 1.7 — **CONGELADA** (2026-07-13, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). |
-| Fecha | 2026-07-13 |
+| Versión | 1.8 — **CONGELADA** (2026-07-14, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). v1.8 añade el filtro `mios=1` a `GET /acuerdos` / `FiltrosAcuerdos.mios` (ADR-013). |
+| Fecha | 2026-07-14 |
 | Depende de | 01_SRS, 02_arquitectura, 03_modelo_de_datos |
 
 ## 1. Convenciones
@@ -77,7 +77,7 @@
 
 | Método/Ruta | Roles | Descripción |
 |---|---|---|
-| `GET /acuerdos` | Todos | Listado visible para el actor. Query: `estado` (`en_proceso\|vencido\|concluido\|todos_abiertos`), `responsable_id`, `q` (busca en tema+acción+responsable), `desde`/`hasta` (rango de `fecha_compromiso`, para la vista calendario), `page`, `per_page`. **Default sin `estado`: solo abiertos (`en_proceso`+`vencido`) — los concluidos exigen filtro explícito** (RF-03.3) |
+| `GET /acuerdos` | Todos | Listado visible para el actor. Query: `estado` (`en_proceso\|vencido\|concluido\|todos_abiertos`), `responsable_id`, `mios=1` (solo acuerdos donde el actor es responsable o corresponsable; únicamente el literal `1` activa el filtro — ADR-013, v1.8), `q` (busca en tema+acción+responsable), `desde`/`hasta` (rango de `fecha_compromiso`, para la vista calendario), `page`, `per_page`. **Default sin `estado`: solo abiertos (`en_proceso`+`vencido`) — los concluidos exigen filtro explícito** (RF-03.3) |
 | `GET /acuerdos/{id}` | Visibilidad | Detalle con corresponsables, avances y recordatorios del acuerdo |
 | `POST /acuerdos/lote` | Todos | Captura transaccional de 1..N acuerdos (RF-02) |
 | `PATCH /acuerdos/{id}` | Dirección, coordinación del área o quien lo capturó (ADR-011) | Editar tema/acción/área/responsable/enlace/observaciones/`recordatorio_dias` |
@@ -196,7 +196,7 @@
 
 ## 3. Interfaz del cliente (`lib/api.ts` — CONGELADA)
 
-> **CONGELADA (v1.5, 2026-07-13).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005). v1.4 añade `registrarme` (ADR-006). v1.5 añade el parámetro `todas` a `listAreas` (ADR-008).
+> **CONGELADA (v1.8, 2026-07-14).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005). v1.4 añade `registrarme` (ADR-006). v1.5 añade el parámetro `todas` a `listAreas` (ADR-008). v1.8 añade el filtro `mios` a `listAcuerdos` (ADR-013).
 
 ```typescript
 export interface ApiClient {
@@ -206,7 +206,7 @@ export interface ApiClient {
   registrarme(datos: RegistroCuenta): Promise<Usuario>; // ADR-006: autorregistro, rol nace `pendiente`
 
   // acuerdos
-  listAcuerdos(filtros: FiltrosAcuerdos): Promise<Paginado<Acuerdo>>;
+  listAcuerdos(filtros: FiltrosAcuerdos): Promise<Paginado<Acuerdo>>; // filtro opcional `mios`: responsable o corresponsable = actor (ADR-013)
   getAcuerdo(id: number): Promise<AcuerdoDetalle>;
   capturarLote(lote: LoteCaptura): Promise<Acuerdo[]>;
   editarAcuerdo(id: number, cambios: EdicionAcuerdo): Promise<Acuerdo>; // dirección, coordinación del área o quien lo capturó (ADR-011)
