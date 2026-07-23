@@ -90,7 +90,7 @@ final class AcuerdosLecturaTest extends CIUnitTestCase
         $this->assertSame([
             'usuario' => [
                 'id' => 2, 'nombre' => 'Carla Coordinadora', 'email' => 'coordinacion.operativa@demo.test',
-                'rol' => 'coordinador', 'area_id' => 1, 'activo' => true,
+                'rol' => 'coordinador', 'area_id' => 1, 'activo' => true, 'avatar_color' => null,
             ],
             'config_recordatorios' => [
                 'dias_antes' => [7, 3, 1],
@@ -98,6 +98,8 @@ final class AcuerdosLecturaTest extends CIUnitTestCase
                 'vencido_cada_dias' => 3,
                 'vencido_max_repeticiones' => 5,
                 'resumen_frecuencia' => 'semanal',
+                'solicitud_avances_activa' => true,
+                'invitaciones_calendario_activas' => false,
             ],
         ], $cuerpo);
 

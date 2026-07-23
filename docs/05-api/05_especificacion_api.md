@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Documento | 05 — Especificación de API REST |
-| Versión | 1.8 — **CONGELADA** (2026-07-14, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). v1.8 añade el filtro `mios=1` a `GET /acuerdos` / `FiltrosAcuerdos.mios` (ADR-013). v1.9 añade `solicitud_avances_activa` (bool) a `ConfigRecordatorios` y el literal `'solicitud_avance'` a `TipoRecordatorio`: el job envía periódicamente (misma frecuencia que el resumen) una solicitud de avances a responsables/corresponsables de acuerdos abiertos, condicionada por esa bandera global. v1.10 añade `invitaciones_calendario_activas` (bool) a `ConfigRecordatorios`: controla si Google Calendar manda la invitación nativa por correo al crear/actualizar el evento (la sincronización del acuerdo al calendario no cambia). |
+| Versión | 1.8 — **CONGELADA** (2026-07-14, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). v1.8 añade el filtro `mios=1` a `GET /acuerdos` / `FiltrosAcuerdos.mios` (ADR-013). v1.9 añade `solicitud_avances_activa` (bool) a `ConfigRecordatorios` y el literal `'solicitud_avance'` a `TipoRecordatorio`: el job envía periódicamente (misma frecuencia que el resumen) una solicitud de avances a responsables/corresponsables de acuerdos abiertos, condicionada por esa bandera global. v1.10 añade `invitaciones_calendario_activas` (bool) a `ConfigRecordatorios`: controla si Google Calendar manda la invitación nativa por correo al crear/actualizar el evento (la sincronización del acuerdo al calendario no cambia). v1.11 añade `avatar_color` (string hex `#RRGGBB` o null) a `Usuario`/`UsuarioRef` y a `ActualizacionPerfil`: color de identidad del avatar, editable por el propio usuario vía `PATCH /me` (nombre y/o avatar_color, ambos opcionales). |
 | Fecha | 2026-07-14 |
 | Depende de | 01_SRS, 02_arquitectura, 03_modelo_de_datos |
 
@@ -34,7 +34,7 @@
 // 201 POST /registro  (request)  { "nombre": "Persona Nueva" }
 // respuesta — uid/email SIEMPRE del token verificado, nunca del body
 { "data": { "id": 9, "nombre": "Persona Nueva", "email": "nueva@demo.test",
-            "rol": "pendiente", "area_id": null, "activo": true } }
+            "rol": "pendiente", "area_id": null, "activo": true, "avatar_color": null } }
 
 // 409 — ya existe una cuenta con ese email o ese firebase_uid
 { "error": "cuenta_ya_existe", "mensaje": "Ya existe una cuenta para este correo. Inicia sesión." }
@@ -49,7 +49,7 @@
 // 200 GET /me
 {
   "usuario": { "id": 2, "nombre": "Coordinadora Demo Uno", "email": "coord1@demo.test",
-               "rol": "coordinador", "area_id": 1, "activo": true },
+               "rol": "coordinador", "area_id": 1, "activo": true, "avatar_color": null },
   "config_recordatorios": { "dias_antes": [7,3,1], "dia_compromiso": true,
                             "vencido_cada_dias": 3, "vencido_max_repeticiones": 5,
                             "resumen_frecuencia": "semanal", "solicitud_avances_activa": true,
@@ -59,12 +59,13 @@
 *Seguridad:* si el token es válido pero el email no está en la lista blanca ni tiene cuenta autorregistrada → 403 `usuario_no_registrado`. Una cuenta `rol: "pendiente"` (ADR-006) SÍ puede llamar `GET/PATCH /me` (para ver su estado y corregir su nombre) pero recibe 403 `cuenta_pendiente` en cualquier otro endpoint del panel.
 
 ```json
-// PATCH /me  (request)  { "nombre": "Nuevo Nombre" }
+// PATCH /me  (request)  { "nombre": "Nuevo Nombre", "avatar_color": "#5b9df5" }
+//   ambos opcionales pero al menos uno; avatar_color = color hex #RRGGBB o null (default)
 // respuesta 200
 { "data": { "id": 2, "nombre": "Nuevo Nombre", "email": "coord1@demo.test",
-            "rol": "coordinador", "area_id": 1, "activo": true } }
+            "rol": "coordinador", "area_id": 1, "activo": true, "avatar_color": "#5b9df5" } }
 
-// 422 — cualquier campo distinto de `nombre` (email/rol/area_id/activo/...) es rechazado
+// 422 — cualquier campo distinto de `nombre`/`avatar_color` (email/rol/area_id/activo/...) es rechazado
 { "error": "campo_no_permitido", "mensaje": "El body contiene campos no permitidos.",
   "campos": { "rol": "Campo no permitido" } }
 

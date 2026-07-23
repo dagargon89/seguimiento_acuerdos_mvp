@@ -184,4 +184,51 @@ final class PerfilTest extends CIUnitTestCase
         $r->assertStatus(200);
         $this->assertSame('Rita Renombrada', $this->cuerpo($r)['usuario']['nombre']);
     }
+
+    // ── avatar_color: color hex propio, opcional e independiente del nombre ──
+
+    public function testEditarMiPerfilColorHexValidoEs200YPersiste(): void
+    {
+        $r = $this->como('responsable.uno@demo.test')->patch('api/v1/me', ['avatar_color' => '#5B9DF5']);
+
+        $r->assertStatus(200);
+        $data = $this->cuerpo($r)['data'];
+        $this->assertSame('#5b9df5', $data['avatar_color']); // normalizado a minúsculas
+        $this->assertSame('Rita Responsable', $data['nombre'], 'el nombre no cambia si no se envía');
+
+        $fila = Database::connect()->table('usuarios')->where('id', 4)->get()->getRowArray();
+        $this->assertSame('#5b9df5', $fila['avatar_color']);
+    }
+
+    public function testEditarMiPerfilColorNullRestableceElDefault(): void
+    {
+        $this->como('responsable.uno@demo.test')->patch('api/v1/me', ['avatar_color' => '#37b24d']);
+        $r = $this->como('responsable.uno@demo.test')->patch('api/v1/me', ['avatar_color' => null]);
+
+        $r->assertStatus(200);
+        $this->assertNull($this->cuerpo($r)['data']['avatar_color']);
+    }
+
+    public function testEditarMiPerfilColorInvalidoEs422Validacion(): void
+    {
+        $r = $this->como('responsable.uno@demo.test')->patch('api/v1/me', ['avatar_color' => 'rojo']);
+
+        $r->assertStatus(422);
+        $cuerpo = $this->cuerpo($r);
+        $this->assertSame('validacion', $cuerpo['error']);
+        $this->assertArrayHasKey('avatar_color', $cuerpo['campos']);
+
+        $fila = Database::connect()->table('usuarios')->where('id', 4)->get()->getRowArray();
+        $this->assertNull($fila['avatar_color']);
+    }
+
+    public function testEditarMiPerfilNombreYColorJuntosEs200(): void
+    {
+        $r = $this->como('responsable.uno@demo.test')->patch('api/v1/me', ['nombre' => 'Rita Color', 'avatar_color' => '#a878e6']);
+
+        $r->assertStatus(200);
+        $data = $this->cuerpo($r)['data'];
+        $this->assertSame('Rita Color', $data['nombre']);
+        $this->assertSame('#a878e6', $data['avatar_color']);
+    }
 }

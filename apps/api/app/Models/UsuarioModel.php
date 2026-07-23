@@ -14,7 +14,7 @@ class UsuarioModel extends Model
     protected $primaryKey    = 'id';
     protected $useTimestamps = false;
     protected $returnType    = 'array';
-    protected $allowedFields = ['firebase_uid', 'nombre', 'email', 'rol', 'area_id', 'activo'];
+    protected $allowedFields = ['firebase_uid', 'nombre', 'email', 'rol', 'area_id', 'avatar_color', 'activo'];
 
     /** Directorio activo, orden alfabético (para selects de responsable/corresponsables). */
     public function activos(): array

@@ -124,7 +124,7 @@ class CalendarioController extends BaseController
 
         $filas = Database::connect()
             ->table('acuerdo_corresponsables ac')
-            ->select('ac.acuerdo_id, u.id, u.nombre, u.email')
+            ->select('ac.acuerdo_id, u.id, u.nombre, u.email, u.avatar_color')
             ->join('usuarios u', 'u.id = ac.usuario_id', 'inner')
             ->whereIn('ac.acuerdo_id', $acuerdoIds)
             ->orderBy('u.nombre', 'ASC')

@@ -12,6 +12,7 @@ import { useSesion } from '../components/SessionContext';
 import { useToast } from '../components/Toast';
 import { cambiarPassword, proveedorEsPassword } from '../lib/firebase';
 import { validarCambioPassword } from '../lib/perfil';
+import { AVATAR_COLOR_DEFAULT, AVATAR_PRESETS, esColorHexValido } from '../lib/avatarColores';
 
 export function Perfil() {
   const { sesion, setSesion } = useSesion();
@@ -51,6 +52,29 @@ export function Perfil() {
     setNombreError(null);
     setNombreCampos({});
     nombreMut.mutate();
+  };
+
+  // Color del avatar: preview local inmediato; se persiste vía PATCH /me.
+  const [colorSel, setColorSel] = useState<string | null>(usuario?.avatar_color ?? null);
+
+  const colorMut = useMutation({
+    mutationFn: (color: string | null) => api.editarMiPerfil({ avatar_color: color }),
+    onSuccess: (usuarioActualizado) => {
+      if (sesion) setSesion({ ...sesion, usuario: usuarioActualizado });
+      setColorSel(usuarioActualizado.avatar_color ?? null);
+      void queryClient.invalidateQueries({ queryKey: ['me'] });
+      void queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      toast('El color de tu avatar se actualizó.');
+    },
+    onError: (e) => {
+      setColorSel(usuario?.avatar_color ?? null); // revertir preview
+      toast(mensajeError(e), 'error');
+    },
+  });
+
+  const elegirColor = (color: string | null) => {
+    setColorSel(color); // preview inmediato
+    colorMut.mutate(color);
   };
 
   const [passActual, setPassActual] = useState('');
@@ -97,7 +121,7 @@ export function Perfil() {
 
       <div className="panel-card anim-in anim-in--1" style={{ padding: '26px 30px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 22 }}>
-          <Avatar nombre={usuario.nombre} size="xl" />
+          <Avatar nombre={usuario.nombre} size="xl" color={colorSel} />
           <div>
             <div style={{ fontSize: 16, fontWeight: 600 }}>{usuario.nombre}</div>
             <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{usuario.email}</div>
@@ -166,6 +190,89 @@ export function Perfil() {
         <div style={{ marginTop: 18 }}>
           <button type="button" className="btn btn--accent btn--md" onClick={guardarNombre} disabled={nombreMut.isPending}>
             {nombreMut.isPending ? 'Guardando…' : 'Guardar'}
+          </button>
+        </div>
+
+        <div
+          style={{
+            fontSize: 10.5,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '.1em',
+            color: 'var(--muted)',
+            borderTop: '1px solid var(--border)',
+            paddingTop: 20,
+            marginTop: 24,
+            marginBottom: 6,
+          }}
+        >
+          Color de tu avatar
+        </div>
+        <p style={{ margin: '0 0 14px', fontSize: 12.5, lineHeight: 1.6, color: 'var(--text-muted)' }}>
+          Elige un color para tus iniciales. Se verá en todo el panel, también para el resto del equipo.
+        </p>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {AVATAR_PRESETS.map((c) => {
+            const activo = (colorSel ?? '').toLowerCase() === c.hex.toLowerCase();
+            return (
+              <button
+                key={c.hex}
+                type="button"
+                title={c.nombre}
+                aria-label={`Color ${c.nombre}`}
+                aria-pressed={activo}
+                disabled={colorMut.isPending}
+                onClick={() => elegirColor(c.hex)}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: '50%',
+                  background: c.hex,
+                  cursor: 'pointer',
+                  border: activo ? '2px solid var(--text)' : '2px solid transparent',
+                  boxShadow: activo ? '0 0 0 2px var(--surface), 0 0 0 3px var(--text)' : 'none',
+                }}
+              />
+            );
+          })}
+
+          {/* Color personalizado */}
+          <label
+            title="Color personalizado"
+            style={{
+              position: 'relative',
+              width: 30,
+              height: 30,
+              borderRadius: '50%',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px dashed var(--border)',
+              overflow: 'hidden',
+              background:
+                'conic-gradient(from 0deg, #e5606b, #d99a2b, #37b24d, #2fbfa5, #5b9df5, #a878e6, #e5606b)',
+            }}
+          >
+            <input
+              type="color"
+              value={colorSel && esColorHexValido(colorSel) ? colorSel : AVATAR_COLOR_DEFAULT}
+              disabled={colorMut.isPending}
+              onChange={(e) => elegirColor(e.target.value)}
+              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+              aria-label="Elegir color personalizado"
+            />
+          </label>
+
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm"
+            disabled={colorMut.isPending || colorSel === null}
+            onClick={() => elegirColor(null)}
+            style={{ marginLeft: 4 }}
+          >
+            Restablecer
           </button>
         </div>
       </div>

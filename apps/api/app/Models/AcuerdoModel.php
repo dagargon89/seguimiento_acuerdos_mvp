@@ -66,9 +66,9 @@ class AcuerdoModel extends Model
                 acuerdos.concluido_por_id, acuerdos.concluido_at, acuerdos.created_at, acuerdos.updated_at,
                 reuniones.id AS reunion__id, reuniones.nombre AS reunion__nombre, reuniones.fecha AS reunion__fecha,
                 areas.id AS area__id, areas.nombre AS area__nombre, areas.activa AS area__activa,
-                resp.id AS responsable__id, resp.nombre AS responsable__nombre, resp.email AS responsable__email,
-                cap.id AS capturado_por__id, cap.nombre AS capturado_por__nombre, cap.email AS capturado_por__email,
-                conc.id AS concluido_por__id, conc.nombre AS concluido_por__nombre, conc.email AS concluido_por__email
+                resp.id AS responsable__id, resp.nombre AS responsable__nombre, resp.email AS responsable__email, resp.avatar_color AS responsable__avatar_color,
+                cap.id AS capturado_por__id, cap.nombre AS capturado_por__nombre, cap.email AS capturado_por__email, cap.avatar_color AS capturado_por__avatar_color,
+                conc.id AS concluido_por__id, conc.nombre AS concluido_por__nombre, conc.email AS concluido_por__email, conc.avatar_color AS concluido_por__avatar_color
             ", false)
             ->join('reuniones', 'reuniones.id = acuerdos.reunion_id', 'left')
             ->join('areas', 'areas.id = acuerdos.area_id', 'left')

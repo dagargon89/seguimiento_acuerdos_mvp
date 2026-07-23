@@ -64,7 +64,7 @@ class ResumenController extends BaseController
 
             $respId = (int) $f['responsable_id'];
             $porResp[$respId] ??= [
-                'ref'           => ['id' => $respId, 'nombre' => (string) $f['responsable__nombre'], 'email' => (string) $f['responsable__email']],
+                'ref'           => ['id' => $respId, 'nombre' => (string) $f['responsable__nombre'], 'email' => (string) $f['responsable__email'], 'avatar_color' => $f['responsable__avatar_color'] ?? null],
                 'en_proceso'    => 0,
                 'vencidos'      => 0,
                 'por_vencer_7d' => 0,

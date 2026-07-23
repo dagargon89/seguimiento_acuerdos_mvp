@@ -155,6 +155,8 @@ export interface UsuarioRef {
   id: number;
   nombre: string;
   email: string;
+  /** Color hex (#RRGGBB) de identidad del avatar; null = color por defecto. */
+  avatar_color?: string | null;
 }
 
 export interface Usuario extends UsuarioRef {
@@ -334,6 +336,8 @@ export interface EdicionUsuario {
 /** Self-service (ADR-005): el propio usuario solo puede editar su `nombre`. */
 export interface ActualizacionPerfil {
   nombre?: string;
+  /** Color hex (#RRGGBB) del avatar, o null para volver al color por defecto. */
+  avatar_color?: string | null;
 }
 
 /** Autorregistro (ADR-006): `POST /registro` — uid/email salen del token verificado. */

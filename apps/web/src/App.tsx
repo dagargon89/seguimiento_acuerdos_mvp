@@ -184,7 +184,17 @@ function AppContent() {
  * Botón de usuario en la topbar: despliega un menú con "Mi perfil" y "Salir".
  * Cierra con clic fuera, Esc o al navegar.
  */
-function MenuUsuario({ nombre, rolLabel, onLogout }: { nombre: string; rolLabel: string; onLogout: () => void }) {
+function MenuUsuario({
+  nombre,
+  rolLabel,
+  color,
+  onLogout,
+}: {
+  nombre: string;
+  rolLabel: string;
+  color?: string | null;
+  onLogout: () => void;
+}) {
   const [abierto, setAbierto] = useState(false);
   const contenedorRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -214,7 +224,7 @@ function MenuUsuario({ nombre, rolLabel, onLogout }: { nombre: string; rolLabel:
         aria-expanded={abierto}
         onClick={() => setAbierto((v) => !v)}
       >
-        <Avatar nombre={nombre} size="sm" />
+        <Avatar nombre={nombre} size="sm" color={color} />
         <span className="topbar__user-info">
           <span className="topbar__user-name">{nombre}</span>
           <span className="topbar__user-rol">{rolLabel}</span>
@@ -383,7 +393,7 @@ function Shell({
             >
               {tema === 'light' ? <IconoLuna /> : <IconoSol />}
             </button>
-            <MenuUsuario nombre={u.nombre} rolLabel={ROL_LABEL[u.rol]} onLogout={onLogout} />
+            <MenuUsuario nombre={u.nombre} rolLabel={ROL_LABEL[u.rol]} color={u.avatar_color} onLogout={onLogout} />
           </div>
         </header>
 

@@ -24,6 +24,7 @@ CREATE TABLE usuarios (
   email         VARCHAR(160) NOT NULL,
   rol           ENUM('direccion','coordinador','responsable','pendiente') NOT NULL,
   area_id       INT UNSIGNED NULL,
+  avatar_color  VARCHAR(20)  NULL,
   activo        TINYINT(1)   NOT NULL DEFAULT 1,
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,

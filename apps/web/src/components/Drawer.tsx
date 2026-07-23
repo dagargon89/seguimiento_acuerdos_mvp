@@ -358,7 +358,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
             <div>
               <div className="detail-label">Responsable</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Avatar nombre={sel.responsable.nombre} size="lg" />
+                <Avatar nombre={sel.responsable.nombre} size="lg" color={sel.responsable.avatar_color} />
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 600 }}>{sel.responsable.nombre}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sel.responsable.email}</div>

@@ -175,7 +175,7 @@ function TablaMisAcuerdos({
                   </td>
                   <td>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      <Avatar nombre={a.responsable.nombre} size="md" />
+                      <Avatar nombre={a.responsable.nombre} size="md" color={a.responsable.avatar_color} />
                       <span style={{ fontSize: 13 }}>{a.responsable.nombre}</span>
                     </span>
                   </td>
@@ -222,7 +222,7 @@ function TablaMisAcuerdos({
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <BadgeMiRol acuerdo={a} uid={uid} />
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text2)' }}>
-                  <Avatar nombre={a.responsable.nombre} size="sm" />
+                  <Avatar nombre={a.responsable.nombre} size="sm" color={a.responsable.avatar_color} />
                   {nombreCorto(a.responsable.nombre)}
                 </span>
                 <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 12.5 }}>

@@ -233,7 +233,7 @@ export function Usuarios() {
                 <tr key={u.id} style={{ cursor: 'default', opacity: u.activo ? 1 : 0.5 }}>
                   <td>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      <Avatar nombre={u.nombre} size="md" />
+                      <Avatar nombre={u.nombre} size="md" color={u.avatar_color} />
                       <span style={{ fontSize: 13, fontWeight: 500 }}>{u.nombre}</span>
                     </span>
                   </td>

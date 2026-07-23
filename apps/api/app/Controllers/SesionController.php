@@ -16,7 +16,7 @@ use Config\Database;
 class SesionController extends BaseController
 {
     /** Campos que acepta `ActualizacionPerfil` (types.ts) — cualquier otro → 422 `campo_no_permitido`. */
-    private const CAMPOS_PERFIL = ['nombre'];
+    private const CAMPOS_PERFIL = ['nombre', 'avatar_color'];
 
     public function me(): ResponseInterface
     {
@@ -31,9 +31,11 @@ class SesionController extends BaseController
 
     /**
      * PATCH /me (doc 05 §2.1, ADR-005) — self-service: cualquier usuario activo
-     * edita su propio `nombre`. Ningún otro campo (email/rol/area_id/activo) es
-     * aceptado por esta vía (422 `campo_no_permitido`) — esos siguen siendo
-     * exclusivos de `PATCH /usuarios/{id}` (solo Dirección).
+     * edita su propio `nombre` y/o su `avatar_color` (color de identidad). Ambos
+     * son opcionales pero debe venir al menos uno. Ningún otro campo
+     * (email/rol/area_id/activo) es aceptado por esta vía (422
+     * `campo_no_permitido`) — esos siguen siendo exclusivos de
+     * `PATCH /usuarios/{id}` (solo Dirección).
      */
     public function editarMiPerfil(): ResponseInterface
     {
@@ -48,17 +50,36 @@ class SesionController extends BaseController
             return $this->errorCampoNoPermitido($camposDesconocidos);
         }
 
-        $nombre = is_string($body['nombre'] ?? null) ? trim((string) $body['nombre']) : '';
-
         $campos = [];
-        if (! array_key_exists('nombre', $body) || $nombre === '') {
-            $campos['nombre'] = 'Requerido';
-        } elseif (mb_strlen($nombre) > 120) {
-            $campos['nombre'] = 'Máximo 120 caracteres';
+        $update = [];
+
+        if (array_key_exists('nombre', $body)) {
+            $nombre = is_string($body['nombre']) ? trim($body['nombre']) : '';
+            if ($nombre === '') {
+                $campos['nombre'] = 'Requerido';
+            } elseif (mb_strlen($nombre) > 120) {
+                $campos['nombre'] = 'Máximo 120 caracteres';
+            } else {
+                $update['nombre'] = $nombre;
+            }
+        }
+
+        if (array_key_exists('avatar_color', $body)) {
+            $color = $body['avatar_color'];
+            if ($color === null || $color === '') {
+                $update['avatar_color'] = null; // reset al color por defecto
+            } elseif (is_string($color) && preg_match('/^#[0-9a-fA-F]{6}$/', $color) === 1) {
+                $update['avatar_color'] = strtolower($color);
+            } else {
+                $campos['avatar_color'] = 'Debe ser un color hexadecimal (#RRGGBB) o null';
+            }
         }
 
         if ($campos !== []) {
             return $this->errorValidacion('Revisa los campos de tu perfil.', $campos);
+        }
+        if ($update === []) {
+            return $this->errorValidacion('No hay cambios que guardar.', ['nombre' => 'Requerido']);
         }
 
         $actorId = (int) $actor['id'];
@@ -67,9 +88,9 @@ class SesionController extends BaseController
         $db = Database::connect();
         $db->transException(true)->transStart();
 
-        $model->update($actorId, ['nombre' => $nombre]);
+        $model->update($actorId, $update);
 
-        (new AuditoriaModel())->registrar($actorId, 'editar_perfil', 'usuario', $actorId, ['cambios' => ['nombre']], $this->request->getIPAddress());
+        (new AuditoriaModel())->registrar($actorId, 'editar_perfil', 'usuario', $actorId, ['cambios' => array_keys($update)], $this->request->getIPAddress());
 
         $db->transComplete();
 

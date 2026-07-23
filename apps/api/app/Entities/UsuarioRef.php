@@ -13,18 +13,26 @@ final class UsuarioRef
         public readonly int $id,
         public readonly string $nombre,
         public readonly string $email,
+        public readonly ?string $avatarColor = null,
     ) {
     }
 
     /** @param array<string, mixed> $fila */
     public static function desdeFila(array $fila): self
     {
-        return new self((int) $fila['id'], (string) $fila['nombre'], (string) $fila['email']);
+        $color = $fila['avatar_color'] ?? null;
+
+        return new self(
+            (int) $fila['id'],
+            (string) $fila['nombre'],
+            (string) $fila['email'],
+            $color === null || $color === '' ? null : (string) $color,
+        );
     }
 
-    /** @return array{id: int, nombre: string, email: string} */
+    /** @return array{id: int, nombre: string, email: string, avatar_color: string|null} */
     public function aArray(): array
     {
-        return ['id' => $this->id, 'nombre' => $this->nombre, 'email' => $this->email];
+        return ['id' => $this->id, 'nombre' => $this->nombre, 'email' => $this->email, 'avatar_color' => $this->avatarColor];
     }
 }
