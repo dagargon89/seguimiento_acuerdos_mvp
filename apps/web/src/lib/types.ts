@@ -7,7 +7,7 @@
 export type Rol = 'direccion' | 'coordinador' | 'responsable' | 'pendiente';
 export type EstadoAcuerdo = 'en_proceso' | 'vencido' | 'concluido';
 export type TipoAvance = 'avance' | 'reprogramacion' | 'validacion' | 'reapertura';
-export type TipoRecordatorio = 'previo' | 'dia' | 'vencido' | 'resumen' | 'asignacion';
+export type TipoRecordatorio = 'previo' | 'dia' | 'vencido' | 'resumen' | 'asignacion' | 'solicitud_avance';
 export type EstadoEnvio = 'enviado' | 'fallido';
 export type EstadoSync = 'pendiente' | 'sincronizado' | 'error';
 
@@ -50,6 +50,7 @@ export interface AcuerdoRow {
   fecha_compromiso: string; // YYYY-MM-DD
   estado: EstadoAcuerdo;
   enlace: string | null;
+  enlaces: string[] | null;
   observaciones: string | null;
   recordatorio_dias: number[] | null;
   concluido_por_id: number | null;
@@ -144,6 +145,10 @@ export interface ConfigRecordatorios {
   vencido_cada_dias: number;
   vencido_max_repeticiones: number;
   resumen_frecuencia: 'semanal' | 'quincenal' | 'mensual';
+  /** Habilita los correos automáticos que piden avances a los responsables. */
+  solicitud_avances_activa: boolean;
+  /** Habilita que Google Calendar envíe la invitación por correo al crear/actualizar el evento. */
+  invitaciones_calendario_activas: boolean;
 }
 
 export interface UsuarioRef {
@@ -186,7 +191,8 @@ export interface Acuerdo {
   capturado_por: UsuarioRef;
   fecha_compromiso: string;
   estado: EstadoAcuerdo;
-  enlace: string | null;
+  /** Enlaces de productos/evidencias (0..N). El backend siempre devuelve lista. */
+  enlaces: string[];
   observaciones: string | null;
   recordatorio_dias: number[] | null;
   concluido_por: UsuarioRef | null;
@@ -238,7 +244,7 @@ export interface NuevoAcuerdo {
   corresponsables_ids: number[];
   area_id: number;
   fecha_compromiso: string;
-  enlace: string | null;
+  enlaces: string[];
   observaciones: string | null;
   recordatorio_dias: number[] | null;
 }
@@ -253,7 +259,7 @@ export interface EdicionAcuerdo {
   accion?: string;
   responsable_id?: number;
   area_id?: number;
-  enlace?: string | null;
+  enlaces?: string[];
   observaciones?: string | null;
   recordatorio_dias?: number[] | null;
 }

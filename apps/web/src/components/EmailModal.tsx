@@ -46,6 +46,11 @@ export function EmailModal({ rec, onClose }: EmailModalProps) {
     titulo = 'Acuerdo vencido';
     subject = `Seguimiento: acuerdo vencido — ${rec.tema ?? rec.accion}`;
     intro = 'El siguiente acuerdo venció y sigue abierto. Registra un avance o reprograma la fecha compromiso con el equipo.';
+  } else if (rec.tipo === 'solicitud_avance') {
+    titulo = 'Solicitud de avances';
+    subject = 'Solicitud de avances: registra el estado de tus acuerdos';
+    intro =
+      'Te pedimos registrar el avance de los acuerdos abiertos que tienes asignados. Actualiza cada uno en el panel para que Dirección tenga el estado al día.';
   } else {
     titulo = 'Resumen periódico de pendientes';
     subject = 'Resumen periódico: acuerdos abiertos';

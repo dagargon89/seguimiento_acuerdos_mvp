@@ -580,6 +580,70 @@ final class AcuerdosEscrituraTest extends CIUnitTestCase
         $this->assertArrayHasKey('enlace', $this->cuerpo($r)['campos']);
     }
 
+    // ── enlaces (múltiples): creación, normalización y validación ──────────
+
+    public function testEnlacesMultiplesSeCreanYNormalizan(): void
+    {
+        $lote = $this->loteValido();
+        // Incluye duplicado y una cadena vacía: deben deduplicarse/descartarse.
+        $lote['acuerdos'][0]['enlaces'] = [
+            'https://drive.example/minuta',
+            '  https://fotos.example/jornada  ',
+            'https://drive.example/minuta',
+            '',
+        ];
+
+        $r = $this->como('direccion@demo.test')->post('api/v1/acuerdos/lote', $lote);
+
+        $r->assertStatus(201);
+        $this->assertSame(
+            ['https://drive.example/minuta', 'https://fotos.example/jornada'],
+            $this->cuerpo($r)['data'][0]['enlaces'],
+        );
+    }
+
+    public function testAcuerdoSinEnlacesDevuelveListaVacia(): void
+    {
+        $r = $this->como('direccion@demo.test')->post('api/v1/acuerdos/lote', $this->loteValido());
+
+        $r->assertStatus(201);
+        $this->assertSame([], $this->cuerpo($r)['data'][0]['enlaces']);
+    }
+
+    public function testEnlacesConUrlInvalidaEnLoteEs422(): void
+    {
+        $lote = $this->loteValido();
+        $lote['acuerdos'][0]['enlaces'] = ['https://ok.example', 'javascript:alert(1)'];
+
+        $r = $this->como('direccion@demo.test')->post('api/v1/acuerdos/lote', $lote);
+
+        $r->assertStatus(422);
+        $this->assertArrayHasKey('acuerdos.0.enlaces', $this->cuerpo($r)['campos']);
+    }
+
+    public function testEnlacesReemplazanEnPatch(): void
+    {
+        $r = $this->como('direccion@demo.test')->patch('api/v1/acuerdos/4', [
+            'enlaces' => ['https://uno.example', 'https://dos.example'],
+        ]);
+
+        $r->assertStatus(200);
+        $this->assertSame(['https://uno.example', 'https://dos.example'], $this->cuerpo($r)['data']['enlaces']);
+
+        // Reemplazo por lista vacía → sin enlaces.
+        $r2 = $this->como('direccion@demo.test')->patch('api/v1/acuerdos/4', ['enlaces' => []]);
+        $r2->assertStatus(200);
+        $this->assertSame([], $this->cuerpo($r2)['data']['enlaces']);
+    }
+
+    public function testEnlacesInvalidoEnPatchEs422(): void
+    {
+        $r = $this->como('direccion@demo.test')->patch('api/v1/acuerdos/4', ['enlaces' => ['ftp://malo.example']]);
+
+        $r->assertStatus(422);
+        $this->assertArrayHasKey('enlaces', $this->cuerpo($r)['campos']);
+    }
+
     // ── OW-08: campo extra desconocido → 422 ──────────────────────────────
 
     public function testOW08CampoExtraDesconocidoEnLoteEs422(): void

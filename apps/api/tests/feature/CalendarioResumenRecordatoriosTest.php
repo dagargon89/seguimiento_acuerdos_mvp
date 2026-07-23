@@ -503,11 +503,13 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
         $this->assertArrayNotHasKey('data', $cuerpo);
 
         $this->assertSame([
-            'dias_antes'               => [7, 3, 1],
-            'dia_compromiso'           => true,
-            'vencido_cada_dias'        => 3,
-            'vencido_max_repeticiones' => 5,
-            'resumen_frecuencia'       => 'semanal',
+            'dias_antes'                      => [7, 3, 1],
+            'dia_compromiso'                  => true,
+            'vencido_cada_dias'               => 3,
+            'vencido_max_repeticiones'        => 5,
+            'resumen_frecuencia'              => 'semanal',
+            'solicitud_avances_activa'        => true,
+            'invitaciones_calendario_activas' => false,
         ], $cuerpo);
     }
 
@@ -532,6 +534,8 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
         $this->assertSame(2, $cuerpo['vencido_cada_dias']);
         $this->assertSame(4, $cuerpo['vencido_max_repeticiones']);
         $this->assertSame('quincenal', $cuerpo['resumen_frecuencia']);
+        // Campo opcional omitido en el payload: conserva el valor vigente (seed = true).
+        $this->assertTrue($cuerpo['solicitud_avances_activa']);
 
         $fila = Database::connect()->table('auditoria')->where('accion', 'cambio_config')->get()->getRowArray();
         $this->assertNotNull($fila);
@@ -540,6 +544,84 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
         // Confirma que quedó persistido: un GET posterior devuelve lo mismo.
         $get = $this->cuerpo($this->como('direccion@demo.test')->get('api/v1/configuracion/recordatorios'));
         $this->assertSame([7, 3, 1], $get['dias_antes']);
+    }
+
+    public function testPutConfigDireccionHabilitaODeshabilitaSolicitudDeAvances(): void
+    {
+        $payload = [
+            'dias_antes'               => [7, 3, 1],
+            'dia_compromiso'           => true,
+            'vencido_cada_dias'        => 3,
+            'vencido_max_repeticiones' => 5,
+            'resumen_frecuencia'       => 'semanal',
+            'solicitud_avances_activa' => false,
+        ];
+
+        $r = $this->como('direccion@demo.test')->put('api/v1/configuracion/recordatorios', $payload);
+
+        $r->assertStatus(200);
+        $this->assertFalse($this->cuerpo($r)['solicitud_avances_activa']);
+
+        // Persistido: un GET posterior sigue devolviendo el flag deshabilitado.
+        $get = $this->cuerpo($this->como('direccion@demo.test')->get('api/v1/configuracion/recordatorios'));
+        $this->assertFalse($get['solicitud_avances_activa']);
+    }
+
+    public function testPutConfigRechazaSolicitudDeAvancesNoBooleana(): void
+    {
+        $payload = [
+            'dias_antes'               => [7, 3, 1],
+            'dia_compromiso'           => true,
+            'vencido_cada_dias'        => 3,
+            'vencido_max_repeticiones' => 5,
+            'resumen_frecuencia'       => 'semanal',
+            'solicitud_avances_activa' => 'sí',
+        ];
+
+        $r = $this->como('direccion@demo.test')->put('api/v1/configuracion/recordatorios', $payload);
+
+        $r->assertStatus(422);
+        $this->assertArrayHasKey('solicitud_avances_activa', $this->cuerpo($r)['campos']);
+    }
+
+    public function testPutConfigDireccionHabilitaODeshabilitaInvitacionesDeCalendario(): void
+    {
+        // Seed = false; la habilitamos y verificamos round-trip.
+        $payload = [
+            'dias_antes'                      => [7, 3, 1],
+            'dia_compromiso'                  => true,
+            'vencido_cada_dias'               => 3,
+            'vencido_max_repeticiones'        => 5,
+            'resumen_frecuencia'              => 'semanal',
+            'invitaciones_calendario_activas' => true,
+        ];
+
+        $r = $this->como('direccion@demo.test')->put('api/v1/configuracion/recordatorios', $payload);
+
+        $r->assertStatus(200);
+        $this->assertTrue($this->cuerpo($r)['invitaciones_calendario_activas']);
+
+        $get = $this->cuerpo($this->como('direccion@demo.test')->get('api/v1/configuracion/recordatorios'));
+        $this->assertTrue($get['invitaciones_calendario_activas']);
+        // La bandera de correos no se ve afectada (se conserva por omisión).
+        $this->assertTrue($get['solicitud_avances_activa']);
+    }
+
+    public function testPutConfigRechazaInvitacionesDeCalendarioNoBooleana(): void
+    {
+        $payload = [
+            'dias_antes'                      => [7, 3, 1],
+            'dia_compromiso'                  => true,
+            'vencido_cada_dias'               => 3,
+            'vencido_max_repeticiones'        => 5,
+            'resumen_frecuencia'              => 'semanal',
+            'invitaciones_calendario_activas' => 'sí',
+        ];
+
+        $r = $this->como('direccion@demo.test')->put('api/v1/configuracion/recordatorios', $payload);
+
+        $r->assertStatus(422);
+        $this->assertArrayHasKey('invitaciones_calendario_activas', $this->cuerpo($r)['campos']);
     }
 
     public function testPutConfigConValorFueraDeRangoDevuelve422(): void

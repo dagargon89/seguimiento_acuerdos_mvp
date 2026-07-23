@@ -23,7 +23,7 @@ class RecordatoriosProcesar extends BaseCommand
 {
     protected $group       = 'Recordatorios';
     protected $name        = 'recordatorios:procesar';
-    protected $description  = 'Marca vencidos, materializa y envía recordatorios del día, sincroniza calendario y envía el resumen periódico.';
+    protected $description  = 'Marca vencidos, materializa y envía recordatorios del día, sincroniza calendario, envía el resumen periódico y las solicitudes de avances.';
     protected $usage       = 'recordatorios:procesar [--fecha=YYYY-MM-DD]';
     protected $options     = [
         '--fecha' => 'Fecha de la corrida (YYYY-MM-DD) en TZ America/Ciudad_Juarez. Default: hoy.',

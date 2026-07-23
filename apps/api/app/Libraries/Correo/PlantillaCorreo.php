@@ -12,7 +12,8 @@ use CodeIgniter\I18n\Time;
  *
  * Genera asunto + cuerpo HTML por tipo de recordatorio (`previo`/`dia`/
  * `vencido`), la asignación inmediata (ADR-010), el aviso de eliminación
- * (ADR-011) y el resumen periódico (`resumen`).
+ * (ADR-011), el resumen periódico (`resumen`) y la solicitud de avances
+ * (`solicitud_avance`).
  *
  * Seguridad (OWASP A03): TODO contenido dinámico proveniente de datos de
  * usuario (acción, tema, responsable, estado, nombre, etc.) se escapa con
@@ -184,6 +185,42 @@ final class PlantillaCorreo
 
         $html = $this->armarHtml(
             titulo: 'Resumen periódico de pendientes',
+            nombreDestinatario: (string) ($usuario['nombre'] ?? ''),
+            intro: $intro,
+            fichaAcuerdo: null,
+            listaAcuerdos: $ordenados,
+        );
+
+        return ['asunto' => $asunto, 'html' => $html];
+    }
+
+    /**
+     * Solicitud de avances: correo que pide a un responsable/corresponsable
+     * registrar el avance de sus acuerdos abiertos (lista ordenada por fecha
+     * compromiso). Envío condicionado por `solicitud_avances_activa`.
+     *
+     * @param array<string, mixed>      $usuario  Destinatario (responsable/corresponsable).
+     * @param list<array<string, mixed>> $acuerdos Sus acuerdos abiertos.
+     *
+     * @return array{asunto: string, html: string}
+     */
+    public function solicitudAvances(array $usuario, array $acuerdos): array
+    {
+        $asunto = 'Solicitud de avances: registra el estado de tus acuerdos';
+        $intro  = 'Te pedimos registrar el avance de los siguientes acuerdos abiertos que tienes '
+            . 'asignados. Actualiza cada uno en el panel para que Dirección tenga el estado al día.';
+
+        $ordenados = $acuerdos;
+        usort(
+            $ordenados,
+            static fn (array $a, array $b) => strcmp(
+                (string) ($a['fecha_compromiso'] ?? ''),
+                (string) ($b['fecha_compromiso'] ?? ''),
+            ),
+        );
+
+        $html = $this->armarHtml(
+            titulo: 'Solicitud de avances',
             nombreDestinatario: (string) ($usuario['nombre'] ?? ''),
             intro: $intro,
             fichaAcuerdo: null,

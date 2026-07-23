@@ -99,22 +99,20 @@ class RecordatoriosController extends BaseController
 
         $idsVisibles = $this->idsAcuerdosVisibles($actor, $hoy);
 
+        // Filas de acuerdos visibles + las filas personales sin acuerdo
+        // (`acuerdo_id` NULL: `resumen` para dirección/coordinación,
+        // `solicitud_avance` para responsables/corresponsables) del propio actor.
+        // Mismo criterio para todos los roles: un envío personal solo lo ve su
+        // destinatario.
+        $actorId = (int) $actor['id'];
         $builder = (new RecordatorioEnviadoModel())->builder();
-        if ($actor['rol'] === 'responsable') {
-            if ($idsVisibles === []) {
-                return $this->response->setJSON(['data' => []]);
-            }
-            $builder->whereIn('acuerdo_id', $idsVisibles);
-        } else {
-            $actorId = (int) $actor['id'];
-            $builder->groupStart()
-                ->groupStart()
-                    ->where('acuerdo_id', null)
-                    ->where('usuario_id', $actorId)
-                ->groupEnd()
-                ->orWhereIn('acuerdo_id', $idsVisibles === [] ? [0] : $idsVisibles)
-                ->groupEnd();
-        }
+        $builder->groupStart()
+            ->groupStart()
+                ->where('acuerdo_id', null)
+                ->where('usuario_id', $actorId)
+            ->groupEnd()
+            ->orWhereIn('acuerdo_id', $idsVisibles === [] ? [0] : $idsVisibles)
+            ->groupEnd();
 
         $enviados = $builder->orderBy('programado_para', 'DESC')->orderBy('id', 'DESC')->get()->getResultArray();
 
@@ -132,13 +130,17 @@ class RecordatoriosController extends BaseController
             $aid     = $e['acuerdo_id'] === null ? null : (int) $e['acuerdo_id'];
             $acuerdo = $aid === null ? null : ($acuerdosPorId[$aid] ?? null);
 
+            $accionFallback = ((string) $e['tipo']) === 'solicitud_avance'
+                ? 'Solicitud de avances'
+                : 'Resumen periódico de pendientes';
+
             $out[] = new RecordatorioVista(
                 'env-' . $e['id'],
                 $aid,
                 (string) $e['tipo'],
                 (string) $e['programado_para'],
                 $usuariosPorId[(int) $e['usuario_id']] ?? new UsuarioRef((int) $e['usuario_id'], '—', '—'),
-                $acuerdo['accion'] ?? 'Resumen periódico de pendientes',
+                $acuerdo['accion'] ?? $accionFallback,
                 $acuerdo['tema'] ?? null,
                 $acuerdo['fecha_compromiso'] ?? null,
                 $e['estado'] === 'enviado',
@@ -183,7 +185,11 @@ class RecordatoriosController extends BaseController
             return $this->errorValidacion('El cuerpo debe ser JSON.');
         }
 
-        $permitidos = ['dias_antes', 'dia_compromiso', 'vencido_cada_dias', 'vencido_max_repeticiones', 'resumen_frecuencia'];
+        // `solicitud_avances_activa` e `invitaciones_calendario_activas` son
+        // opcionales (retrocompatibles): si no vienen, se conserva el valor
+        // vigente. El resto son requeridos como antes.
+        $requeridos = ['dias_antes', 'dia_compromiso', 'vencido_cada_dias', 'vencido_max_repeticiones', 'resumen_frecuencia'];
+        $permitidos = [...$requeridos, 'solicitud_avances_activa', 'invitaciones_calendario_activas'];
         $desconocidos = array_values(array_diff(array_keys($body), $permitidos));
         if ($desconocidos !== []) {
             return $this->response->setStatusCode(422)->setJSON([
@@ -193,7 +199,7 @@ class RecordatoriosController extends BaseController
             ]);
         }
 
-        $faltantes = array_values(array_diff($permitidos, array_keys($body)));
+        $faltantes = array_values(array_diff($requeridos, array_keys($body)));
         if ($faltantes !== []) {
             return $this->errorValidacion('Revisa los campos de la configuración.', array_fill_keys($faltantes, 'Requerido'));
         }
@@ -242,6 +248,14 @@ class RecordatoriosController extends BaseController
             $campos['resumen_frecuencia'] = 'Debe ser semanal, quincenal o mensual';
         }
 
+        if (array_key_exists('solicitud_avances_activa', $body) && ! is_bool($body['solicitud_avances_activa'])) {
+            $campos['solicitud_avances_activa'] = 'Debe ser booleano';
+        }
+
+        if (array_key_exists('invitaciones_calendario_activas', $body) && ! is_bool($body['invitaciones_calendario_activas'])) {
+            $campos['invitaciones_calendario_activas'] = 'Debe ser booleano';
+        }
+
         if ($campos !== []) {
             return $this->errorValidacion('Revisa los campos de la configuración.', $campos);
         }
@@ -251,12 +265,19 @@ class RecordatoriosController extends BaseController
         $diasDescendente = $diasAntes;
         rsort($diasDescendente);
 
+        // Campos opcionales: si no vienen en el body, se preserva el valor vigente.
+        $configActual = ConfigRecordatorios::desdeValor(
+            (new ConfiguracionModel())->recordatoriosDefault(),
+        );
+
         $nuevoValor = [
-            'dias_antes'               => $diasDescendente,
-            'dia_compromiso'           => $body['dia_compromiso'],
-            'vencido_cada_dias'        => $body['vencido_cada_dias'],
-            'vencido_max_repeticiones' => $body['vencido_max_repeticiones'],
-            'resumen_frecuencia'       => $body['resumen_frecuencia'],
+            'dias_antes'                      => $diasDescendente,
+            'dia_compromiso'                  => $body['dia_compromiso'],
+            'vencido_cada_dias'               => $body['vencido_cada_dias'],
+            'vencido_max_repeticiones'        => $body['vencido_max_repeticiones'],
+            'resumen_frecuencia'              => $body['resumen_frecuencia'],
+            'solicitud_avances_activa'        => $body['solicitud_avances_activa'] ?? $configActual->solicitudAvancesActiva,
+            'invitaciones_calendario_activas' => $body['invitaciones_calendario_activas'] ?? $configActual->invitacionesCalendarioActivas,
         ];
 
         $db = Database::connect();

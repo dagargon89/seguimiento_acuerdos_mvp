@@ -25,6 +25,8 @@ final class Acuerdo
         public readonly string $fechaCompromiso,
         public readonly string $estado,
         public readonly ?string $enlace,
+        /** @var string[] Enlaces de productos (siempre lista; [] si no hay). */
+        public readonly array $enlaces,
         public readonly ?string $observaciones,
         /** @var int[]|null */
         public readonly ?array $recordatorioDias,
@@ -48,6 +50,12 @@ final class Acuerdo
             $recordatorioDias = json_decode($recordatorioDias, true, 512, JSON_THROW_ON_ERROR);
         }
 
+        $enlaces = $fila['enlaces'] ?? null;
+        if (is_string($enlaces)) {
+            $enlaces = json_decode($enlaces, true, 512, JSON_THROW_ON_ERROR);
+        }
+        $enlaces = is_array($enlaces) ? array_values($enlaces) : [];
+
         return new self(
             (int) $fila['id'],
             Reunion::desdeFila(self::sub($fila, 'reunion')),
@@ -60,6 +68,7 @@ final class Acuerdo
             (string) $fila['fecha_compromiso'],
             (string) $fila['estado'],
             $fila['enlace'],
+            $enlaces,
             $fila['observaciones'],
             $recordatorioDias,
             $fila['concluido_por__id'] === null ? null : UsuarioRef::desdeFila(self::sub($fila, 'concluido_por')),
@@ -98,6 +107,7 @@ final class Acuerdo
             'fecha_compromiso'  => $this->fechaCompromiso,
             'estado'            => $this->estado,
             'enlace'            => $this->enlace,
+            'enlaces'           => $this->enlaces,
             'observaciones'     => $this->observaciones,
             'recordatorio_dias' => $this->recordatorioDias,
             'concluido_por'     => $this->concluidoPor?->aArray(),

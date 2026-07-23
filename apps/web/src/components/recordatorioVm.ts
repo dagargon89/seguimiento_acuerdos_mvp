@@ -19,6 +19,7 @@ export function tipoRecordatorioLabel(
   if (tipo === 'dia') return 'Día de compromiso';
   if (tipo === 'vencido') return 'Seguimiento de vencido';
   if (tipo === 'asignacion') return 'Asignación del acuerdo';
+  if (tipo === 'solicitud_avance') return 'Solicitud de avances';
   return 'Resumen periódico';
 }
 

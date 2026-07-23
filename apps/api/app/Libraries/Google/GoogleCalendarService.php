@@ -56,14 +56,15 @@ final class GoogleCalendarService implements CalendarSync
             return;
         }
 
-        $evento = $this->construirEvento($acuerdo);
+        $evento    = $this->construirEvento($acuerdo);
+        $notificar = $this->invitacionesActivas($db);
 
         try {
             if ($filaSync['calendar_event_id'] === null) {
-                $eventId = $this->api->crearEvento($this->calendarId, $evento);
+                $eventId = $this->api->crearEvento($this->calendarId, $evento, $notificar);
             } else {
                 $eventId = $filaSync['calendar_event_id'];
-                $this->api->actualizarEvento($this->calendarId, $eventId, $evento);
+                $this->api->actualizarEvento($this->calendarId, $eventId, $evento, $notificar);
             }
 
             $db->table('google_sync')->where('acuerdo_id', $acuerdoId)->update([
@@ -134,6 +135,24 @@ final class GoogleCalendarService implements CalendarSync
                 'msg' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * ¿Google debe enviar la invitación/actualización nativa por correo a los
+     * invitados al crear/actualizar el evento? Bandera global
+     * `configuracion.recordatorios_default → invitaciones_calendario_activas`.
+     * Default `false` (no enviar) si la clave no existe: el evento igual se
+     * sincroniza, solo no se manda la invitación individual por correo.
+     */
+    private function invitacionesActivas(\CodeIgniter\Database\BaseConnection $db): bool
+    {
+        $fila = $db->table('configuracion')->where('clave', 'recordatorios_default')->get()->getRowArray();
+        if ($fila === null) {
+            return false;
+        }
+        $valor = json_decode((string) $fila['valor'], true);
+
+        return (bool) ($valor['invitaciones_calendario_activas'] ?? false);
     }
 
     /**

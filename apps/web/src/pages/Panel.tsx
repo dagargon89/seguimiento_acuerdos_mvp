@@ -18,8 +18,10 @@ import { Avatar } from '../components/Avatar';
 import { Badge } from '../components/Badge';
 import { Drawer } from '../components/Drawer';
 import { ModeSwitch } from '../components/ModeSwitch';
+import { Paginacion } from '../components/Paginacion';
 import { Select } from '../components/Select';
 import { StatCard } from '../components/StatCard';
+import { usePaginacion } from '../lib/usePaginacion';
 
 type Modo = 'tabla' | 'kanban' | 'reunion' | 'gantt' | 'calendario';
 type FiltroEstado = NonNullable<FiltrosAcuerdos['estado']>;
@@ -207,6 +209,7 @@ function VistaTabla({
   proxPorAcuerdo: Map<number, string>;
   onAbrir: (id: number) => void;
 }) {
+  const pag = usePaginacion(lista);
   return (
     <>
     {/* Tabla completa (≥640px) */}
@@ -224,7 +227,7 @@ function VistaTabla({
           </tr>
         </thead>
         <tbody>
-          {lista.map((a) => {
+          {pag.pagina_items.map((a) => {
             const est = EST[a.estado];
             const { rel, color } = vencimientoRelativo(a.fecha_compromiso, a.estado);
             const prox = a.estado === 'concluido' ? null : proxPorAcuerdo.get(a.id) ?? null;
@@ -264,10 +267,14 @@ function VistaTabla({
                     style={{
                       fontSize: 12.5,
                       fontWeight: 600,
-                      color: a.enlace ? 'var(--text-link)' : 'var(--text-muted)',
+                      color: a.enlaces.length > 0 ? 'var(--text-link)' : 'var(--text-muted)',
                     }}
                   >
-                    {a.enlace ? 'Producto ↗' : '—'}
+                    {a.enlaces.length === 0
+                      ? '—'
+                      : a.enlaces.length === 1
+                        ? 'Producto ↗'
+                        : `${a.enlaces.length} productos ↗`}
                   </span>
                 </td>
               </tr>
@@ -286,7 +293,7 @@ function VistaTabla({
 
     {/* Cards apiladas (<640px), mismo detalle al tocar */}
     <div className="panel-card anim-in anim-in--2 sm:hidden">
-      {lista.map((a) => {
+      {pag.pagina_items.map((a) => {
         const est = EST[a.estado];
         const { rel, color } = vencimientoRelativo(a.fecha_compromiso, a.estado);
         return (
@@ -323,6 +330,8 @@ function VistaTabla({
         </div>
       )}
     </div>
+
+    <Paginacion estado={pag} sustantivo="acuerdos" />
     </>
   );
 }

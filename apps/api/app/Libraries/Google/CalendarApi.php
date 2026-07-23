@@ -16,10 +16,15 @@ interface CalendarApi
      * Crea un evento en el calendario `$calendarId`. Devuelve el `event_id`
      * asignado por Google (para persistirlo en `google_sync.calendar_event_id`).
      *
-     * @param array<string, mixed> $evento Forma libre (la implementación real la
-     *                                      traduce a `Google\Service\Calendar\Event`).
+     * @param array<string, mixed> $evento             Forma libre (la implementación real la
+     *                                                  traduce a `Google\Service\Calendar\Event`).
+     * @param bool                 $notificarInvitados `true` → Google envía la invitación
+     *                                                  nativa por correo a los attendees
+     *                                                  (`sendUpdates=all`); `false` → no la
+     *                                                  envía (`sendUpdates=none`), el evento
+     *                                                  igual aparece en su calendario.
      */
-    public function crearEvento(string $calendarId, array $evento): string;
+    public function crearEvento(string $calendarId, array $evento, bool $notificarInvitados): string;
 
     /**
      * Actualiza (patch) un evento ya existente. NO crea uno nuevo: si
@@ -27,8 +32,9 @@ interface CalendarApi
      * API se propague (la captura la vive en `GoogleCalendarService`).
      *
      * @param array<string, mixed> $evento
+     * @param bool                 $notificarInvitados Igual que en `crearEvento`, para el `patch`.
      */
-    public function actualizarEvento(string $calendarId, string $eventId, array $evento): void;
+    public function actualizarEvento(string $calendarId, string $eventId, array $evento, bool $notificarInvitados): void;
 
     /**
      * Elimina un evento. El flujo de sincronización NO borra eventos (RF-09

@@ -97,6 +97,16 @@ export function IconoUsuarios(props: IconoProps) {
   );
 }
 
+/** Configuración: engrane. */
+export function IconoConfiguracion(props: IconoProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2.5v2.4M12 19.1v2.4M4.2 7l2.1 1.2M17.7 15.8l2.1 1.2M4.2 17l2.1-1.2M17.7 8.2l2.1-1.2" />
+    </svg>
+  );
+}
+
 /** Tema claro: sol (se muestra en modo oscuro para cambiar a claro). */
 export function IconoSol(props: IconoProps) {
   return (

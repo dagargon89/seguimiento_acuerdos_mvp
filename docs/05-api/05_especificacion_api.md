@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Documento | 05 — Especificación de API REST |
-| Versión | 1.8 — **CONGELADA** (2026-07-14, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). v1.8 añade el filtro `mios=1` a `GET /acuerdos` / `FiltrosAcuerdos.mios` (ADR-013). |
+| Versión | 1.8 — **CONGELADA** (2026-07-14, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). v1.8 añade el filtro `mios=1` a `GET /acuerdos` / `FiltrosAcuerdos.mios` (ADR-013). v1.9 añade `solicitud_avances_activa` (bool) a `ConfigRecordatorios` y el literal `'solicitud_avance'` a `TipoRecordatorio`: el job envía periódicamente (misma frecuencia que el resumen) una solicitud de avances a responsables/corresponsables de acuerdos abiertos, condicionada por esa bandera global. v1.10 añade `invitaciones_calendario_activas` (bool) a `ConfigRecordatorios`: controla si Google Calendar manda la invitación nativa por correo al crear/actualizar el evento (la sincronización del acuerdo al calendario no cambia). |
 | Fecha | 2026-07-14 |
 | Depende de | 01_SRS, 02_arquitectura, 03_modelo_de_datos |
 
@@ -52,7 +52,8 @@
                "rol": "coordinador", "area_id": 1, "activo": true },
   "config_recordatorios": { "dias_antes": [7,3,1], "dia_compromiso": true,
                             "vencido_cada_dias": 3, "vencido_max_repeticiones": 5,
-                            "resumen_frecuencia": "semanal" }
+                            "resumen_frecuencia": "semanal", "solicitud_avances_activa": true,
+                            "invitaciones_calendario_activas": false }
 }
 ```
 *Seguridad:* si el token es válido pero el email no está en la lista blanca ni tiene cuenta autorregistrada → 403 `usuario_no_registrado`. Una cuenta `rol: "pendiente"` (ADR-006) SÍ puede llamar `GET/PATCH /me` (para ver su estado y corregir su nombre) pero recibe 403 `cuenta_pendiente` en cualquier otro endpoint del panel.
@@ -80,7 +81,7 @@
 | `GET /acuerdos` | Todos | Listado visible para el actor. Query: `estado` (`en_proceso\|vencido\|concluido\|todos_abiertos`), `responsable_id`, `mios=1` (solo acuerdos donde el actor es responsable o corresponsable; únicamente el literal `1` activa el filtro — ADR-013, v1.8), `q` (busca en tema+acción+responsable), `desde`/`hasta` (rango de `fecha_compromiso`, para la vista calendario), `page`, `per_page`. **Default sin `estado`: solo abiertos (`en_proceso`+`vencido`) — los concluidos exigen filtro explícito** (RF-03.3) |
 | `GET /acuerdos/{id}` | Visibilidad | Detalle con corresponsables, avances y recordatorios del acuerdo |
 | `POST /acuerdos/lote` | Todos | Captura transaccional de 1..N acuerdos (RF-02) |
-| `PATCH /acuerdos/{id}` | Dirección, coordinación del área o quien lo capturó (ADR-011) | Editar tema/acción/área/responsable/enlace/observaciones/`recordatorio_dias` |
+| `PATCH /acuerdos/{id}` | Dirección, coordinación del área o quien lo capturó (ADR-011) | Editar tema/acción/área/responsable/`enlaces`/observaciones/`recordatorio_dias` |
 | `DELETE /acuerdos/{id}` | **Solo Dirección** (403 auditado) | Borrado definitivo con cascada (avances, corresponsables, recordatorios, sync) + eliminación del evento de calendario; auditado con la ficha del acuerdo (ADR-011, v1.7). Respuesta 204 |
 | `PUT /acuerdos/{id}/corresponsables` | Dirección, coordinación del área | Reemplaza el conjunto de corresponsables |
 | `POST /acuerdos/{id}/avances` | Responsable, corresponsables, coordinación, dirección | Avance; con `nueva_fecha` = reprogramación (vencido→en_proceso) |
@@ -94,7 +95,7 @@
   "acuerdos": [
     { "tema": "Panel de seguimiento", "accion": "Cargar acuerdos históricos de junio",
       "responsable_id": 5, "corresponsables_ids": [4, 6], "area_id": 1,
-      "fecha_compromiso": "2026-07-20", "enlace": null, "observaciones": null,
+      "fecha_compromiso": "2026-07-20", "enlaces": ["https://drive.example/minuta", "https://fotos.example/jornada"], "observaciones": null,
       "recordatorio_dias": [5, 1] }
   ]
 }
@@ -121,7 +122,7 @@
     "corresponsables": [{"id": 4, "nombre": "Responsable Demo Uno", "email": "resp1@demo.test"}],
     "capturado_por": {"id": 2, "nombre": "Coordinadora Demo Uno"},
     "fecha_compromiso": "2026-07-20", "estado": "en_proceso",
-    "enlace": null, "observaciones": null, "recordatorio_dias": [5, 1],
+    "enlaces": ["https://drive.example/minuta"], "observaciones": null, "recordatorio_dias": [5, 1],
     "concluido_por": null, "concluido_at": null,
     "avances": [ {"id": 7, "usuario": {"id": 5, "nombre": "Responsable Demo Dos"},
                   "tipo": "avance", "descripcion": "Se cargó junio semana 1", "nueva_fecha": null,
@@ -143,13 +144,13 @@
 | `GET /configuracion/recordatorios` | Todos | Config global vigente |
 | `PUT /configuracion/recordatorios` | **Solo Dirección** | Actualiza default global (no toca overrides) |
 
-*Seguridad:* el ámbito se filtra con la misma visibilidad de acuerdos; `PUT` valida `dias_antes` ⊆ [0..30] y ordenado.
+*Seguridad:* el ámbito se filtra con la misma visibilidad de acuerdos; `PUT` valida `dias_antes` ⊆ [0..30] y ordenado. `solicitud_avances_activa` (bool) es opcional en el `PUT` —habilita/deshabilita los correos de solicitud de avances a los responsables; si se omite, conserva el valor vigente. `invitaciones_calendario_activas` (bool) también es opcional —habilita/deshabilita que Google Calendar envíe la invitación nativa por correo al crear/actualizar el evento (`sendUpdates=all|none`); el acuerdo se sincroniza igual; si se omite, conserva el valor vigente.
 
 ### 2.4 Checklist de validación
 
 | Método/Ruta | Roles | Descripción |
 |---|---|---|
-| `GET /checklist` | **Solo Dirección** | Acuerdos abiertos priorizados (vencidos primero, luego por fecha) con evidencia resumida (nº avances, último avance, enlace) |
+| `GET /checklist` | **Solo Dirección** | Acuerdos abiertos priorizados (vencidos primero, luego por fecha) con evidencia resumida (nº avances, último avance, `enlaces`) |
 
 ### 2.5 Calendario
 

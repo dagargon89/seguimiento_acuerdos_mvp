@@ -14,10 +14,10 @@ use Throwable;
  */
 final class FakeCalendarApi implements CalendarApi
 {
-    /** @var list<array{calendarId: string, evento: array<string, mixed>}> */
+    /** @var list<array{calendarId: string, evento: array<string, mixed>, notificar: bool}> */
     public array $creados = [];
 
-    /** @var list<array{calendarId: string, eventId: string, evento: array<string, mixed>}> */
+    /** @var list<array{calendarId: string, eventId: string, evento: array<string, mixed>, notificar: bool}> */
     public array $actualizados = [];
 
     /** @var list<array{calendarId: string, eventId: string}> */
@@ -34,25 +34,25 @@ final class FakeCalendarApi implements CalendarApi
 
     private int $contador = 0;
 
-    public function crearEvento(string $calendarId, array $evento): string
+    public function crearEvento(string $calendarId, array $evento, bool $notificarInvitados): string
     {
         if ($this->lanzarErrorEnCrear !== null) {
             throw $this->lanzarErrorEnCrear;
         }
 
-        $this->creados[] = ['calendarId' => $calendarId, 'evento' => $evento];
+        $this->creados[] = ['calendarId' => $calendarId, 'evento' => $evento, 'notificar' => $notificarInvitados];
         $this->contador++;
 
         return $this->proximoEventId;
     }
 
-    public function actualizarEvento(string $calendarId, string $eventId, array $evento): void
+    public function actualizarEvento(string $calendarId, string $eventId, array $evento, bool $notificarInvitados): void
     {
         if ($this->lanzarErrorEnActualizar !== null) {
             throw $this->lanzarErrorEnActualizar;
         }
 
-        $this->actualizados[] = ['calendarId' => $calendarId, 'eventId' => $eventId, 'evento' => $evento];
+        $this->actualizados[] = ['calendarId' => $calendarId, 'eventId' => $eventId, 'evento' => $evento, 'notificar' => $notificarInvitados];
     }
 
     public function eliminarEvento(string $calendarId, string $eventId): void

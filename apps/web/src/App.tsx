@@ -16,6 +16,7 @@ import {
   IconoCaptura,
   IconoChecklist,
   IconoColapsar,
+  IconoConfiguracion,
   IconoLuna,
   IconoMisAcuerdos,
   IconoPanel,
@@ -35,6 +36,7 @@ import { Recordatorios } from './pages/Recordatorios';
 import { Checklist } from './pages/Checklist';
 import { Usuarios } from './pages/Usuarios';
 import { Areas } from './pages/Areas';
+import { Configuracion } from './pages/Configuracion';
 import { Perfil } from './pages/Perfil';
 
 // Cableado del ID token de Firebase (ADR-002) a nivel de módulo: queda listo
@@ -256,6 +258,7 @@ const NAV_ADMIN = [
   { to: '/recordatorios', label: 'Recordatorios', Icono: IconoRecordatorios },
   { to: '/usuarios', label: 'Usuarios', Icono: IconoUsuarios },
   { to: '/areas', label: 'Áreas', Icono: IconoAreas },
+  { to: '/configuracion', label: 'Configuración', Icono: IconoConfiguracion },
 ];
 /** Entradas del bloque Administración visibles para la coordinación (ADR-012/013). */
 const NAV_ADMIN_COORDINADOR = new Set(['/checklist', '/recordatorios']);
@@ -393,6 +396,7 @@ function Shell({
             <Route path="/checklist" element={puedeChecklist ? <Checklist /> : <Navigate to="/panel" replace />} />
             <Route path="/usuarios" element={esDireccion ? <Usuarios /> : <Navigate to="/panel" replace />} />
             <Route path="/areas" element={esDireccion ? <Areas /> : <Navigate to="/panel" replace />} />
+            <Route path="/configuracion" element={esDireccion ? <Configuracion /> : <Navigate to="/panel" replace />} />
             <Route path="/perfil" element={<Perfil />} />
             <Route path="*" element={<Navigate to="/panel" replace />} />
           </Routes>

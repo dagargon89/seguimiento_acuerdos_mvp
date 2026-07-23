@@ -1,0 +1,20 @@
+# Override de despliegue local (NO versionar) · Panel de Acuerdos
+#
+# Sustituye el rol de docker-compose.prod.yml para la topología "API en el host":
+#   - Publica MySQL/Redis SOLO en loopback (127.0.0.1): no expuestos a Internet
+#     (cumple doc 04 §A05) pero alcanzables por el PHP-FPM del host.
+#   - Quita el mount del DDL en initdb de MySQL: las migraciones de CI4
+#     (php spark migrate) son la ÚNICA fuente de esquema, evitando la colisión
+#     "table already exists" con CreateEsquemaInicial.
+#
+# Uso: docker compose -f docker-compose.yml -f docker-compose.deploy.local.yml up -d
+services:
+  mysql:
+    restart: unless-stopped        # sobrevive reboots del servidor
+    ports: !override ['127.0.0.1:3306:3306']
+    volumes: !override
+      - mysql_data:/var/lib/mysql
+  redis:
+    restart: unless-stopped
+    # host 6380 → contenedor 6379 (el 6379 del host lo usa otro proyecto: banco-tiempo)
+    ports: !override ['127.0.0.1:6380:6379']

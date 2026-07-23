@@ -64,6 +64,10 @@ final class RecordatorioService
         // 5. Resumen periódico (RF-11) si la fecha corresponde a la frecuencia.
         $this->procesarResumenPeriodico($hoy, $resumen);
 
+        // 5b. Solicitud de avances a responsables/corresponsables, si está
+        // habilitada globalmente y la fecha corresponde a la frecuencia.
+        $this->procesarSolicitudAvances($hoy, $resumen);
+
         // 6. Auditar la corrida completa (usuario_id null = acción del sistema).
         (new AuditoriaModel())->registrar(
             null,
@@ -372,6 +376,141 @@ final class RecordatorioService
                 ]);
                 $resumen->resumenesFallidos++;
                 log_message('error', 'Fallo al enviar resumen a {mail}: {msg}', [
+                    'mail' => $usuario['email'],
+                    'msg'  => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Paso 5b: solicitud de avances. Si `solicitud_avances_activa` está
+     * habilitada y `$hoy` corresponde a la frecuencia configurada, envía a cada
+     * responsable/corresponsable ACTIVO de al menos un acuerdo abierto un correo
+     * (`tipo='solicitud_avance'`, `acuerdo_id` NULL — digest por usuario) con la
+     * lista de SUS acuerdos abiertos, pidiéndoles registrar el avance.
+     *
+     * Idempotencia: igual que el resumen, `acuerdo_id` es NULL, así que la
+     * UNIQUE natural NO protege (MySQL trata cada NULL como distinto); la
+     * garantía es el check-then-act de abajo + un único runner del cron.
+     *
+     * Sin N+1 (regla №9): un query trae los acuerdos abiertos, otro sus
+     * corresponsables y otro los usuarios activos; el mapeo usuario→acuerdos se
+     * arma en memoria.
+     */
+    private function procesarSolicitudAvances(string $hoy, ResumenCorrida $resumen): void
+    {
+        $configGlobal = (new ConfiguracionModel())->recordatoriosDefault();
+
+        // Bandera global (opt-out): default habilitado si la clave no existe.
+        if (! ($configGlobal['solicitud_avances_activa'] ?? true)) {
+            return;
+        }
+
+        $frecuencia = (string) ($configGlobal['resumen_frecuencia'] ?? 'semanal');
+        if (! self::correspondeAFrecuencia($hoy, $frecuencia)) {
+            return;
+        }
+
+        // 1. Acuerdos abiertos con nombre del responsable (una sola consulta).
+        $acuerdos = $this->db->table('acuerdos a')
+            ->select('a.id, a.tema, a.accion, a.fecha_compromiso, a.estado, a.area_id, a.responsable_id, r.nombre AS responsable_nombre')
+            ->join('usuarios r', 'r.id = a.responsable_id', 'left')
+            ->whereIn('a.estado', ['en_proceso', 'vencido'])
+            ->get()->getResultArray();
+
+        if ($acuerdos === []) {
+            return;
+        }
+
+        $acuerdoIds = array_map(static fn (array $a) => (int) $a['id'], $acuerdos);
+
+        // 2. Corresponsables de esos acuerdos (una sola consulta, whereIn).
+        $corresponsables = $this->db->table('acuerdo_corresponsables')
+            ->select('acuerdo_id, usuario_id')
+            ->whereIn('acuerdo_id', $acuerdoIds)
+            ->get()->getResultArray();
+
+        // 3. Mapa usuario_id → lista de SUS acuerdos abiertos (responsable o corresponsable).
+        $acuerdoPorId  = [];
+        $acuerdosDeUsuario = []; // usuario_id => list<acuerdo>
+        foreach ($acuerdos as $a) {
+            $aid                 = (int) $a['id'];
+            $acuerdoPorId[$aid]  = $a;
+            $resp                = (int) $a['responsable_id'];
+            $acuerdosDeUsuario[$resp][$aid] = $a;
+        }
+        foreach ($corresponsables as $c) {
+            $aid = (int) $c['acuerdo_id'];
+            $uid = (int) $c['usuario_id'];
+            if (isset($acuerdoPorId[$aid])) {
+                $acuerdosDeUsuario[$uid][$aid] = $acuerdoPorId[$aid];
+            }
+        }
+
+        if ($acuerdosDeUsuario === []) {
+            return;
+        }
+
+        // 4. Datos de los destinatarios ACTIVOS (una sola consulta, whereIn).
+        $destinatarios = $this->db->table('usuarios')
+            ->select('id, email, nombre')
+            ->whereIn('id', array_keys($acuerdosDeUsuario))
+            ->where('activo', 1)
+            ->get()->getResultArray();
+
+        // Orden determinista por id (facilita pruebas y logs).
+        usort($destinatarios, static fn (array $a, array $b) => (int) $a['id'] <=> (int) $b['id']);
+
+        foreach ($destinatarios as $usuario) {
+            $usuarioId = (int) $usuario['id'];
+
+            $existe = $this->db->table('recordatorios_enviados')
+                ->where('acuerdo_id', null)
+                ->where('usuario_id', $usuarioId)
+                ->where('tipo', 'solicitud_avance')
+                ->where('programado_para', $hoy)
+                ->countAllResults() > 0;
+            if ($existe) {
+                continue;
+            }
+
+            $this->db->transStart();
+            $this->db->table('recordatorios_enviados')->insert([
+                'acuerdo_id'      => null,
+                'usuario_id'      => $usuarioId,
+                'tipo'            => 'solicitud_avance',
+                'programado_para' => $hoy,
+                'estado'          => 'fallido',
+                'enviado_at'      => null,
+                'error'           => 'pendiente_de_envio',
+            ]);
+            $filaId = (int) $this->db->insertID();
+            $this->db->transComplete();
+
+            $resumen->materializados++;
+
+            try {
+                $correo    = $this->plantilla->solicitudAvances($usuario, array_values($acuerdosDeUsuario[$usuarioId]));
+                $messageId = $this->mailer->enviar(
+                    (string) $usuario['email'],
+                    $correo['asunto'],
+                    $correo['html'],
+                );
+                $this->db->table('recordatorios_enviados')->where('id', $filaId)->update([
+                    'estado'           => 'enviado',
+                    'enviado_at'       => date('Y-m-d H:i:s'),
+                    'gmail_message_id' => $messageId,
+                    'error'            => null,
+                ]);
+                $resumen->solicitudesEnviadas++;
+            } catch (Throwable $e) {
+                $this->db->table('recordatorios_enviados')->where('id', $filaId)->update([
+                    'estado' => 'fallido',
+                    'error'  => $e->getMessage(),
+                ]);
+                $resumen->solicitudesFallidas++;
+                log_message('error', 'Fallo al enviar solicitud de avances a {mail}: {msg}', [
                     'mail' => $usuario['email'],
                     'msg'  => $e->getMessage(),
                 ]);

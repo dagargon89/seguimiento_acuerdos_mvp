@@ -6,16 +6,18 @@
  * ADR-012: el área puede asignarse a CUALQUIER rol (no solo coordinación) y se
  * puede editar el rol/área de un usuario ya activo desde esta misma tabla.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib';
 import type { AltaUsuario, Rol } from '../lib';
 import { ROL_LABEL, camposError, mensajeError } from '../components/EstadoHelpers';
 import { Avatar } from '../components/Avatar';
 import { Badge } from '../components/Badge';
+import { Paginacion } from '../components/Paginacion';
 import { Select } from '../components/Select';
 import { useSesion } from '../components/SessionContext';
 import { useToast } from '../components/Toast';
+import { usePaginacion } from '../lib/usePaginacion';
 
 interface FormAlta {
   nombre: string;
@@ -51,11 +53,16 @@ export function Usuarios() {
   const areasQ = useQuery({ queryKey: ['areas'], queryFn: () => api.listAreas() });
 
   // Pendientes primero: son los que requieren acción de Dirección.
-  const usuariosOrdenados = [...(usuariosQ.data ?? [])].sort((a, b) => {
-    const aPendiente = a.rol === 'pendiente' ? 0 : 1;
-    const bPendiente = b.rol === 'pendiente' ? 0 : 1;
-    return aPendiente - bPendiente;
-  });
+  const usuariosOrdenados = useMemo(
+    () =>
+      [...(usuariosQ.data ?? [])].sort((a, b) => {
+        const aPendiente = a.rol === 'pendiente' ? 0 : 1;
+        const bPendiente = b.rol === 'pendiente' ? 0 : 1;
+        return aPendiente - bPendiente;
+      }),
+    [usuariosQ.data],
+  );
+  const pag = usePaginacion(usuariosOrdenados);
 
   const areas = areasQ.data ?? [];
   const areaNombre = (id: number | null) => (id === null ? null : areas.find((a) => a.id === id)?.nombre ?? '—');
@@ -209,7 +216,7 @@ export function Usuarios() {
             </tr>
           </thead>
           <tbody>
-            {usuariosOrdenados.map((u) => {
+            {pag.pagina_items.map((u) => {
               const esPendiente = u.rol === 'pendiente' && u.activo;
               const editando = ediciones[u.id] !== undefined;
               const esPropio = u.id === sesion?.usuario.id;
@@ -329,6 +336,8 @@ export function Usuarios() {
           </tbody>
         </table>
       </div>
+
+      <Paginacion estado={pag} sustantivo="usuarios" />
 
       {altaError && (
         <div style={{ marginBottom: 16 }}>

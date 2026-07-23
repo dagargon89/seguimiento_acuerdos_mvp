@@ -40,13 +40,16 @@ class AcuerdosController extends BaseController
     /** Campos que SÍ acepta `NuevoAcuerdo` (doc 05 §2.2 / types.ts) — cualquier otro → 422 (OW-08). */
     private const CAMPOS_NUEVO_ACUERDO = [
         'tema', 'accion', 'responsable_id', 'corresponsables_ids', 'area_id',
-        'fecha_compromiso', 'enlace', 'observaciones', 'recordatorio_dias',
+        'fecha_compromiso', 'enlace', 'enlaces', 'observaciones', 'recordatorio_dias',
     ];
 
     /** Campos que SÍ acepta `EdicionAcuerdo` (opcionales) — cualquier otro → 422 (`campo_no_permitido`/OW-08). */
     private const CAMPOS_EDICION_ACUERDO = [
-        'tema', 'accion', 'responsable_id', 'area_id', 'enlace', 'observaciones', 'recordatorio_dias',
+        'tema', 'accion', 'responsable_id', 'area_id', 'enlace', 'enlaces', 'observaciones', 'recordatorio_dias',
     ];
+
+    /** Tope defensivo de enlaces de productos por acuerdo. */
+    private const MAX_ENLACES = 20;
 
     /** Campos que SÍ acepta `NuevoAvance`. */
     private const CAMPOS_NUEVO_AVANCE = ['descripcion', 'nueva_fecha'];
@@ -399,6 +402,9 @@ class AcuerdosController extends BaseController
         if (array_key_exists('enlace', $body) && $body['enlace'] !== null && ! $this->esEnlaceValido($body['enlace'])) {
             $campos['enlace'] = 'Debe ser una URL http(s)';
         }
+        if (array_key_exists('enlaces', $body) && ! $this->esEnlacesValido($body['enlaces'])) {
+            $campos['enlaces'] = 'Cada enlace debe ser una URL http(s) (máx. ' . self::MAX_ENLACES . ')';
+        }
         if (array_key_exists('recordatorio_dias', $body) && ! $this->esRecordatorioDiasValido($body['recordatorio_dias'])) {
             $campos['recordatorio_dias'] = 'Cada aviso debe estar entre 0 y 30 días';
         }
@@ -425,9 +431,10 @@ class AcuerdosController extends BaseController
                 'tema', 'enlace', 'observaciones' => $body[$campo] === null ? null : (trim((string) $body[$campo]) !== '' ? trim((string) $body[$campo]) : null),
                 'accion' => trim((string) $body['accion']),
                 'responsable_id', 'area_id' => (int) $body[$campo],
-                // Columna JSON: el Query Builder no serializa arrays PHP automáticamente
+                // Columnas JSON: el Query Builder no serializa arrays PHP automáticamente
                 // en UPDATE (a diferencia de InitialSeeder/insert, que lo hacen a mano).
                 'recordatorio_dias' => $body[$campo] === null ? null : json_encode($body[$campo]),
+                'enlaces' => ($norm = $this->normalizarEnlaces(is_array($body[$campo]) ? $body[$campo] : [])) === [] ? null : json_encode($norm),
                 default => $body[$campo],
             };
         }
@@ -1135,6 +1142,55 @@ class AcuerdosController extends BaseController
         return (bool) preg_match('/^https?:\/\//i', trim($enlace));
     }
 
+    /**
+     * `enlaces`: null (o ausente), o una lista de URLs http(s). Se descartan las
+     * cadenas vacías antes de validar; cada URL debe ser http(s) y ≤ 2048 chars,
+     * y no se aceptan más de MAX_ENLACES por acuerdo.
+     */
+    private function esEnlacesValido(mixed $valor): bool
+    {
+        if ($valor === null) {
+            return true;
+        }
+        if (! is_array($valor) || ! array_is_list($valor)) {
+            return false;
+        }
+        $limpios = $this->normalizarEnlaces($valor);
+        if (count($limpios) > self::MAX_ENLACES) {
+            return false;
+        }
+        foreach ($limpios as $url) {
+            if (mb_strlen($url) > 2048 || ! $this->esEnlaceValido($url)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Normaliza una lista de enlaces: castea a string, recorta, descarta vacíos,
+     * deduplica preservando el orden y reindexa (lista JSON limpia).
+     *
+     * @param  array<int, mixed> $valor
+     * @return string[]
+     */
+    private function normalizarEnlaces(array $valor): array
+    {
+        $out = [];
+        foreach ($valor as $v) {
+            if (! is_string($v)) {
+                continue;
+            }
+            $u = trim($v);
+            if ($u !== '' && ! in_array($u, $out, true)) {
+                $out[] = $u;
+            }
+        }
+
+        return $out;
+    }
+
     /** `recordatorio_dias`: null, o lista de enteros en [0..30] (regla №4 del brief de la Tarea 6). */
     private function esRecordatorioDiasValido(mixed $valor): bool
     {
@@ -1227,6 +1283,10 @@ class AcuerdosController extends BaseController
         if (array_key_exists('enlace', $n) && $n['enlace'] !== null && ! $this->esEnlaceValido($n['enlace'])) {
             $campos["acuerdos.{$i}.enlace"] = 'Debe ser una URL http(s)';
         }
+
+        if (array_key_exists('enlaces', $n) && ! $this->esEnlacesValido($n['enlaces'])) {
+            $campos["acuerdos.{$i}.enlaces"] = 'Cada enlace debe ser una URL http(s) (máx. ' . self::MAX_ENLACES . ')';
+        }
     }
 
     /**
@@ -1244,6 +1304,8 @@ class AcuerdosController extends BaseController
         $enlace        = isset($n['enlace']) && is_string($n['enlace']) && trim($n['enlace']) !== '' ? trim($n['enlace']) : null;
         $observaciones = isset($n['observaciones']) && is_string($n['observaciones']) && trim($n['observaciones']) !== '' ? trim($n['observaciones']) : null;
 
+        $enlaces = isset($n['enlaces']) && is_array($n['enlaces']) ? $this->normalizarEnlaces($n['enlaces']) : [];
+
         $acuerdoModel = new AcuerdoModel();
         $acuerdoModel->insert([
             'reunion_id'        => $reunionId,
@@ -1255,6 +1317,8 @@ class AcuerdosController extends BaseController
             'fecha_compromiso'  => (string) $n['fecha_compromiso'],
             'estado'            => 'en_proceso', // único estado inicial (RF-05.1); el cliente jamás manda estado.
             'enlace'            => $enlace,
+            // Columna JSON: se serializa a mano (el Query Builder no lo hace en insert).
+            'enlaces'           => $enlaces !== [] ? json_encode($enlaces) : null,
             'observaciones'     => $observaciones,
             'recordatorio_dias' => isset($n['recordatorio_dias']) && $n['recordatorio_dias'] !== null
                 ? json_encode($n['recordatorio_dias'])

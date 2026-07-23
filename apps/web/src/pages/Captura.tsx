@@ -10,8 +10,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib';
 import type { LoteCaptura, NuevoAcuerdo } from '../lib';
 import { fmtF, hoyISO } from '../lib/fechas';
+import { enlacesATexto } from '../lib/enlaces';
 import { camposError, mensajeError } from '../components/EstadoHelpers';
 import { CorresponsablesPicker } from '../components/CorresponsablesPicker';
+import { EnlacesInput } from '../components/EnlacesInput';
 import { DatePicker } from '../components/DatePicker';
 import { ModeSwitch } from '../components/ModeSwitch';
 import { Select } from '../components/Select';
@@ -25,7 +27,7 @@ interface FormAcuerdo {
   corresponsables: number[];
   area_id: string;
   fecha: string;
-  enlace: string;
+  enlaces: string[];
   observaciones: string;
   recModo: 'global' | 'custom';
   recDias: string;
@@ -38,7 +40,7 @@ const nuevoForm = (): FormAcuerdo => ({
   corresponsables: [],
   area_id: '',
   fecha: '',
-  enlace: '',
+  enlaces: [],
   observaciones: '',
   recModo: 'global',
   recDias: '',
@@ -147,7 +149,7 @@ export function Captura() {
       corresponsables_ids: f.corresponsables,
       area_id: Number(f.area_id),
       fecha_compromiso: f.fecha,
-      enlace: f.enlace.trim() ? f.enlace.trim() : null,
+      enlaces: f.enlaces.map((e) => e.trim()).filter((e) => e !== ''),
       observaciones: f.observaciones.trim() ? f.observaciones.trim() : null,
       recordatorio_dias: f.recModo === 'custom' ? parseRecDias(f.recDias) : null,
     }));
@@ -292,15 +294,11 @@ export function Captura() {
             )}
           </div>
           <div className="field">
-            <label className="field__label" htmlFor={`f-enlace-${i}`}>
-              Enlace a productos
-            </label>
-            <input
-              className="input"
-              id={`f-enlace-${i}`}
-              placeholder="URL del documento o carpeta en Drive (opcional)"
-              value={f.enlace}
-              onChange={(e) => setCampo(i, 'enlace', e.target.value)}
+            <span className="field__label">Enlaces a productos</span>
+            <EnlacesInput
+              idBase={`f-enlace-${i}`}
+              enlaces={f.enlaces}
+              onChange={(enlaces) => setCampo(i, 'enlaces', enlaces)}
             />
           </div>
           <div className="field" style={{ gridColumn: '1 / -1' }}>
@@ -342,7 +340,7 @@ export function Captura() {
             </th>
             <th style={{ minWidth: 170 }}>Corresponsables</th>
             <th style={{ minWidth: 150 }}>Recordatorios</th>
-            <th style={{ minWidth: 150 }}>Enlace a productos</th>
+            <th style={{ minWidth: 190 }}>Enlaces a productos</th>
             <th style={{ minWidth: 150 }}>Observaciones</th>
             <th style={{ width: 44 }} />
           </tr>
@@ -432,11 +430,14 @@ export function Captura() {
                 )}
               </td>
               <td>
-                <input
+                <textarea
                   className="cell-input"
-                  placeholder="URL (opcional)"
-                  value={f.enlace}
-                  onChange={(e) => setCampo(i, 'enlace', e.target.value)}
+                  aria-label={`Enlaces a productos del renglón ${i + 1}`}
+                  placeholder="Una URL por línea (opcional)"
+                  rows={2}
+                  style={{ resize: 'vertical', minHeight: 34, lineHeight: 1.4 }}
+                  value={enlacesATexto(f.enlaces)}
+                  onChange={(e) => setCampo(i, 'enlaces', e.target.value.split(/\r?\n/))}
                 />
               </td>
               <td>

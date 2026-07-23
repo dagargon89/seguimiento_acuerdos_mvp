@@ -103,15 +103,15 @@ export function Checklist() {
                       · {fmtF(a.fecha_compromiso)}
                     </span>
                     <span style={{ fontSize: 12, fontWeight: 600, color }}>{rel}</span>
-                    {a.enlace && (
+                    {a.enlaces.length > 0 && (
                       <a
-                        href={a.enlace}
+                        href={a.enlaces[0]}
                         target="_blank"
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
                         style={{ fontSize: 12, fontWeight: 600, color: 'var(--teal)' }}
                       >
-                        Producto ↗
+                        {a.enlaces.length === 1 ? 'Producto ↗' : `${a.enlaces.length} productos ↗`}
                       </a>
                     )}
                   </div>

@@ -50,14 +50,16 @@ final class GoogleApiClientCalendarApi implements CalendarApi
         $this->calendarService = new GoogleCalendar($client);
     }
 
-    public function crearEvento(string $calendarId, array $evento): string
+    public function crearEvento(string $calendarId, array $evento, bool $notificarInvitados): string
     {
         $event = $this->mapearEvento($evento);
 
-        // sendUpdates=all: Google envía la invitación nativa a los attendees
-        // (responsable/corresponsables) — el evento aparece en SU calendario
-        // personal sin necesidad de suscribirse al compartido (ADR-010).
-        $creado = $this->calendarService->events->insert($calendarId, $event, ['sendUpdates' => 'all']);
+        // sendUpdates=all → Google envía la invitación nativa a los attendees
+        // (responsable/corresponsables); =none → no la envía (el evento igual
+        // aparece en su calendario). Configurable vía
+        // `invitaciones_calendario_activas` (ADR-010, ajustable por Dirección).
+        $sendUpdates = $notificarInvitados ? 'all' : 'none';
+        $creado      = $this->calendarService->events->insert($calendarId, $event, ['sendUpdates' => $sendUpdates]);
 
         $id = $creado->getId();
         if ($id === null || $id === '') {
@@ -69,14 +71,15 @@ final class GoogleApiClientCalendarApi implements CalendarApi
         return $id;
     }
 
-    public function actualizarEvento(string $calendarId, string $eventId, array $evento): void
+    public function actualizarEvento(string $calendarId, string $eventId, array $evento, bool $notificarInvitados): void
     {
         $event = $this->mapearEvento($evento);
 
         // patch (nunca insert/update completo): reconcilia solo los campos
         // presentes, evita pisar campos que no gestionamos (RF-09: nunca se
         // crea un evento nuevo cuando ya existe calendar_event_id).
-        $this->calendarService->events->patch($calendarId, $eventId, $event, ['sendUpdates' => 'all']);
+        $sendUpdates = $notificarInvitados ? 'all' : 'none';
+        $this->calendarService->events->patch($calendarId, $eventId, $event, ['sendUpdates' => $sendUpdates]);
     }
 
     public function eliminarEvento(string $calendarId, string $eventId): void

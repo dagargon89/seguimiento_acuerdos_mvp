@@ -25,7 +25,7 @@ class AcuerdoModel extends Model
     protected $returnType    = 'array';
     protected $allowedFields = [
         'reunion_id', 'area_id', 'tema', 'accion', 'responsable_id', 'capturado_por_id',
-        'fecha_compromiso', 'estado', 'enlace', 'observaciones', 'recordatorio_dias',
+        'fecha_compromiso', 'estado', 'enlace', 'enlaces', 'observaciones', 'recordatorio_dias',
         'concluido_por_id', 'concluido_at',
     ];
 
@@ -62,7 +62,7 @@ class AcuerdoModel extends Model
                 acuerdos.id, acuerdos.reunion_id, acuerdos.area_id, acuerdos.tema, acuerdos.accion,
                 acuerdos.responsable_id, acuerdos.capturado_por_id, acuerdos.fecha_compromiso,
                 acuerdos.estado AS estado_real, ({$estadoExpr}) AS estado,
-                acuerdos.enlace, acuerdos.observaciones, acuerdos.recordatorio_dias,
+                acuerdos.enlace, acuerdos.enlaces, acuerdos.observaciones, acuerdos.recordatorio_dias,
                 acuerdos.concluido_por_id, acuerdos.concluido_at, acuerdos.created_at, acuerdos.updated_at,
                 reuniones.id AS reunion__id, reuniones.nombre AS reunion__nombre, reuniones.fecha AS reunion__fecha,
                 areas.id AS area__id, areas.nombre AS area__nombre, areas.activa AS area__activa,

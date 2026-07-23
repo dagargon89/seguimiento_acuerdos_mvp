@@ -94,6 +94,27 @@ final class RecordatorioJobTest extends CIUnitTestCase
             ->get()->getResultArray();
     }
 
+    /** Cambia la bandera global `solicitud_avances_activa` en `configuracion`. */
+    private function setSolicitudAvances(bool $activa): void
+    {
+        $fila  = $this->conn->table('configuracion')->where('clave', 'recordatorios_default')->get()->getRowArray();
+        $valor = json_decode((string) $fila['valor'], true);
+        $valor['solicitud_avances_activa'] = $activa;
+        $this->conn->table('configuracion')->where('clave', 'recordatorios_default')->update([
+            'valor' => json_encode($valor, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ]);
+    }
+
+    /** Cuenta filas `solicitud_avance` de un usuario en una fecha. */
+    private function contarSolicitudes(int $usuarioId, string $fecha): int
+    {
+        return $this->conn->table('recordatorios_enviados')
+            ->where('tipo', 'solicitud_avance')
+            ->where('programado_para', $fecha)
+            ->where('usuario_id', $usuarioId)
+            ->countAllResults();
+    }
+
     // ── RE-01: global [7,3,1] + día D → 1 envío por cada una de las 4 fechas ──
 
     public function testRE01GlobalGeneraUnEnvioEnCadaUnaDeLasCuatroFechas(): void
@@ -339,6 +360,72 @@ final class RecordatorioJobTest extends CIUnitTestCase
             ->where('programado_para', '2026-07-14')
             ->countAllResults();
         $this->assertSame(0, $resumenes);
+    }
+
+    // ── Solicitud de avances (paso 5b) ────────────────────────────────────────
+
+    public function testSolicitudAvancesLlegaAResponsablesYCorresponsablesActivos(): void
+    {
+        // Acuerdo abierto: responsable 6 + corresponsable 1 (dirección, que NO es
+        // responsable/corresponsable de ningún acuerdo abierto del seed → prueba
+        // limpia de la vía corresponsable).
+        $id = $this->crearAcuerdo(responsableId: 6, fechaCompromiso: '2026-08-15', estado: 'en_proceso');
+        $this->conn->table('acuerdo_corresponsables')->insert(['acuerdo_id' => $id, 'usuario_id' => 1]);
+
+        // 2026-07-13 es lunes → corresponde a 'semanal'.
+        $this->correr('2026-07-13');
+
+        // Responsable (6) y corresponsable (1) reciben exactamente una solicitud (digest por usuario).
+        $this->assertSame(1, $this->contarSolicitudes(6, '2026-07-13'));
+        $this->assertSame(1, $this->contarSolicitudes(1, '2026-07-13'), 'el corresponsable debe recibir la solicitud');
+
+        // El inactivo (7), corresponsable del acuerdo 7 del seed, NO recibe.
+        $this->assertSame(0, $this->contarSolicitudes(7, '2026-07-13'), 'un usuario inactivo no recibe solicitudes');
+
+        // Las filas son digest (acuerdo_id NULL) y salieron enviadas.
+        $filas = $this->conn->table('recordatorios_enviados')
+            ->where('tipo', 'solicitud_avance')
+            ->where('programado_para', '2026-07-13')
+            ->get()->getResultArray();
+        $this->assertNotEmpty($filas);
+        foreach ($filas as $f) {
+            $this->assertNull($f['acuerdo_id']);
+            $this->assertSame('enviado', $f['estado']);
+        }
+    }
+
+    public function testSolicitudAvancesRespetaLaBanderaDeshabilitada(): void
+    {
+        $this->setSolicitudAvances(false);
+
+        $this->correr('2026-07-13'); // lunes: correspondería a la frecuencia.
+
+        $total = $this->conn->table('recordatorios_enviados')
+            ->where('tipo', 'solicitud_avance')
+            ->where('programado_para', '2026-07-13')
+            ->countAllResults();
+        $this->assertSame(0, $total, 'con la bandera deshabilitada no se envían solicitudes');
+    }
+
+    public function testSolicitudAvancesNoSeGeneraFueraDeFrecuencia(): void
+    {
+        // 2026-07-14 es martes → NO corresponde a 'semanal' (bandera default = true).
+        $this->correr('2026-07-14');
+
+        $total = $this->conn->table('recordatorios_enviados')
+            ->where('tipo', 'solicitud_avance')
+            ->where('programado_para', '2026-07-14')
+            ->countAllResults();
+        $this->assertSame(0, $total);
+    }
+
+    public function testSolicitudAvancesNoSeDuplicaAlReejecutarElMismoDia(): void
+    {
+        $this->correr('2026-07-13');
+        $this->correr('2026-07-13'); // re-ejecución del MISMO día.
+
+        // Responsable 5 (del seed, acuerdos abiertos) sigue con exactamente una fila.
+        $this->assertSame(1, $this->contarSolicitudes(5, '2026-07-13'), 'no debe duplicar la solicitud al reejecutar');
     }
 
     // ── Vencidos (paso 1): marca en_proceso pasado, no toca concluido ─────────

@@ -9,7 +9,6 @@ import { api } from '../lib';
 import type { RecordatorioVista } from '../lib';
 import { MESES } from '../lib/fechas';
 import { mensajeError, nombreCorto, truncar } from '../components/EstadoHelpers';
-import { ConfigRecordatoriosModal } from '../components/ConfigRecordatoriosModal';
 import { EmailModal } from '../components/EmailModal';
 import { ResumenModal } from '../components/ResumenModal';
 import { chipEnvio, tipoRecordatorioLabel } from '../components/recordatorioVm';
@@ -19,7 +18,6 @@ export function Recordatorios() {
   const { sesion } = useSesion();
   const [emailRec, setEmailRec] = useState<RecordatorioVista | null>(null);
   const [verResumen, setVerResumen] = useState(false);
-  const [verConfig, setVerConfig] = useState(false);
 
   const configQ = useQuery({ queryKey: ['config-recordatorios'], queryFn: () => api.getConfigRecordatorios() });
   const proximosQ = useQuery({ queryKey: ['recordatorios', 'proximos'], queryFn: () => api.listRecordatoriosProximos() });
@@ -76,11 +74,6 @@ export function Recordatorios() {
             Ver resumen {rol === 'direccion' ? 'general' : 'del área'}
           </button>
         )}
-        {rol === 'direccion' && (
-          <button type="button" className="btn btn--accent btn--md" style={{ flex: 'none' }} onClick={() => setVerConfig(true)}>
-            Configurar avisos
-          </button>
-        )}
       </div>
 
       {(proximosQ.isError || historialQ.isError) && (
@@ -126,7 +119,6 @@ export function Recordatorios() {
 
       {emailRec && <EmailModal rec={emailRec} onClose={() => setEmailRec(null)} />}
       {verResumen && <ResumenModal onClose={() => setVerResumen(false)} />}
-      {verConfig && cfg && <ConfigRecordatoriosModal config={cfg} onClose={() => setVerConfig(false)} />}
     </div>
   );
 }

@@ -19,6 +19,8 @@ final class ResumenCorrida
         public int $calendarioFallido = 0,
         public int $resumenesEnviados = 0,
         public int $resumenesFallidos = 0,
+        public int $solicitudesEnviadas = 0,
+        public int $solicitudesFallidas = 0,
     ) {
     }
 
@@ -35,6 +37,8 @@ final class ResumenCorrida
             'calendario_fallido'      => $this->calendarioFallido,
             'resumenes_enviados'      => $this->resumenesEnviados,
             'resumenes_fallidos'      => $this->resumenesFallidos,
+            'solicitudes_enviadas'    => $this->solicitudesEnviadas,
+            'solicitudes_fallidas'    => $this->solicitudesFallidas,
         ];
     }
 }

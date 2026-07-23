@@ -106,6 +106,17 @@ final class GoogleCalendarServiceTest extends CIUnitTestCase
         return $this->conn->table('google_sync')->where('acuerdo_id', $acuerdoId)->get()->getRowArray();
     }
 
+    /** Cambia la bandera global `invitaciones_calendario_activas`. */
+    private function setInvitaciones(bool $activas): void
+    {
+        $fila  = $this->conn->table('configuracion')->where('clave', 'recordatorios_default')->get()->getRowArray();
+        $valor = json_decode((string) $fila['valor'], true);
+        $valor['invitaciones_calendario_activas'] = $activas;
+        $this->conn->table('configuracion')->where('clave', 'recordatorios_default')->update([
+            'valor' => json_encode($valor, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ]);
+    }
+
     // ── GC-01: sin calendar_event_id → crea evento ────────────────────────────
 
     public function testGC01CreaEventoCuandoNoHayEventId(): void
@@ -123,6 +134,34 @@ final class GoogleCalendarServiceTest extends CIUnitTestCase
         $this->assertSame('sincronizado', $fila['estado']);
         $this->assertNotNull($fila['synced_at']);
         $this->assertNull($fila['error']);
+    }
+
+    // ── Invitaciones de calendario: la bandera decide sendUpdates all/none ────
+
+    public function testInvitacionesDeshabilitadasNoNotificanAlCrearNiActualizar(): void
+    {
+        $this->setInvitaciones(false); // = valor por defecto del seed, explícito aquí.
+
+        $idNuevo = $this->crearAcuerdo('2026-07-20');
+        $this->crearGoogleSync($idNuevo, calendarEventId: null, estado: 'pendiente');
+        $this->servicio()->sincronizar($idNuevo);
+        $this->assertFalse($this->api->creados[0]['notificar'], 'al crear no debe notificar a los invitados');
+
+        $idExistente = $this->crearAcuerdo('2026-07-21');
+        $this->crearGoogleSync($idExistente, calendarEventId: 'evt-abc', estado: 'pendiente');
+        $this->servicio()->sincronizar($idExistente);
+        $this->assertFalse($this->api->actualizados[0]['notificar'], 'al actualizar tampoco');
+    }
+
+    public function testInvitacionesHabilitadasNotificanAlCrear(): void
+    {
+        $this->setInvitaciones(true);
+
+        $id = $this->crearAcuerdo('2026-07-20');
+        $this->crearGoogleSync($id, calendarEventId: null, estado: 'pendiente');
+        $this->servicio()->sincronizar($id);
+
+        $this->assertTrue($this->api->creados[0]['notificar'], 'con la bandera activa sí debe notificar');
     }
 
     // ── GC-02: con calendar_event_id → actualiza (patch), no duplica ─────────

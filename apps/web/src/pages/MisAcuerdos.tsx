@@ -17,9 +17,11 @@ import { EST, mensajeError, nombreCorto, truncar, vencimientoRelativo } from '..
 import { Avatar } from '../components/Avatar';
 import { Badge } from '../components/Badge';
 import { Drawer } from '../components/Drawer';
+import { Paginacion } from '../components/Paginacion';
 import { Select } from '../components/Select';
 import { StatCard } from '../components/StatCard';
 import { useSesion } from '../components/SessionContext';
+import { usePaginacion } from '../lib/usePaginacion';
 
 type FiltroEstado = NonNullable<FiltrosAcuerdos['estado']>;
 
@@ -140,6 +142,7 @@ function TablaMisAcuerdos({
   uid: number;
   onAbrir: (id: number) => void;
 }) {
+  const pag = usePaginacion(lista);
   return (
     <>
       {/* Tabla completa (≥640px) */}
@@ -156,7 +159,7 @@ function TablaMisAcuerdos({
             </tr>
           </thead>
           <tbody>
-            {lista.map((a) => {
+            {pag.pagina_items.map((a) => {
               const est = EST[a.estado];
               const { rel, color } = vencimientoRelativo(a.fecha_compromiso, a.estado);
               return (
@@ -201,7 +204,7 @@ function TablaMisAcuerdos({
 
       {/* Cards apiladas (<640px), mismo detalle al tocar */}
       <div className="panel-card anim-in anim-in--2 sm:hidden">
-        {lista.map((a) => {
+        {pag.pagina_items.map((a) => {
           const est = EST[a.estado];
           const { rel, color } = vencimientoRelativo(a.fecha_compromiso, a.estado);
           return (
@@ -239,6 +242,8 @@ function TablaMisAcuerdos({
           </div>
         )}
       </div>
+
+      <Paginacion estado={pag} sustantivo="acuerdos" />
     </>
   );
 }

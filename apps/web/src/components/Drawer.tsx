@@ -13,6 +13,7 @@ import { Avatar } from './Avatar';
 import { Badge } from './Badge';
 import { CorresponsablesPicker } from './CorresponsablesPicker';
 import { DatePicker } from './DatePicker';
+import { EnlacesInput } from './EnlacesInput';
 import { Select } from './Select';
 import { chipEnvio, tipoRecordatorioLabel } from './recordatorioVm';
 import { useSesion } from './SessionContext';
@@ -48,7 +49,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
     accion: '',
     responsable_id: '',
     area_id: '',
-    enlace: '',
+    enlaces: [] as string[],
     observaciones: '',
     corresponsables: [] as number[],
   });
@@ -118,7 +119,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
         accion: form.accion.trim(),
         responsable_id: Number(form.responsable_id),
         area_id: Number(form.area_id),
-        enlace: form.enlace.trim() ? form.enlace.trim() : null,
+        enlaces: form.enlaces.map((e) => e.trim()).filter((e) => e !== ''),
         observaciones: form.observaciones.trim() ? form.observaciones.trim() : null,
       };
       await api.editarAcuerdo(id, cambios);
@@ -152,7 +153,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
       accion: a.accion,
       responsable_id: String(a.responsable.id),
       area_id: String(a.area.id),
-      enlace: a.enlace ?? '',
+      enlaces: a.enlaces ?? [],
       observaciones: a.observaciones ?? '',
       corresponsables: a.corresponsables.map((c) => c.id),
     });
@@ -315,15 +316,11 @@ export function Drawer({ id, onClose }: DrawerProps) {
                   />
                 </div>
                 <div className="field">
-                  <label className="field__label" htmlFor="ed-enlace">
-                    Enlace a productos
-                  </label>
-                  <input
-                    id="ed-enlace"
-                    className="input"
-                    placeholder="URL del documento en Drive (opcional)"
-                    value={form.enlace}
-                    onChange={(e) => setForm((f) => ({ ...f, enlace: e.target.value }))}
+                  <span className="field__label">Enlaces a productos</span>
+                  <EnlacesInput
+                    idBase="ed-enlace"
+                    enlaces={form.enlaces}
+                    onChange={(enlaces) => setForm((f) => ({ ...f, enlaces }))}
                   />
                 </div>
                 <div className="field">
@@ -420,18 +417,23 @@ export function Drawer({ id, onClose }: DrawerProps) {
             </div>
 
             <div>
-              <div className="detail-label">Enlace a productos</div>
-              {sel.enlace ? (
-                <a
-                  href={sel.enlace}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-link)' }}
-                >
-                  {sel.enlace}
-                </a>
+              <div className="detail-label">Enlaces a productos</div>
+              {sel.enlaces.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {sel.enlaces.map((url, i) => (
+                    <a
+                      key={i}
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-link)', wordBreak: 'break-all' }}
+                    >
+                      {url}
+                    </a>
+                  ))}
+                </div>
               ) : (
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-muted)' }}>Sin enlace registrado</div>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-muted)' }}>Sin enlaces registrados</div>
               )}
             </div>
 

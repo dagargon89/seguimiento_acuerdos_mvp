@@ -171,7 +171,7 @@ class GoogleVerificar extends BaseCommand
                 'summary' => '[PRUEBA] Panel de acuerdos — puede borrarse',
                 'start'   => ['date' => $manana],
                 'end'     => ['date' => $pasado],
-            ]);
+            ], false); // humo: evento de prueba sin invitados, no notificar.
             CLI::write("  ✔ Creado. event_id: {$eventId}", 'green');
 
             CLI::write('  Actualizando el evento (patch)…');
@@ -179,7 +179,7 @@ class GoogleVerificar extends BaseCommand
                 'summary' => '[PRUEBA ✔] Panel de acuerdos — actualización OK',
                 'start'   => ['date' => $manana],
                 'end'     => ['date' => $pasado],
-            ]);
+            ], false);
             CLI::write('  ✔ Actualizado.', 'green');
 
             CLI::write('  Eliminando el evento de prueba…');

@@ -56,6 +56,7 @@ CREATE TABLE acuerdos (
   fecha_compromiso  DATE         NOT NULL,
   estado            ENUM('en_proceso','vencido','concluido') NOT NULL DEFAULT 'en_proceso',
   enlace            VARCHAR(2048) NULL,
+  enlaces           JSON         NULL,
   observaciones     TEXT         NULL,
   recordatorio_dias JSON         NULL,
   concluido_por_id  INT UNSIGNED NULL,
@@ -114,7 +115,7 @@ CREATE TABLE recordatorios_enviados (
   id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
   acuerdo_id       INT UNSIGNED NULL,
   usuario_id       INT UNSIGNED NOT NULL,
-  tipo             ENUM('previo','dia','vencido','resumen','asignacion') NOT NULL,
+  tipo             ENUM('previo','dia','vencido','resumen','asignacion','solicitud_avance') NOT NULL,
   programado_para  DATE         NOT NULL,
   enviado_at       DATETIME     NULL,
   estado           ENUM('enviado','fallido') NOT NULL,
@@ -175,6 +176,8 @@ INSERT INTO configuracion (clave, valor) VALUES (
     'dia_compromiso', TRUE,
     'vencido_cada_dias', 3,
     'vencido_max_repeticiones', 5,
-    'resumen_frecuencia', 'semanal'
+    'resumen_frecuencia', 'semanal',
+    'solicitud_avances_activa', TRUE,
+    'invitaciones_calendario_activas', FALSE
   )
 );
