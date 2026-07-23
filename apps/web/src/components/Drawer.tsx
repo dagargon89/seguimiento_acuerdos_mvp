@@ -296,6 +296,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
                   <span className="field__label">Corresponsables</span>
                   <CorresponsablesPicker
                     directorio={usuariosActivos}
+                    areas={areas}
                     seleccionados={form.corresponsables}
                     excluirId={form.responsable_id ? Number(form.responsable_id) : null}
                     onChange={(ids) => setForm((f) => ({ ...f, corresponsables: ids }))}

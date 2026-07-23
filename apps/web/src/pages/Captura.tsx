@@ -238,6 +238,7 @@ export function Captura() {
             <span className="field__label">Corresponsables</span>
             <CorresponsablesPicker
               directorio={usuariosActivos}
+              areas={areas}
               seleccionados={f.corresponsables}
               excluirId={f.responsable_id ? Number(f.responsable_id) : null}
               onChange={(ids) => setCampo(i, 'corresponsables', ids)}
@@ -401,6 +402,7 @@ export function Captura() {
               <td style={{ padding: '4px 6px' }}>
                 <CorresponsablesPicker
                   directorio={usuariosActivos}
+                  areas={areas}
                   seleccionados={f.corresponsables}
                   excluirId={f.responsable_id ? Number(f.responsable_id) : null}
                   onChange={(ids) => setCampo(i, 'corresponsables', ids)}
