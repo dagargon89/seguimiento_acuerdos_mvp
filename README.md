@@ -48,6 +48,27 @@ frontend real-only. Suite **212 pruebas PHPUnit verdes** + 4 vitest; revisión f
 >
 > **Nota:** existe un demo vanilla JS ya aprobado por dirección (fuente F2, ver [00_auditoria_fuentes](docs/00-fuentes/00_auditoria_fuentes.md)). La Fase 1 de este proyecto es su **conversión 1:1 a React + Vite + Tailwind** más las funciones nuevas aprobadas; la validación visual del diseño ya ocurrió.
 
+## Gate local (correr antes de cada push)
+
+Ejecutar en verde estos comandos antes de subir cualquier cambio (suite actual: **287 pruebas PHPUnit** + 16 vitest):
+
+```bash
+# 1. Backend — pruebas de dominio/API (requiere BD de pruebas levantada)
+cd apps/api && vendor/bin/phpunit
+
+# 2. Espejo db.json ↔ DDL (desde la raíz del repo)
+node scripts/verificar_espejo.mjs
+
+# 3. Frontend — unit + tipos + lint + build
+cd apps/web && npm run test && npm run typecheck && npm run lint && npm run build
+```
+
+Notas de entorno local: las pruebas backend usan la conexión `database.tests` (BD `panel_acuerdos_test`,
+`DatabaseTestTrait` con `$refresh=true` + `$seed=InitialSeeder`). Los puertos de MySQL/Redis en `.env`
+(gitignored) deben apuntar a la infraestructura Docker local; si esos puertos por defecto (3306/6379) están
+ocupados por otros proyectos, remapearlos en `.env` y en un `docker-compose.override.yml` local. Un primer
+run venido de otra rama puede requerir recrear `panel_acuerdos_test`.
+
 ## Stack
 
 | Capa | Tecnología | Versión |

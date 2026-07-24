@@ -549,7 +549,7 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
     public function testPutConfigDireccionHabilitaODeshabilitaSolicitudDeAvances(): void
     {
         $payload = [
-            'dias_antes'               => [7, 3, 1],
+            'dias_antes'               => [1, 3, 7],
             'dia_compromiso'           => true,
             'vencido_cada_dias'        => 3,
             'vencido_max_repeticiones' => 5,
@@ -570,7 +570,7 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
     public function testPutConfigRechazaSolicitudDeAvancesNoBooleana(): void
     {
         $payload = [
-            'dias_antes'               => [7, 3, 1],
+            'dias_antes'               => [1, 3, 7],
             'dia_compromiso'           => true,
             'vencido_cada_dias'        => 3,
             'vencido_max_repeticiones' => 5,
@@ -588,7 +588,7 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
     {
         // Seed = false; la habilitamos y verificamos round-trip.
         $payload = [
-            'dias_antes'                      => [7, 3, 1],
+            'dias_antes'                      => [1, 3, 7],
             'dia_compromiso'                  => true,
             'vencido_cada_dias'               => 3,
             'vencido_max_repeticiones'        => 5,
@@ -610,7 +610,7 @@ final class CalendarioResumenRecordatoriosTest extends CIUnitTestCase
     public function testPutConfigRechazaInvitacionesDeCalendarioNoBooleana(): void
     {
         $payload = [
-            'dias_antes'                      => [7, 3, 1],
+            'dias_antes'                      => [1, 3, 7],
             'dia_compromiso'                  => true,
             'vencido_cada_dias'               => 3,
             'vencido_max_repeticiones'        => 5,

@@ -74,9 +74,12 @@ final class InitialSeederTest extends CIUnitTestCase
     public function testConfiguracionValorDeserializaAlObjetoDelJson(): void
     {
         $valor = $this->db->table('configuracion')->getWhere(['clave' => 'recordatorios_default'])->getRowArray();
-        // MySQL reordena las claves de un objeto JSON al almacenarlo; comparamos por
-        // contenido, no por orden.
-        $this->assertEqualsCanonicalizing(
+        // MySQL reordena las claves de un objeto JSON al almacenarlo; assertEquals
+        // compara arrays asociativos por clave (ignora el orden), que es justo lo que
+        // queremos. No usar assertEqualsCanonicalizing: ordena también los VALORES, y
+        // con tipos mezclados (array/bool/int/string) el sort de PHP no es un orden
+        // total, provocando fallos en falso pese a tener el mismo contenido.
+        $this->assertEquals(
             $this->fila('configuracion', null, 'recordatorios_default')['valor'],
             json_decode((string) $valor['valor'], true),
         );
