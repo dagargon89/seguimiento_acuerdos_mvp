@@ -17,6 +17,7 @@ import type {
   EdicionAcuerdo,
   EdicionArea,
   EdicionUsuario,
+  EventoActividad,
   FiltrosAcuerdos,
   LoteCaptura,
   NuevoAvance,
@@ -42,6 +43,7 @@ export interface ApiClient {
   eliminarAcuerdo(id: number): Promise<void>; // solo dirección (ADR-011)
   setCorresponsables(id: number, usuarioIds: number[]): Promise<AcuerdoDetalle>;
   registrarAvance(id: number, avance: NuevoAvance): Promise<AcuerdoDetalle>;
+  actividadAcuerdo(id: number): Promise<EventoActividad[]>; // bitácora unificada (avances + auditoría de ciclo de vida)
   concluirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // solo dirección
   reabrirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // solo dirección
 

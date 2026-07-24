@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Documento | 05 — Especificación de API REST |
-| Versión | 1.8 — **CONGELADA** (2026-07-14, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). v1.8 añade el filtro `mios=1` a `GET /acuerdos` / `FiltrosAcuerdos.mios` (ADR-013). v1.9 añade `solicitud_avances_activa` (bool) a `ConfigRecordatorios` y el literal `'solicitud_avance'` a `TipoRecordatorio`: el job envía periódicamente (misma frecuencia que el resumen) una solicitud de avances a responsables/corresponsables de acuerdos abiertos, condicionada por esa bandera global. v1.10 añade `invitaciones_calendario_activas` (bool) a `ConfigRecordatorios`: controla si Google Calendar manda la invitación nativa por correo al crear/actualizar el evento (la sincronización del acuerdo al calendario no cambia). v1.11 añade `avatar_color` (string hex `#RRGGBB` o null) a `Usuario`/`UsuarioRef` y a `ActualizacionPerfil`: color de identidad del avatar, editable por el propio usuario vía `PATCH /me` (nombre y/o avatar_color, ambos opcionales). |
+| Versión | 1.8 — **CONGELADA** (2026-07-14, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). v1.8 añade el filtro `mios=1` a `GET /acuerdos` / `FiltrosAcuerdos.mios` (ADR-013). v1.9 añade `solicitud_avances_activa` (bool) a `ConfigRecordatorios` y el literal `'solicitud_avance'` a `TipoRecordatorio`: el job envía periódicamente (misma frecuencia que el resumen) una solicitud de avances a responsables/corresponsables de acuerdos abiertos, condicionada por esa bandera global. v1.10 añade `invitaciones_calendario_activas` (bool) a `ConfigRecordatorios`: controla si Google Calendar manda la invitación nativa por correo al crear/actualizar el evento (la sincronización del acuerdo al calendario no cambia). v1.11 añade `avatar_color` (string hex `#RRGGBB` o null) a `Usuario`/`UsuarioRef` y a `ActualizacionPerfil`: color de identidad del avatar, editable por el propio usuario vía `PATCH /me` (nombre y/o avatar_color, ambos opcionales). v1.12 añade `GET /acuerdos/{id}/actividad` / `actividadAcuerdo(id)`: bitácora unificada de avances + auditoría de ciclo de vida del acuerdo (quick win #3, "Bitácora"). |
 | Fecha | 2026-07-14 |
 | Depende de | 01_SRS, 02_arquitectura, 03_modelo_de_datos |
 
@@ -86,6 +86,7 @@
 | `DELETE /acuerdos/{id}` | **Solo Dirección** (403 auditado) | Borrado definitivo con cascada (avances, corresponsables, recordatorios, sync) + eliminación del evento de calendario; auditado con la ficha del acuerdo (ADR-011, v1.7). Respuesta 204 |
 | `PUT /acuerdos/{id}/corresponsables` | Dirección, coordinación del área | Reemplaza el conjunto de corresponsables |
 | `POST /acuerdos/{id}/avances` | Responsable, corresponsables, coordinación, dirección | Avance; con `nueva_fecha` = reprogramación (vencido→en_proceso) |
+| `GET /acuerdos/{id}/actividad` | Visibilidad (ADR-007; `pendiente` → 403 `cuenta_pendiente`) | Bitácora unificada del acuerdo: fusiona `avances` (avance/reprogramación/validación/reapertura) y eventos de auditoría de ciclo de vida (crear/editar/corresponsables), orden descendente por `created_at` (v1.12) |
 | `PATCH /acuerdos/{id}/concluir` | **Solo Dirección** | Concluir con nota (RF-06) |
 | `PATCH /acuerdos/{id}/reabrir` | **Solo Dirección** | Reabrir con nota obligatoria |
 
@@ -133,6 +134,43 @@
                        {"tipo": "dia",    "programado_para": "2026-07-20", "estado": "programado"} ],
     "created_at": "2026-07-08 09:30:00", "updated_at": null
   }
+}
+```
+
+```json
+// 200 GET /acuerdos/11/actividad
+{
+  "data": [
+    { "id": "auditoria:45", "fuente": "auditoria", "tipo": "editar",
+      "usuario": {"id": 2, "nombre": "Coordinadora Demo Uno"},
+      "descripcion": "Editó fecha_compromiso y observaciones", "nueva_fecha": null,
+      "created_at": "2026-07-12 09:05:00" },
+    { "id": "avance:7", "fuente": "avance", "tipo": "avance",
+      "usuario": {"id": 5, "nombre": "Responsable Demo Dos"},
+      "descripcion": "Se cargó junio semana 1", "nueva_fecha": null,
+      "created_at": "2026-07-10 10:12:00" },
+    { "id": "auditoria:11", "fuente": "auditoria", "tipo": "crear",
+      "usuario": {"id": 2, "nombre": "Coordinadora Demo Uno"},
+      "descripcion": "Creó el acuerdo", "nueva_fecha": null,
+      "created_at": "2026-07-08 09:30:00" }
+  ]
+}
+```
+*Notas:* `usuario` es `null` cuando el evento lo genera el sistema (p. ej. el job de `vencido`, que no se audita como evento de bitácora). Sin duplicados: `concluir`/`reabrir` **no** aparecen como eventos de `auditoria` porque ya llegan representados como avance (`tipo: 'validacion'`/`'reapertura'`) — la fusión evita contar dos veces la misma acción. `id` es una key compuesta (`"avance:N"` / `"auditoria:N"`) única entre ambas fuentes, pensada para `key` de listas en React, no para referenciar el registro por separado.
+
+```typescript
+export type TipoEventoActividad =
+  | 'avance' | 'reprogramacion' | 'validacion' | 'reapertura'
+  | 'crear' | 'editar' | 'corresponsables';
+
+export interface EventoActividad {
+  id: string;                    // "avance:12" | "auditoria:45" — key único cross-tabla
+  fuente: 'avance' | 'auditoria';
+  tipo: TipoEventoActividad;
+  usuario: UsuarioRef | null;    // null = acción del sistema
+  descripcion: string;
+  nueva_fecha: string | null;    // solo reprogramación
+  created_at: string;
 }
 ```
 
@@ -198,7 +236,7 @@
 
 ## 3. Interfaz del cliente (`lib/api.ts` — CONGELADA)
 
-> **CONGELADA (v1.8, 2026-07-14).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005). v1.4 añade `registrarme` (ADR-006). v1.5 añade el parámetro `todas` a `listAreas` (ADR-008). v1.8 añade el filtro `mios` a `listAcuerdos` (ADR-013).
+> **CONGELADA (v1.8, 2026-07-14).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005). v1.4 añade `registrarme` (ADR-006). v1.5 añade el parámetro `todas` a `listAreas` (ADR-008). v1.8 añade el filtro `mios` a `listAcuerdos` (ADR-013). v1.12 añade `actividadAcuerdo(id)` (bitácora unificada de avances + auditoría).
 
 ```typescript
 export interface ApiClient {
@@ -215,6 +253,7 @@ export interface ApiClient {
   eliminarAcuerdo(id: number): Promise<void>; // solo dirección (ADR-011)
   setCorresponsables(id: number, usuarioIds: number[]): Promise<AcuerdoDetalle>;
   registrarAvance(id: number, avance: NuevoAvance): Promise<AcuerdoDetalle>;
+  actividadAcuerdo(id: number): Promise<EventoActividad[]>; // bitácora unificada (avances + auditoría de ciclo de vida)
   concluirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // solo dirección
   reabrirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // solo dirección
 

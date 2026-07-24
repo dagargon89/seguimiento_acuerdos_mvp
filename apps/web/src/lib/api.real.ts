@@ -6,7 +6,7 @@
 import type { ApiClient } from './api';
 import type {
   Acuerdo, AcuerdoDetalle, ActualizacionPerfil, AltaArea, AltaUsuario, Area, CalendarioMes, ChecklistItem,
-  ConfigRecordatorios, EdicionAcuerdo, EdicionArea, EdicionUsuario, FiltrosAcuerdos,
+  ConfigRecordatorios, EdicionAcuerdo, EdicionArea, EdicionUsuario, EventoActividad, FiltrosAcuerdos,
   LoteCaptura, NuevoAvance, Paginado, RecordatorioVista, RegistroCuenta, Resumen, Sesion, Usuario,
 } from './types';
 
@@ -68,6 +68,8 @@ export const realClient: ApiClient = {
     (await req<{ data: AcuerdoDetalle }>('PUT', `/acuerdos/${id}/corresponsables`, { usuarios_ids: usuarioIds })).data,
   registrarAvance: async (id, avance: NuevoAvance) =>
     (await req<{ data: AcuerdoDetalle }>('POST', `/acuerdos/${id}/avances`, avance)).data,
+  actividadAcuerdo: async (id) =>
+    (await req<{ data: EventoActividad[] }>('GET', `/acuerdos/${id}/actividad`)).data,
   concluirAcuerdo: async (id, nota) =>
     (await req<{ data: Acuerdo }>('PATCH', `/acuerdos/${id}/concluir`, { nota })).data,
   reabrirAcuerdo: async (id, nota) =>

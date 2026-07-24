@@ -212,6 +212,20 @@ export interface Avance {
   created_at: string;
 }
 
+export type TipoEventoActividad =
+  | 'avance' | 'reprogramacion' | 'validacion' | 'reapertura'
+  | 'crear' | 'editar' | 'corresponsables';
+
+export interface EventoActividad {
+  id: string;                    // "avance:12" | "auditoria:45" — key único cross-tabla
+  fuente: 'avance' | 'auditoria';
+  tipo: TipoEventoActividad;
+  usuario: UsuarioRef | null;    // null = acción del sistema
+  descripcion: string;
+  nueva_fecha: string | null;    // solo reprogramación
+  created_at: string;
+}
+
 export interface RecordatorioProgramado {
   tipo: TipoRecordatorio;
   programado_para: string;
