@@ -645,6 +645,36 @@ class AcuerdosController extends BaseController
     }
 
     /**
+     * GET /acuerdos/{id}/actividad — bitácora unificada (quick win #3): une
+     * avances + auditoría de ciclo de vida (crear/editar/corresponsables) en
+     * una sola línea de tiempo, sin duplicar concluir/reabrir (ya presentes
+     * como avance validacion/reapertura). Mismo gate de visibilidad que
+     * `show()` (ADR-007).
+     */
+    public function actividad(string $id): ResponseInterface
+    {
+        $actor = service('usuarioActual')->obtener();
+        $hoy   = $this->hoy();
+        $db    = Database::connect();
+
+        $fila = (new AcuerdoModel())->builderConJoins($hoy)
+            ->where('acuerdos.id', (int) $id)->get()->getFirstRow('array');
+        if ($fila === null) {
+            return $this->noEncontrado();
+        }
+
+        $esCorresponsable = $db->table('acuerdo_corresponsables')
+            ->where('acuerdo_id', (int) $id)
+            ->where('usuario_id', (int) $actor['id'])
+            ->countAllResults() > 0;
+        if (! VisibilidadAcuerdos::puedeVer($actor, $fila, $esCorresponsable)) {
+            return $this->noEncontrado();
+        }
+
+        return $this->response->setJSON(['data' => $this->construirActividad((int) $id)]);
+    }
+
+    /**
      * PATCH /acuerdos/{id}/concluir (doc 05 §2.2, RF-06, ADR-012) — Dirección
      * concluye cualquier acuerdo; el **coordinador concluye los de su área**
      * (`puedeConcluir`). Quien no tenga permiso → 403 **y se audita el intento**
@@ -1047,6 +1077,106 @@ class AcuerdosController extends BaseController
             ),
             $filas,
         );
+    }
+
+    /**
+     * Une avances + auditoría de ciclo de vida en eventos normalizados,
+     * ordenados desc por created_at. Cero N+1: un query por tabla + un
+     * whereIn para los usuarios.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function construirActividad(int $id): array
+    {
+        $db = Database::connect();
+
+        $avances = $db->table('avances')
+            ->where('acuerdo_id', $id)->get()->getResultArray();
+        $auditoria = $db->table('auditoria')
+            ->where('entidad', 'acuerdo')->where('entidad_id', $id)
+            ->whereIn('accion', ['crear', 'editar', 'corresponsables'])
+            ->get()->getResultArray();
+
+        // Hidratar usuarios de ambas fuentes en un solo whereIn.
+        $ids = [];
+        foreach ($avances as $f) {
+            $ids[] = (int) $f['usuario_id'];
+        }
+        foreach ($auditoria as $f) {
+            if ($f['usuario_id'] !== null) {
+                $ids[] = (int) $f['usuario_id'];
+            }
+        }
+        $porId = [];
+        if ($ids !== []) {
+            foreach ($db->table('usuarios')->whereIn('id', array_values(array_unique($ids)))->get()->getResultArray() as $u) {
+                $porId[(int) $u['id']] = UsuarioRef::desdeFila($u)->aArray();
+            }
+        }
+
+        $eventos = [];
+        foreach ($avances as $f) {
+            $eventos[] = [
+                'id'          => 'avance:' . (int) $f['id'],
+                'fuente'      => 'avance',
+                'tipo'        => (string) $f['tipo'],
+                'usuario'     => $porId[(int) $f['usuario_id']] ?? null,
+                'descripcion' => (string) $f['descripcion'],
+                'nueva_fecha' => $f['nueva_fecha'],
+                'created_at'  => (string) $f['created_at'],
+            ];
+        }
+        foreach ($auditoria as $f) {
+            $uid = $f['usuario_id'] !== null ? (int) $f['usuario_id'] : null;
+            $eventos[] = [
+                'id'          => 'auditoria:' . (int) $f['id'],
+                'fuente'      => 'auditoria',
+                'tipo'        => (string) $f['accion'],
+                'usuario'     => $uid !== null ? ($porId[$uid] ?? null) : null,
+                'descripcion' => $this->descripcionAuditoria((string) $f['accion'], $f['detalle']),
+                'nueva_fecha' => null,
+                'created_at'  => (string) $f['created_at'],
+            ];
+        }
+
+        // Orden desc por fecha; desempate estable por id textual.
+        usort($eventos, static function (array $a, array $b): int {
+            return [$b['created_at'], $b['id']] <=> [$a['created_at'], $a['id']];
+        });
+
+        return $eventos;
+    }
+
+    /** Texto legible para un evento de auditoría de ciclo de vida. */
+    private function descripcionAuditoria(string $accion, ?string $detalleJson): string
+    {
+        if ($accion === 'crear') {
+            return 'Creó el acuerdo';
+        }
+        if ($accion === 'corresponsables') {
+            return 'Actualizó los corresponsables';
+        }
+        // 'editar' → "Actualizó: tema, responsable"
+        $etiquetas = [
+            'tema'              => 'tema',
+            'accion'            => 'acción',
+            'responsable_id'    => 'responsable',
+            'area_id'           => 'área',
+            'fecha_compromiso'  => 'fecha compromiso',
+            'enlace'            => 'enlaces',
+            'enlaces'           => 'enlaces',
+            'observaciones'     => 'observaciones',
+            'recordatorio_dias' => 'recordatorios',
+        ];
+        $detalle = $detalleJson !== null ? json_decode($detalleJson, true) : null;
+        $campos  = is_array($detalle) && isset($detalle['cambios']) && is_array($detalle['cambios'])
+            ? $detalle['cambios'] : [];
+        $legibles = [];
+        foreach ($campos as $c) {
+            $legibles[$etiquetas[$c] ?? (string) $c] = true; // dedup (enlace/enlaces → "enlaces")
+        }
+
+        return $legibles === [] ? 'Editó el acuerdo' : 'Actualizó: ' . implode(', ', array_keys($legibles));
     }
 
     private function noEncontrado(): ResponseInterface

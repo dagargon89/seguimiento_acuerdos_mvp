@@ -41,6 +41,8 @@ $routes->group('api/v1', ['filter' => ['cors', 'firebaseauth', 'throttle']], sta
     $routes->options('acuerdos/(:num)/corresponsables', 'AcuerdosController::corresponsables/$1');
     $routes->post('acuerdos/(:num)/avances', 'AcuerdosController::avances/$1');
     $routes->options('acuerdos/(:num)/avances', 'AcuerdosController::avances/$1');
+    $routes->get('acuerdos/(:num)/actividad', 'AcuerdosController::actividad/$1');
+    $routes->options('acuerdos/(:num)/actividad', 'AcuerdosController::actividad/$1');
 
     // Conclusión / reapertura (Tarea 7 / S1.6) — solo Dirección (403 + auditoría para otros roles).
     $routes->patch('acuerdos/(:num)/concluir', 'AcuerdosController::concluir/$1');
