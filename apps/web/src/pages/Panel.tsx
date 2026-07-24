@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib';
 import type { Acuerdo, EstadoAcuerdo, FiltrosAcuerdos } from '../lib';
 import { MESES, diasDesdeHoy, fmtF, hoy, hoyISO, mesActualISO, parseISO } from '../lib/fechas';
+import { filtrarAcuerdos } from '../lib/filtrosPanel';
 import { EST, mensajeError, nombreCorto, truncar, vencimientoRelativo } from '../components/EstadoHelpers';
 import { Avatar } from '../components/Avatar';
 import { Badge } from '../components/Badge';
@@ -40,6 +41,9 @@ export function Panel() {
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos_abiertos');
   const [filtroResp, setFiltroResp] = useState<number>(0);
+  const [filtroArea, setFiltroArea] = useState<number>(0);
+  const [fDesde, setFDesde] = useState('');
+  const [fHasta, setFHasta] = useState('');
   const [selId, setSelId] = useState<number | null>(null);
   const [mesCal, setMesCal] = useState(mesActualISO());
 
@@ -72,15 +76,10 @@ export function Panel() {
 
   const todos = useMemo(() => vistaQ.data?.data ?? [], [vistaQ.data]);
 
-  const lista = useMemo(() => {
-    let xs = todos;
-    if (filtroResp) xs = xs.filter((a) => a.responsable.id === filtroResp);
-    const q = busqueda.trim().toLowerCase();
-    if (q) {
-      xs = xs.filter((a) => `${a.tema ?? ''} ${a.accion} ${a.responsable.nombre}`.toLowerCase().includes(q));
-    }
-    return xs;
-  }, [todos, filtroResp, busqueda]);
+  const lista = useMemo(
+    () => filtrarAcuerdos(todos, { area: filtroArea, responsable: filtroResp, q: busqueda, desde: fDesde, hasta: fHasta }),
+    [todos, filtroArea, filtroResp, busqueda, fDesde, fHasta],
+  );
 
   const abiertos = abiertosQ.data?.data ?? [];
   const enProceso = abiertos.filter((a) => a.estado === 'en_proceso');
@@ -94,6 +93,12 @@ export function Panel() {
   const responsables = useMemo(() => {
     const m = new Map<number, string>();
     for (const a of todos) m.set(a.responsable.id, a.responsable.nombre);
+    return [...m.entries()].sort((p, q) => p[1].localeCompare(q[1]));
+  }, [todos]);
+
+  const areas = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const a of todos) m.set(a.area.id, a.area.nombre);
     return [...m.entries()].sort((p, q) => p[1].localeCompare(q[1]));
   }, [todos]);
 
@@ -152,6 +157,32 @@ export function Panel() {
             ...responsables.map(([id, nombre]) => ({ value: String(id), label: nombre })),
           ]}
         />
+        <Select
+          variante="toolbar"
+          ariaLabel="Filtrar por área"
+          value={String(filtroArea)}
+          onChange={(v) => setFiltroArea(Number(v))}
+          opciones={[
+            { value: '0', label: 'Área: todas' },
+            ...areas.map(([id, nombre]) => ({ value: String(id), label: nombre })),
+          ]}
+        />
+        <input
+          className="input"
+          type="date"
+          aria-label="Fecha compromiso desde"
+          value={fDesde}
+          onChange={(e) => setFDesde(e.target.value)}
+          style={{ width: 'auto', padding: '10px 12px', fontSize: 13 }}
+        />
+        <input
+          className="input"
+          type="date"
+          aria-label="Fecha compromiso hasta"
+          value={fHasta}
+          onChange={(e) => setFHasta(e.target.value)}
+          style={{ width: 'auto', padding: '10px 12px', fontSize: 13 }}
+        />
         <div className="toolbar__spacer" />
         <button type="button" className="btn btn--accent btn--glow btn--md" onClick={() => navigate('/captura')}>
           + Nuevo acuerdo
@@ -189,6 +220,7 @@ export function Panel() {
           setMes={setMesCal}
           incluirConcluidos={filtroEstado === 'concluido'}
           filtroResp={filtroResp}
+          filtroArea={filtroArea}
           busqueda={busqueda}
           onAbrir={abrir}
         />
@@ -754,6 +786,7 @@ function VistaCalendario({
   setMes,
   incluirConcluidos,
   filtroResp,
+  filtroArea,
   busqueda,
   onAbrir,
 }: {
@@ -761,6 +794,7 @@ function VistaCalendario({
   setMes: (m: string) => void;
   incluirConcluidos: boolean;
   filtroResp: number;
+  filtroArea: number;
   busqueda: string;
   onAbrir: (id: number) => void;
 }) {
@@ -777,13 +811,14 @@ function VistaCalendario({
     for (const dia of calQ.data?.dias ?? []) {
       const xs = dia.acuerdos.filter(
         (a) =>
+          (!filtroArea || a.area.id === filtroArea) &&
           (!filtroResp || a.responsable.id === filtroResp) &&
           (!q || `${a.tema ?? ''} ${a.accion} ${a.responsable.nombre}`.toLowerCase().includes(q)),
       );
       if (xs.length > 0) m.set(dia.fecha, xs);
     }
     return m;
-  }, [calQ.data, filtroResp, busqueda]);
+  }, [calQ.data, filtroArea, filtroResp, busqueda]);
 
   const [anio, mesNum] = mes.split('-').map(Number);
   const primerDia = new Date(anio, mesNum - 1, 1, 12);
