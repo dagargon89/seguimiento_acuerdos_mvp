@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib';
-import type { AcuerdoDetalle, Avance, EdicionAcuerdo } from '../lib';
+import type { AcuerdoDetalle, EdicionAcuerdo, TipoEventoActividad } from '../lib';
 import { fmtF, fmtL, hoyISO, shiftISO } from '../lib/fechas';
 import { EST, mensajeError, vencimientoRelativo } from './EstadoHelpers';
 import { Avatar } from './Avatar';
@@ -19,14 +19,18 @@ import { chipEnvio, tipoRecordatorioLabel } from './recordatorioVm';
 import { useSesion } from './SessionContext';
 import { useToast } from './Toast';
 
-// Etiqueta y acento de color por tipo de evento de la bitácora. Los colores salen
-// de los tokens del sistema PJ (regla #11): teal = avance/validación (progreso),
-// ámbar = reprogramación (cambio de fecha), rojo = reapertura.
-const TIPO_AVANCE_META: Record<Avance['tipo'], { label: string; color: string }> = {
-  avance: { label: 'Avance', color: 'var(--teal)' },
-  reprogramacion: { label: 'Reprogramación', color: 'var(--amber)' },
-  validacion: { label: 'Validación', color: 'var(--teal)' },
-  reapertura: { label: 'Reapertura', color: 'var(--red)' },
+// Etiqueta y acento de color por tipo de evento de la bitácora. Progreso con
+// tokens de estado PJ (regla #11): teal = avance/validación, ámbar = reprogramación,
+// rojo = reapertura. Eventos administrativos (crear/editar/corresponsables) en
+// color neutro para distinguirlos del progreso.
+const TIPO_EVENTO_META: Record<TipoEventoActividad, { label: string; color: string }> = {
+  avance:          { label: 'Avance',           color: 'var(--teal)' },
+  reprogramacion:  { label: 'Reprogramación',   color: 'var(--amber)' },
+  validacion:      { label: 'Validación',       color: 'var(--teal)' },
+  reapertura:      { label: 'Reapertura',       color: 'var(--red)' },
+  crear:           { label: 'Creación',         color: 'var(--text-muted)' },
+  editar:          { label: 'Edición',          color: 'var(--text-muted)' },
+  corresponsables: { label: 'Corresponsables',  color: 'var(--text-muted)' },
 };
 
 interface DrawerProps {
@@ -63,6 +67,11 @@ export function Drawer({ id, onClose }: DrawerProps) {
   });
   const usuariosQ = useQuery({ queryKey: ['usuarios'], queryFn: () => api.listUsuarios(), enabled: editando });
   const areasQ = useQuery({ queryKey: ['areas'], queryFn: () => api.listAreas(), enabled: editando });
+  const actividadQ = useQuery({
+    queryKey: ['actividad', id],
+    queryFn: () => api.actividadAcuerdo(id),
+    enabled: id > 0,
+  });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -79,6 +88,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
     void queryClient.invalidateQueries({ queryKey: ['calendario'] });
     void queryClient.invalidateQueries({ queryKey: ['checklist'] });
     void queryClient.invalidateQueries({ queryKey: ['recordatorios'] });
+    void queryClient.invalidateQueries({ queryKey: ['actividad', id] });
   };
 
   const avanceMut = useMutation({
@@ -199,11 +209,11 @@ export function Drawer({ id, onClose }: DrawerProps) {
     (esDireccion || (u.rol === 'coordinador' && u.area_id === sel.area.id));
   const usuariosActivos = (usuariosQ.data ?? []).filter((x) => x.activo);
   const areas = areasQ.data ?? [];
-  // Bitácora: los avances ya vienen ordenados desc del backend; reforzamos el orden
+  // Bitácora: la actividad ya viene ordenada desc del backend; reforzamos el orden
   // en cliente (defensivo) por si cambiara la fuente. Sin mutar el array original.
   const bitacora = useMemo(
-    () => [...(sel?.avances ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)),
-    [sel?.avances],
+    () => [...(actividadQ.data ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    [actividadQ.data],
   );
 
   return (
@@ -484,17 +494,18 @@ export function Drawer({ id, onClose }: DrawerProps) {
             </div>
 
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20 }}>
-              <div className="detail-label" style={{ marginBottom: 10 }}>
-                Bitácora
-              </div>
-              {bitacora.length === 0 && (
+              <div className="detail-label" style={{ marginBottom: 10 }}>Bitácora</div>
+              {actividadQ.isLoading && (
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Cargando actividad…</div>
+              )}
+              {!actividadQ.isLoading && bitacora.length === 0 && (
                 <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Aún no hay actividad registrada.</div>
               )}
-              {bitacora.map((av) => {
-                const meta = TIPO_AVANCE_META[av.tipo];
+              {bitacora.map((ev) => {
+                const meta = TIPO_EVENTO_META[ev.tipo];
                 return (
                   <div
-                    key={av.id}
+                    key={ev.id}
                     style={{
                       padding: '10px 0 10px 14px',
                       borderTop: '1px solid var(--border-subtle)',
@@ -503,38 +514,18 @@ export function Drawer({ id, onClose }: DrawerProps) {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span
-                        aria-hidden
-                        style={{
-                          width: 7,
-                          height: 7,
-                          borderRadius: '50%',
-                          background: meta.color,
-                          flexShrink: 0,
-                        }}
-                      />
-                      <span
-                        style={{
-                          fontFamily: 'var(--font-display)',
-                          fontSize: 10,
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          letterSpacing: '.08em',
-                          color: meta.color,
-                        }}
-                      >
+                      <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: meta.color }}>
                         {meta.label}
                       </span>
                       <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
-                        {av.usuario.nombre} · {fmtF(av.created_at.slice(0, 10))}
+                        {(ev.usuario?.nombre ?? 'Sistema')} · {fmtF(ev.created_at.slice(0, 10))}
                       </span>
                     </div>
-                    <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-                      {av.descripcion}
-                    </div>
-                    {av.nueva_fecha && (
+                    <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-secondary)' }}>{ev.descripcion}</div>
+                    {ev.nueva_fecha && (
                       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-brand)', marginTop: 3 }}>
-                        Nueva fecha compromiso: {fmtL(av.nueva_fecha)}
+                        Nueva fecha compromiso: {fmtL(ev.nueva_fecha)}
                       </div>
                     )}
                   </div>
