@@ -70,8 +70,11 @@ final class ActividadAcuerdoTest extends CIUnitTestCase
 
     public function testIncluyeCreacionYAvancesOrdenadosDesc(): void
     {
-        // Acuerdo 3 (abierto, del seed) — la creación viene del seed vía auditoría 'crear'.
-        // Registramos un avance para tener al menos dos eventos.
+        // Acuerdo 3 (abierto, del seed) ya trae 1 avance sembrado (el seed NO
+        // audita 'crear' — InitialSeeder trunca `auditoria` y no inserta filas
+        // para los acuerdos sembrados; el evento crear real se cubre en
+        // testEventoCrearApareceParaAcuerdoCreadoViaLote). Registramos un
+        // avance más reciente para confirmar el orden desc por created_at.
         $this->como('direccion@demo.test')
             ->post('api/v1/acuerdos/3/avances', ['tipo' => 'avance', 'descripcion' => 'Avance de prueba']);
 
@@ -117,6 +120,35 @@ final class ActividadAcuerdoTest extends CIUnitTestCase
 
         $this->assertNotEmpty($editar);
         $this->assertStringContainsString('tema', $editar[0]['descripcion']);
+    }
+
+    public function testEventoCrearApareceParaAcuerdoCreadoViaLote(): void
+    {
+        // El seed no audita 'crear' (InitialSeeder trunca `auditoria`), así que
+        // el único camino real para un evento 'crear' es POST /acuerdos/lote
+        // (AcuerdosController::insertarAcuerdo audita 'crear' por cada renglón).
+        $lote = [
+            'reunion'  => ['nombre' => 'Reunión de prueba actividad', 'fecha' => '2026-07-09'],
+            'acuerdos' => [[
+                'tema' => 'Tema de prueba actividad', 'accion' => 'Acción de prueba actividad',
+                'responsable_id' => 4, 'corresponsables_ids' => [], 'area_id' => 1,
+                'fecha_compromiso' => '2026-07-10', 'enlace' => null, 'observaciones' => null,
+                'recordatorio_dias' => null,
+            ]],
+        ];
+
+        $creado = $this->como('direccion@demo.test')->post('api/v1/acuerdos/lote', $lote);
+        $creado->assertStatus(201);
+        $nuevoId = $this->cuerpo($creado)['data'][0]['id'];
+
+        $r       = $this->como('direccion@demo.test')->get("api/v1/acuerdos/{$nuevoId}/actividad");
+        $r->assertStatus(200);
+        $eventos = $this->cuerpo($r)['data'];
+        $crear   = array_values(array_filter($eventos, static fn ($e) => $e['tipo'] === 'crear'));
+
+        $this->assertNotEmpty($crear);
+        $this->assertSame('auditoria', $crear[0]['fuente']);
+        $this->assertSame('Creó el acuerdo', $crear[0]['descripcion']);
     }
 
     public function testPendienteRecibe403(): void
