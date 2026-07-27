@@ -16,7 +16,7 @@ export function ReasignarLoteModal({ n, ocupado, onCancel, onConfirm }: Props) {
   const operativos = (usuariosQ.data ?? []).filter((u) => u.rol !== 'pendiente' && u.activo);
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 130, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="overlay-backdrop" style={{ position: 'fixed' }} onClick={onCancel} />
+      <div className="overlay-backdrop" style={{ position: 'fixed' }} onClick={ocupado ? undefined : onCancel} />
       <div role="dialog" aria-modal="true" aria-label="Reasignar responsable en lote" className="modal-card" style={{ width: 420, maxWidth: '92vw' }}>
         <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
           Reasignar {n} {n === 1 ? 'acuerdo' : 'acuerdos'}

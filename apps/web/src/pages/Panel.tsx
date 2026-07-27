@@ -103,8 +103,17 @@ export function Panel() {
   const alternarUno = (id: number) =>
     setSeleccion((prev) => {
       const s = new Set(prev);
-      if (s.has(id)) s.delete(id);
-      else s.add(id);
+      if (s.has(id)) {
+        s.delete(id);
+        setFallidos((prevFallidos) => {
+          if (!prevFallidos.has(id)) return prevFallidos;
+          const m = new Map(prevFallidos);
+          m.delete(id);
+          return m;
+        });
+      } else {
+        s.add(id);
+      }
       return s;
     });
 
