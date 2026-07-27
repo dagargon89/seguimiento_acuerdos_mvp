@@ -29,9 +29,9 @@ Convenciones: **Impacto** = Alto/Medio · **Esfuerzo** = S (≤1 día) / M (2–
 
 | # | Mejora | Tier | Impacto | Esfuerzo | Estado |
 |---|---|---|---|---|---|
-| 1 | Exportar resumen/panel a PDF/XLSX | Quick win | Alto | M | ⬜ |
-| 2 | Filtro por área + rango de fechas en el Panel | Quick win | Alto | S–M | ⬜ |
-| 3 | Timeline/bitácora por acuerdo en el Drawer | Quick win | Medio | S–M | ⬜ |
+| 1 | Exportar resumen/panel a PDF/XLSX | Quick win | Alto | M | 🟨 |
+| 2 | Filtro por área + rango de fechas en el Panel | Quick win | Alto | S–M | ✅ |
+| 3 | Timeline/bitácora por acuerdo en el Drawer | Quick win | Medio | S–M | ✅ |
 | 4 | Acciones en lote (concluir/reprogramar/reasignar) | Quick win | Medio | M | ⬜ |
 | 5 | Gestión de Reuniones (crear/titular/acta) | Media | Alto | M–L | ⬜ |
 | 6 | Dashboard de cumplimiento (métricas de gestión) | Media | Alto | M–L | ⬜ |
@@ -44,20 +44,20 @@ Convenciones: **Impacto** = Alto/Medio · **Esfuerzo** = S (≤1 día) / M (2–
 
 ## 3. Detalle por ítem
 
-### 1. Exportar resumen/panel a PDF/XLSX  ⬜
+### 1. Exportar resumen/panel a PDF/XLSX  🟨
 - **Por qué:** Dirección comparte estados en reunión; hoy no hay salida imprimible.
 - **Alcance:** XLSX del listado filtrado y del `/resumen`; PDF del resumen ejecutivo.
   Evaluar cliente (SheetJS/print CSS) vs. servidor (más control de formato/branding).
 - **Tocar:** front (botón en Panel toolbar y en Resumen) o nuevo endpoint `GET /export`.
 - **Aceptación:** el archivo respeta los filtros activos; PDF con identidad PJ; sin datos de otros ámbitos que el actor no vea.
 
-### 2. Filtro por área + rango de fechas en el Panel  ⬜
+### 2. Filtro por área + rango de fechas en el Panel  ✅
 - **Por qué:** hoy el Panel solo filtra por estado y responsable; el área no se puede filtrar pese a ser eje del dominio.
 - **Alcance:** `GET /acuerdos` ya soporta `desde`/`hasta`, `q`, `responsable_id`, `estado`, `mios`, `page`, `per_page`. **Falta `area_id`** como query param.
 - **Tocar:** `AcuerdosController::index` (+ `AcuerdoModel`), `FiltrosAcuerdos` (types.ts / doc 05), toolbar de `Panel.tsx` (Select de área + date range; el calendario ya usa `desde/hasta`).
 - **Aceptación:** filtros combinables; respeta visibilidad; se refleja en el contador y la paginación.
 
-### 3. Timeline/bitácora por acuerdo en el Drawer  ⬜
+### 3. Timeline/bitácora por acuerdo en el Drawer  ✅
 - **Por qué:** el historial de un acuerdo está disperso; verlo cronológico da trazabilidad.
 - **Alcance:** unir `avances` (tipos: avance/reprogramacion/validacion/reapertura) + eventos de `auditoria` de ese acuerdo en una línea de tiempo.
 - **Tocar:** `Drawer.tsx` (nueva sección), posible `GET /acuerdos/{id}/actividad` o ampliar el detalle existente.
