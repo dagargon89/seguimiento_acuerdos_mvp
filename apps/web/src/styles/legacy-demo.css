@@ -1251,7 +1251,7 @@ body {
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--surface-2, var(--cn-surface2));
+  background: var(--surface2);
 }
 .lote-bar__count { font-size: 13px; font-weight: 600; }
 .lote-bar__spacer { flex: 1; }
