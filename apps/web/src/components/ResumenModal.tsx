@@ -5,9 +5,12 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib';
+import { fmtL, hoyISO } from '../lib/fechas';
+import { descargarResumenXlsx } from '../lib/exportarXlsx';
 import { mensajeError, nombreCorto } from './EstadoHelpers';
 import { Avatar } from './Avatar';
 import { useSesion } from './SessionContext';
+import { useToast } from './Toast';
 
 interface ResumenModalProps {
   onClose: () => void;
@@ -25,15 +28,26 @@ export function ResumenModal({ onClose }: ResumenModalProps) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const { toast } = useToast();
   const r = resumenQ.data;
   const ambito = r ? (r.ambito === 'general' ? 'todas las áreas' : r.area?.nombre ?? 'el área') : '';
   const abiertos = r ? r.en_proceso + r.vencidos : 0;
   const u = sesion?.usuario;
 
+  const exportarXlsx = async () => {
+    if (!r) return;
+    try {
+      await descargarResumenXlsx(r, hoyISO());
+    } catch {
+      toast('No se pudo generar el archivo. Intenta de nuevo.', 'error');
+    }
+  };
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="overlay-backdrop" style={{ position: 'fixed' }} onClick={onClose} />
       <div
+        id="resumen-print"
         role="dialog"
         aria-modal="true"
         aria-label="Resumen periódico"
@@ -134,8 +148,19 @@ export function ResumenModal({ onClose }: ResumenModalProps) {
               <p style={{ margin: '18px 0 0', fontSize: 11.5, lineHeight: 1.6, color: 'var(--text-muted)', textAlign: 'center' }}>
                 Este correo se enviaría automáticamente a la dirección y a cada coordinación de área según la frecuencia configurada.
               </p>
+              <p style={{ margin: '14px 0 0', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
+                Panel de Acuerdos · Participa Juárez — Generado el {fmtL(hoyISO())}
+              </p>
             </>
           )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '0 26px 20px' }}>
+          <button type="button" className="btn btn--ghost btn--sm" disabled={!r} onClick={exportarXlsx}>
+            Exportar XLSX
+          </button>
+          <button type="button" className="btn btn--ghost btn--sm" disabled={!r} onClick={() => window.print()}>
+            Exportar PDF
+          </button>
         </div>
       </div>
     </div>

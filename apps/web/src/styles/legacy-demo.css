@@ -1225,3 +1225,19 @@ body {
   opacity: .8;
 }
 .toast-update__btn--despues:hover { opacity: 1; }
+
+/* Exportar resumen a PDF: al imprimir, aislar solo la tarjeta del resumen
+   (quick win #1). Usa los tokens PJ ya presentes; no define paleta nueva. */
+@media print {
+  body * { visibility: hidden; }
+  #resumen-print, #resumen-print * { visibility: visible; }
+  #resumen-print {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    box-shadow: none;
+    max-height: none;
+    overflow: visible;
+  }
+  .modal__close, .btn { display: none !important; }
+}
