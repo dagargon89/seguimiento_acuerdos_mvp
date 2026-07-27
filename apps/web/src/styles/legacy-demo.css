@@ -1241,3 +1241,18 @@ body {
   }
   .modal__close, .btn { display: none !important; }
 }
+
+/* Acciones en lote (quick win #4) */
+.lote-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2, var(--cn-surface2));
+}
+.lote-bar__count { font-size: 13px; font-weight: 600; }
+.lote-bar__spacer { flex: 1; }
+.acuerdos-table tr.row--fallo > td { background: color-mix(in srgb, var(--red) 12%, transparent); }

@@ -15,6 +15,7 @@ import type { Acuerdo, EstadoAcuerdo, FiltrosAcuerdos } from '../lib';
 import { MESES, diasDesdeHoy, fmtF, hoy, hoyISO, mesActualISO, parseISO } from '../lib/fechas';
 import { filtrarAcuerdos } from '../lib/filtrosPanel';
 import { descargarAcuerdosXlsx } from '../lib/exportarXlsx';
+import type { MotivoFallo } from '../lib/loteAcciones';
 import { EST, mensajeError, nombreCorto, truncar, vencimientoRelativo } from '../components/EstadoHelpers';
 import { useToast } from '../components/Toast';
 import { Avatar } from '../components/Avatar';
@@ -49,6 +50,9 @@ export function Panel() {
   const [selId, setSelId] = useState<number | null>(null);
   const [mesCal, setMesCal] = useState(mesActualISO());
   const [exportando, setExportando] = useState(false);
+  const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
+  const [fallidos, setFallidos] = useState<Map<number, MotivoFallo>>(new Map());
+  const [modalLote, setModalLote] = useState<null | 'reprogramar' | 'reasignar'>(null);
   const { toast } = useToast();
 
   // Abiertos (para stat cards); misma clave que la vista cuando el filtro es el default.
@@ -84,6 +88,35 @@ export function Panel() {
     () => filtrarAcuerdos(todos, { area: filtroArea, responsable: filtroResp, q: busqueda, desde: fDesde, hasta: fHasta }),
     [todos, filtroArea, filtroResp, busqueda, fDesde, fHasta],
   );
+
+  const idsLista = useMemo(() => lista.map((a) => a.id), [lista]);
+  const idsAccionables = useMemo(
+    () => idsLista.filter((id) => seleccion.has(id)),
+    [idsLista, seleccion],
+  );
+
+  const alternarUno = (id: number) =>
+    setSeleccion((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
+      return s;
+    });
+
+  const alternarTodos = (marcar: boolean) =>
+    setSeleccion((prev) => {
+      const s = new Set(prev);
+      for (const id of idsLista) {
+        if (marcar) s.add(id);
+        else s.delete(id);
+      }
+      return s;
+    });
+
+  const limpiarSeleccion = () => {
+    setSeleccion(new Set());
+    setFallidos(new Map());
+  };
 
   const exportar = async () => {
     setExportando(true);
@@ -232,7 +265,32 @@ export function Panel() {
       )}
 
       {!vistaQ.isLoading && modo === 'tabla' && (
-        <VistaTabla lista={lista} proxPorAcuerdo={proxPorAcuerdo} onAbrir={abrir} />
+        <>
+        {idsAccionables.length > 0 && (
+          <div className="lote-bar">
+            <span className="lote-bar__count">{idsAccionables.length} seleccionados</span>
+            <div className="lote-bar__spacer" />
+            <button type="button" className="btn btn--ghost btn--sm" onClick={() => setModalLote('reprogramar')}>
+              Reprogramar
+            </button>
+            <button type="button" className="btn btn--ghost btn--sm" onClick={() => setModalLote('reasignar')}>
+              Reasignar
+            </button>
+            <button type="button" className="btn btn--ghost btn--sm" onClick={limpiarSeleccion}>
+              Limpiar
+            </button>
+          </div>
+        )}
+        <VistaTabla
+          lista={lista}
+          proxPorAcuerdo={proxPorAcuerdo}
+          onAbrir={abrir}
+          seleccion={seleccion}
+          fallidos={fallidos}
+          onToggle={alternarUno}
+          onToggleTodos={alternarTodos}
+        />
+        </>
       )}
       {!vistaQ.isLoading && modo === 'kanban' && (
         <VistaKanban lista={lista} conConcluidos={filtroEstado === 'concluido'} onAbrir={abrir} />
@@ -252,6 +310,9 @@ export function Panel() {
       )}
 
       {selId !== null && <Drawer id={selId} onClose={() => setSelId(null)} />}
+
+      {/* placeholder de modales de lote (se llena en Tasks 3–4) */}
+      {modalLote !== null && null}
     </div>
   );
 }
@@ -261,12 +322,22 @@ function VistaTabla({
   lista,
   proxPorAcuerdo,
   onAbrir,
+  seleccion,
+  fallidos,
+  onToggle,
+  onToggleTodos,
 }: {
   lista: Acuerdo[];
   proxPorAcuerdo: Map<number, string>;
   onAbrir: (id: number) => void;
+  seleccion: Set<number>;
+  fallidos: Map<number, MotivoFallo>;
+  onToggle: (id: number) => void;
+  onToggleTodos: (marcar: boolean) => void;
 }) {
   const pag = usePaginacion(lista);
+  const todosMarcados = lista.length > 0 && lista.every((a) => seleccion.has(a.id));
+  const algunoMarcado = lista.some((a) => seleccion.has(a.id));
   return (
     <>
     {/* Tabla completa (≥640px) */}
@@ -274,6 +345,17 @@ function VistaTabla({
       <table className="acuerdos-table" style={{ minWidth: 720 }}>
         <thead>
           <tr>
+            <th style={{ width: 34 }}>
+              <input
+                type="checkbox"
+                aria-label="Seleccionar todos"
+                checked={todosMarcados}
+                ref={(el) => {
+                  if (el) el.indeterminate = algunoMarcado && !todosMarcados;
+                }}
+                onChange={(e) => onToggleTodos(e.target.checked)}
+              />
+            </th>
             <th>Tema</th>
             <th>Acuerdo / acción</th>
             <th>Responsable</th>
@@ -289,7 +371,19 @@ function VistaTabla({
             const { rel, color } = vencimientoRelativo(a.fecha_compromiso, a.estado);
             const prox = a.estado === 'concluido' ? null : proxPorAcuerdo.get(a.id) ?? null;
             return (
-              <tr key={a.id} onClick={() => onAbrir(a.id)}>
+              <tr
+                key={a.id}
+                onClick={() => onAbrir(a.id)}
+                className={fallidos.has(a.id) ? 'row--fallo' : undefined}
+              >
+                <td onClick={(e) => e.stopPropagation()} style={{ cursor: 'default' }}>
+                  <input
+                    type="checkbox"
+                    aria-label={`Seleccionar acuerdo ${a.id}`}
+                    checked={seleccion.has(a.id)}
+                    onChange={() => onToggle(a.id)}
+                  />
+                </td>
                 <td>
                   <span className="tema-label">{a.tema ?? 'Sin tema'}</span>
                 </td>
@@ -339,7 +433,7 @@ function VistaTabla({
           })}
           {lista.length === 0 && (
             <tr>
-              <td colSpan={7} style={{ textAlign: 'center', padding: 28, color: 'var(--text-muted)', cursor: 'default' }}>
+              <td colSpan={8} style={{ textAlign: 'center', padding: 28, color: 'var(--text-muted)', cursor: 'default' }}>
                 No hay acuerdos que coincidan con los filtros.
               </td>
             </tr>
@@ -359,6 +453,14 @@ function VistaTabla({
             onClick={() => onAbrir(a.id)}
             style={{ padding: '12px 14px', borderTop: '1px solid var(--border-subtle)', cursor: 'pointer' }}
           >
+            <input
+              type="checkbox"
+              aria-label={`Seleccionar acuerdo ${a.id}`}
+              checked={seleccion.has(a.id)}
+              onClick={(e) => e.stopPropagation()}
+              onChange={() => onToggle(a.id)}
+              style={{ marginRight: 10 }}
+            />
             <div className="tema-label" style={{ display: 'block', marginBottom: 4 }}>
               {a.tema ?? 'Sin tema'}
             </div>
