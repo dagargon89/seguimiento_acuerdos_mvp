@@ -29,7 +29,7 @@ Convenciones: **Impacto** = Alto/Medio · **Esfuerzo** = S (≤1 día) / M (2–
 
 | # | Mejora | Tier | Impacto | Esfuerzo | Estado |
 |---|---|---|---|---|---|
-| 1 | Exportar resumen/panel a PDF/XLSX | Quick win | Alto | M | 🟨 |
+| 1 | Exportar resumen/panel a PDF/XLSX | Quick win | Alto | M | ✅ |
 | 2 | Filtro por área + rango de fechas en el Panel | Quick win | Alto | S–M | ✅ |
 | 3 | Timeline/bitácora por acuerdo en el Drawer | Quick win | Medio | S–M | ✅ |
 | 4 | Acciones en lote (concluir/reprogramar/reasignar) | Quick win | Medio | M | ⬜ |
@@ -44,12 +44,16 @@ Convenciones: **Impacto** = Alto/Medio · **Esfuerzo** = S (≤1 día) / M (2–
 
 ## 3. Detalle por ítem
 
-### 1. Exportar resumen/panel a PDF/XLSX  🟨
+### 1. Exportar resumen/panel a PDF/XLSX  ✅
 - **Por qué:** Dirección comparte estados en reunión; hoy no hay salida imprimible.
 - **Alcance:** XLSX del listado filtrado y del `/resumen`; PDF del resumen ejecutivo.
-  Evaluar cliente (SheetJS/print CSS) vs. servidor (más control de formato/branding).
-- **Tocar:** front (botón en Panel toolbar y en Resumen) o nuevo endpoint `GET /export`.
-- **Aceptación:** el archivo respeta los filtros activos; PDF con identidad PJ; sin datos de otros ámbitos que el actor no vea.
+- **Solución (cliente, sin backend):** librería `write-excel-file` v4 cargada con `import()` dinámico
+  (chunk aparte, code-split); el PDF del resumen se resuelve con `window.print()` + `@media print`
+  que aísla `#resumen-print`. Helper puro `lib/exportar.ts` (con tests) + efectos `lib/exportarXlsx.ts`.
+- **Tocar (hecho):** `Panel.tsx` (botón "Exportar (N)" en la toolbar), `ResumenModal.tsx`
+  (botones XLSX/PDF + nodo imprimible), `styles/legacy-demo.css` (`@media print`).
+- **Aceptación:** el archivo respeta los filtros activos (se exporta `lista`/`r` ya acotados por el
+  backend, así que no hay datos fuera del ámbito del actor); PDF con identidad PJ ("Participa Juárez").
 
 ### 2. Filtro por área + rango de fechas en el Panel  ✅
 - **Por qué:** hoy el Panel solo filtra por estado y responsable; el área no se puede filtrar pese a ser eje del dominio.
