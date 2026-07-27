@@ -24,6 +24,7 @@ import { Badge } from '../components/Badge';
 import { Drawer } from '../components/Drawer';
 import { ModeSwitch } from '../components/ModeSwitch';
 import { Paginacion } from '../components/Paginacion';
+import { ReasignarLoteModal } from '../components/ReasignarLoteModal';
 import { ReprogramarLoteModal } from '../components/ReprogramarLoteModal';
 import { Select } from '../components/Select';
 import { StatCard } from '../components/StatCard';
@@ -346,6 +347,17 @@ export function Panel() {
           onCancel={() => setModalLote(null)}
           onConfirm={(fecha) =>
             correrLote((id) => api.registrarAvance(id, { descripcion: notaReprogramacion(fecha), nueva_fecha: fecha }))
+          }
+        />
+      )}
+
+      {modalLote === 'reasignar' && (
+        <ReasignarLoteModal
+          n={idsAccionables.length}
+          ocupado={ocupadoLote}
+          onCancel={() => setModalLote(null)}
+          onConfirm={(responsableId) =>
+            correrLote((id) => api.editarAcuerdo(id, { responsable_id: responsableId }))
           }
         />
       )}
