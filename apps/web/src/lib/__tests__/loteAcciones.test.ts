@@ -65,11 +65,18 @@ describe('ejecutarLote', () => {
         });
       });
     const p = ejecutarLote([1, 2, 3, 4, 5], accion, { concurrencia: 2 });
-    // Deja que arranquen los primeros workers antes de liberar.
-    await Promise.resolve();
-    await Promise.resolve();
-    while (liberar.length) liberar.shift()!();
+    // Libera en oleadas hasta que el lote termine: los workers encolan nuevos
+    // resolvers de forma asíncrona tras cada acción, así que hay que drenar
+    // `liberar` repetidamente cediendo el turno a los microtasks entre oleadas.
+    let terminado = false;
+    void p.then(() => {
+      terminado = true;
+    });
+    while (!terminado) {
+      while (liberar.length) liberar.shift()!();
+      await Promise.resolve();
+    }
     await p;
-    expect(maxEnVuelo).toBeLessThanOrEqual(2);
+    expect(maxEnVuelo).toBe(2);
   });
 });
