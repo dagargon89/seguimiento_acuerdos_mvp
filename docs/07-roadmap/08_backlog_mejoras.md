@@ -32,7 +32,7 @@ Convenciones: **Impacto** = Alto/Medio · **Esfuerzo** = S (≤1 día) / M (2–
 | 1 | Exportar resumen/panel a PDF/XLSX | Quick win | Alto | M | ✅ |
 | 2 | Filtro por área + rango de fechas en el Panel | Quick win | Alto | S–M | ✅ |
 | 3 | Timeline/bitácora por acuerdo en el Drawer | Quick win | Medio | S–M | ✅ |
-| 4 | Acciones en lote (concluir/reprogramar/reasignar) | Quick win | Medio | M | ⬜ |
+| 4 | Acciones en lote (concluir/reprogramar/reasignar) | Quick win | Medio | M | ✅ |
 | 5 | Gestión de Reuniones (crear/titular/acta) | Media | Alto | M–L | ⬜ |
 | 6 | Dashboard de cumplimiento (métricas de gestión) | Media | Alto | M–L | ⬜ |
 | 7 | Adjuntar archivos como evidencia (Google Drive) | Media | Medio | L | ⬜ |
@@ -67,11 +67,12 @@ Convenciones: **Impacto** = Alto/Medio · **Esfuerzo** = S (≤1 día) / M (2–
 - **Tocar:** `Drawer.tsx` (nueva sección), posible `GET /acuerdos/{id}/actividad` o ampliar el detalle existente.
 - **Aceptación:** orden cronológico, autor + fecha por evento, sin exponer datos sensibles.
 
-### 4. Acciones en lote  ⬜
+### 4. Acciones en lote  ✅
 - **Por qué:** operar acuerdo por acuerdo es lento en reuniones de revisión.
-- **Alcance:** selección múltiple en la tabla del Panel → concluir / reprogramar / reasignar responsable.
-- **Tocar:** `Panel.tsx` (checkboxes + barra de acciones), reusar endpoints (`concluir`, `avances`/reprogramación, `update`) o endpoint batch nuevo; respetar Policies por acuerdo (auditar cada uno).
-- **Aceptación:** una acción denegada no aborta el resto; feedback por ítem; todo auditado.
+- **Alcance:** selección múltiple (persistente entre páginas) en la tabla del Panel → reprogramar + reasignar responsable en lote. Concluir en lote diferido a otra iteración por requerir checklist de validación individual.
+- **Solución (cliente, reutilizando helpers existentes):** `ejecutarLote(ids, accion, {concurrencia, clasificar})` + `resumenLote(...)` para coordinación de ejecución concurrente; reutilizan `registrarAvance(id, {descripcion, nueva_fecha})` para reprogramación y `editarAcuerdo(id, {responsable_id})` para reasignación; tolerante a fallo parcial (una negación no aborta el resto). Modales con entrada de fecha (validada >= hoy) y selector de responsable por rol operativo, toasts de feedback por ítem.
+- **Tocar:** `Panel.tsx` (selección persistente con checkboxes + barra flotante de acciones), `lib/acciones-lote.ts` (helpers `ejecutarLote`/`resumenLote`/`correrLote`), modales de entrada, validación y feedback, invalidación de queries al terminar.
+- **Aceptación:** selección persiste entre páginas; acciones ejecutadas con concurrencia acotada; una denegación no aborta el resto (p. ej., sin permisos en un acuerdo no cancela el resto); feedback visual por ítem (éxito/error con razón); resumen consolidado al final; cada acción auditada por acuerdo.
 
 ### 5. Gestión de Reuniones (el hueco más ligado al propósito)  ⬜
 - **Por qué:** la app "sustituye minutas narradas", pero **la reunión se autogenera** con nombre fijo (`"Reunión de dirección · <fecha>"`, ver `Captura.tsx`) vía `ReunionModel::obtenerOCrear`. No hay forma de titularla, ver su agenda ni su "acta".
