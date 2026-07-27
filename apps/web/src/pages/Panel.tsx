@@ -14,7 +14,9 @@ import { api } from '../lib';
 import type { Acuerdo, EstadoAcuerdo, FiltrosAcuerdos } from '../lib';
 import { MESES, diasDesdeHoy, fmtF, hoy, hoyISO, mesActualISO, parseISO } from '../lib/fechas';
 import { filtrarAcuerdos } from '../lib/filtrosPanel';
+import { descargarAcuerdosXlsx } from '../lib/exportarXlsx';
 import { EST, mensajeError, nombreCorto, truncar, vencimientoRelativo } from '../components/EstadoHelpers';
+import { useToast } from '../components/Toast';
 import { Avatar } from '../components/Avatar';
 import { Badge } from '../components/Badge';
 import { Drawer } from '../components/Drawer';
@@ -46,6 +48,8 @@ export function Panel() {
   const [fHasta, setFHasta] = useState('');
   const [selId, setSelId] = useState<number | null>(null);
   const [mesCal, setMesCal] = useState(mesActualISO());
+  const [exportando, setExportando] = useState(false);
+  const { toast } = useToast();
 
   // Abiertos (para stat cards); misma clave que la vista cuando el filtro es el default.
   const abiertosQ = useQuery({
@@ -80,6 +84,18 @@ export function Panel() {
     () => filtrarAcuerdos(todos, { area: filtroArea, responsable: filtroResp, q: busqueda, desde: fDesde, hasta: fHasta }),
     [todos, filtroArea, filtroResp, busqueda, fDesde, fHasta],
   );
+
+  const exportar = async () => {
+    setExportando(true);
+    try {
+      await descargarAcuerdosXlsx(lista, hoyISO());
+    } catch {
+      // el fallo de descarga no debe romper la vista; feedback mínimo
+      toast('No se pudo generar el archivo. Intenta de nuevo.', 'error');
+    } finally {
+      setExportando(false);
+    }
+  };
 
   const abiertos = abiertosQ.data?.data ?? [];
   const enProceso = abiertos.filter((a) => a.estado === 'en_proceso');
@@ -184,6 +200,15 @@ export function Panel() {
           style={{ width: 'auto', padding: '10px 12px', fontSize: 13 }}
         />
         <div className="toolbar__spacer" />
+        <button
+          type="button"
+          className="btn btn--ghost btn--md"
+          onClick={exportar}
+          disabled={exportando || lista.length === 0}
+          title="Exportar el listado filtrado a Excel"
+        >
+          {exportando ? 'Exportando…' : `Exportar (${lista.length})`}
+        </button>
         <button type="button" className="btn btn--accent btn--glow btn--md" onClick={() => navigate('/captura')}>
           + Nuevo acuerdo
         </button>
