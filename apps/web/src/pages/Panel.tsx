@@ -9,12 +9,13 @@
  */
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib';
 import type { Acuerdo, EstadoAcuerdo, FiltrosAcuerdos } from '../lib';
 import { MESES, diasDesdeHoy, fmtF, hoy, hoyISO, mesActualISO, parseISO } from '../lib/fechas';
 import { filtrarAcuerdos } from '../lib/filtrosPanel';
 import { descargarAcuerdosXlsx } from '../lib/exportarXlsx';
+import { ejecutarLote, notaReprogramacion, resumenLote } from '../lib/loteAcciones';
 import type { MotivoFallo } from '../lib/loteAcciones';
 import { EST, mensajeError, nombreCorto, truncar, vencimientoRelativo } from '../components/EstadoHelpers';
 import { useToast } from '../components/Toast';
@@ -23,6 +24,7 @@ import { Badge } from '../components/Badge';
 import { Drawer } from '../components/Drawer';
 import { ModeSwitch } from '../components/ModeSwitch';
 import { Paginacion } from '../components/Paginacion';
+import { ReprogramarLoteModal } from '../components/ReprogramarLoteModal';
 import { Select } from '../components/Select';
 import { StatCard } from '../components/StatCard';
 import { usePaginacion } from '../lib/usePaginacion';
@@ -53,7 +55,9 @@ export function Panel() {
   const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
   const [fallidos, setFallidos] = useState<Map<number, MotivoFallo>>(new Map());
   const [modalLote, setModalLote] = useState<null | 'reprogramar' | 'reasignar'>(null);
+  const [ocupadoLote, setOcupadoLote] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Abiertos (para stat cards); misma clave que la vista cuando el filtro es el default.
   const abiertosQ = useQuery({
@@ -116,6 +120,30 @@ export function Panel() {
   const limpiarSeleccion = () => {
     setSeleccion(new Set());
     setFallidos(new Map());
+  };
+
+  const correrLote = async (accion: (id: number) => Promise<unknown>) => {
+    const ids = idsAccionables;
+    if (ids.length === 0) return;
+    setOcupadoLote(true);
+    try {
+      const resultados = await ejecutarLote(ids, accion);
+      const { ok, total, fallidos } = resumenLote(resultados);
+      if (ok > 0) toast(`Listo: ${ok} de ${total} aplicados.`, 'success');
+      if (fallidos.length > 0) {
+        const sinPermiso = fallidos.filter((f) => f.motivo === 'sin_permiso').length;
+        const errores = fallidos.length - sinPermiso;
+        const partes = [sinPermiso ? `${sinPermiso} sin permiso` : '', errores ? `${errores} con error` : ''].filter(Boolean);
+        toast(`${fallidos.length} no se pudieron: ${partes.join(', ')}.`, 'error');
+      }
+      setFallidos(new Map(fallidos.map((f) => [f.id, f.motivo!])));
+      setSeleccion(new Set(fallidos.map((f) => f.id))); // conserva seleccionados solo los fallidos
+      void queryClient.invalidateQueries({ queryKey: ['acuerdos'] });
+      void queryClient.invalidateQueries({ queryKey: ['recordatorios'] });
+    } finally {
+      setOcupadoLote(false);
+      setModalLote(null);
+    }
   };
 
   const exportar = async () => {
@@ -311,8 +339,16 @@ export function Panel() {
 
       {selId !== null && <Drawer id={selId} onClose={() => setSelId(null)} />}
 
-      {/* placeholder de modales de lote (se llena en Tasks 3–4) */}
-      {modalLote !== null && null}
+      {modalLote === 'reprogramar' && (
+        <ReprogramarLoteModal
+          n={idsAccionables.length}
+          ocupado={ocupadoLote}
+          onCancel={() => setModalLote(null)}
+          onConfirm={(fecha) =>
+            correrLote((id) => api.registrarAvance(id, { descripcion: notaReprogramacion(fecha), nueva_fecha: fecha }))
+          }
+        />
+      )}
     </div>
   );
 }
