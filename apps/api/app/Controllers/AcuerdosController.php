@@ -7,6 +7,7 @@ use App\Entities\AcuerdoDetalle;
 use App\Entities\Avance;
 use App\Entities\UsuarioRef;
 use App\Libraries\Recordatorios\NotificadorAsignacion;
+use App\Libraries\Recordatorios\NotificadorRevision;
 use App\Libraries\Recordatorios\Programador;
 use App\Models\AcuerdoCorresponsableModel;
 use App\Models\AcuerdoModel;
@@ -751,6 +752,69 @@ class AcuerdosController extends BaseController
         }
 
         $this->sincronizarCalendarioAhora((int) $id);
+
+        return $this->response->setJSON(['data' => $this->cargarAcuerdoCompleto((int) $id, $hoy)->aArray()]);
+    }
+
+    /**
+     * POST /acuerdos/{id}/solicitar-conclusion (spec 2026-07-29) — responsable o
+     * corresponsable pide marcar el acuerdo como concluido. Deja el flag en
+     * 'pendiente' (congela vencimiento y silencia recordatorios, ver
+     * RecordatorioService), audita y avisa a admins + coordinación del área.
+     */
+    public function solicitarConclusion(string $id): ResponseInterface
+    {
+        $actor = service('usuarioActual')->obtener();
+        $hoy   = $this->hoy();
+
+        $fila = (new AcuerdoModel())->builderConJoins($hoy)->where('acuerdos.id', (int) $id)->get()->getFirstRow('array');
+        if ($fila === null) {
+            return $this->noEncontrado();
+        }
+
+        $db = Database::connect();
+        $esCorresponsable = $db->table('acuerdo_corresponsables')
+            ->where('acuerdo_id', (int) $id)->where('usuario_id', (int) $actor['id'])->countAllResults() > 0;
+
+        if (! VisibilidadAcuerdos::puedeVer($actor, $fila, $esCorresponsable)) {
+            return $this->noEncontrado();
+        }
+
+        if (! $this->puedeSolicitarConclusion($actor, $fila, $esCorresponsable)) {
+            (new AuditoriaModel())->registrar((int) $actor['id'], 'intento_solicitar_conclusion', 'acuerdo', (int) $id, ['rol' => $actor['rol'], 'resultado' => 'denegado'], $this->request->getIPAddress());
+
+            return $this->sinPermiso('No puedes solicitar la conclusión de este acuerdo.');
+        }
+
+        if ($fila['estado_real'] === 'concluido') {
+            return $this->conflictoEstado('El acuerdo ya está concluido.');
+        }
+        if ($fila['revision_estado'] === 'pendiente') {
+            return $this->conflictoEstado('El acuerdo ya tiene una solicitud de conclusión pendiente.');
+        }
+
+        $body       = $this->cuerpoJson() ?? [];
+        $comentario = is_string($body['comentario'] ?? null) ? trim($body['comentario']) : '';
+
+        $db->transException(true)->transStart();
+        (new AcuerdoModel())->update((int) $id, [
+            'revision_estado'            => 'pendiente',
+            'revision_solicitada_por_id' => (int) $actor['id'],
+            'revision_solicitada_at'     => Time::now()->toDateTimeString(),
+            'revision_motivo_rechazo'    => null,
+        ]);
+        (new AuditoriaModel())->registrar((int) $actor['id'], 'solicitar_conclusion', 'acuerdo', (int) $id, ['comentario' => $comentario], $this->request->getIPAddress());
+        $db->transComplete();
+
+        if (! $db->transStatus()) {
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo registrar la solicitud.']);
+        }
+
+        try {
+            (new NotificadorRevision())->avisarSolicitud((int) $id, (int) $actor['id']);
+        } catch (Throwable $e) {
+            log_message('error', 'Aviso de solicitud de conclusión falló (acuerdo {id}): {msg}', ['id' => $id, 'msg' => $e->getMessage()]);
+        }
 
         return $this->response->setJSON(['data' => $this->cargarAcuerdoCompleto((int) $id, $hoy)->aArray()]);
     }
@@ -1533,6 +1597,18 @@ class AcuerdosController extends BaseController
         }
 
         return $actor['rol'] === 'coordinador' && ((int) $acuerdo['area_id']) === (int) $actor['area_id'];
+    }
+
+    /**
+     * Solicitar conclusión (spec 2026-07-29): responsable o corresponsable del
+     * acuerdo. Dirección/coordinación NO solicitan — concluyen directo (ADR-012).
+     *
+     * @param array<string, mixed> $actor
+     * @param array<string, mixed> $acuerdo Fila con al menos responsable_id.
+     */
+    private function puedeSolicitarConclusion(array $actor, array $acuerdo, bool $esCorresponsable): bool
+    {
+        return ((int) $acuerdo['responsable_id']) === (int) $actor['id'] || $esCorresponsable;
     }
 
     /**

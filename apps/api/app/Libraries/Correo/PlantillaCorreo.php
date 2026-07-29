@@ -231,6 +231,28 @@ final class PlantillaCorreo
     }
 
     /**
+     * Solicitud de conclusión (spec 2026-07-29, revisión de conclusión): un
+     * responsable/corresponsable pidió marcar el acuerdo como concluido; se
+     * avisa a Dirección y a la coordinación del área para que revise.
+     *
+     * @param array<string,mixed> $acuerdo
+     * @param array<string,mixed> $destinatario
+     * @param array<string,mixed> $solicitante
+     *
+     * @return array{asunto: string, html: string}
+     */
+    public function solicitudConclusion(array $acuerdo, array $destinatario, array $solicitante): array
+    {
+        $accion = (string) ($acuerdo['accion'] ?? '');
+        $html   = '<p>Hola ' . esc((string) $destinatario['nombre']) . ',</p>'
+            . '<p><strong>' . esc((string) $solicitante['nombre']) . '</strong> solicitó marcar como concluido el acuerdo:</p>'
+            . '<blockquote>' . esc($accion) . '</blockquote>'
+            . '<p>Revisa y aprueba o rechaza la solicitud en el panel.</p>';
+
+        return ['asunto' => 'Solicitud de conclusión: ' . mb_substr($accion, 0, 60), 'html' => $html];
+    }
+
+    /**
      * Bloque de datos de UN acuerdo (tema, acción, responsable, fecha, estado),
      * réplica del `<FilaEmail>` de `EmailModal.tsx`. Todo escapado.
      *
