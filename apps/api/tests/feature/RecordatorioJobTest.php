@@ -450,6 +450,44 @@ final class RecordatorioJobTest extends CIUnitTestCase
         $this->assertSame('concluido', $concluido['estado']);
     }
 
+    // ── Revisión de conclusión (Task 6): congela vencido y silencia avisos ────
+
+    public function testAcuerdoEnRevisionNoSeMarcaVencido(): void
+    {
+        // fecha_compromiso pasada respecto al "hoy" simulado (2026-07-10).
+        $id = $this->crearAcuerdo(responsableId: 5, fechaCompromiso: '2026-07-01', estado: 'en_proceso');
+        $this->conn->table('acuerdos')->where('id', $id)->update(['revision_estado' => 'pendiente']);
+
+        $this->correr('2026-07-10');
+
+        $fila = $this->conn->table('acuerdos')->where('id', $id)->get()->getRowArray();
+        $this->assertSame('en_proceso', $fila['estado'], 'Un acuerdo en revisión no debe marcarse vencido.');
+    }
+
+    public function testAcuerdoEnRevisionNoRecibeRecordatorioDelDia(): void
+    {
+        $id = $this->crearAcuerdo(responsableId: 6, fechaCompromiso: '2026-07-20');
+        $this->conn->table('acuerdos')->where('id', $id)->update(['revision_estado' => 'pendiente']);
+
+        $this->correr('2026-07-20'); // D: le tocaría 'dia' si no estuviera en revisión.
+
+        $this->assertCount(0, $this->enviosDe($id), 'un acuerdo en revisión no debe recibir recordatorios');
+    }
+
+    public function testAcuerdoEnRevisionNoRecibeSolicitudDeAvance(): void
+    {
+        // responsable 1 (dirección) no tiene acuerdos abiertos en el seed, para
+        // aislar la prueba: si NO estuviera en revisión, generaría su propia
+        // solicitud (digest) el día de frecuencia.
+        $id = $this->crearAcuerdo(responsableId: 1, fechaCompromiso: '2026-08-15', estado: 'en_proceso');
+        $this->conn->table('acuerdos')->where('id', $id)->update(['revision_estado' => 'pendiente']);
+
+        // 2026-07-13 es lunes → corresponde a 'semanal'.
+        $this->correr('2026-07-13');
+
+        $this->assertSame(0, $this->contarSolicitudes(1, '2026-07-13'), 'un acuerdo en revisión no debe generar solicitud de avance');
+    }
+
     // ── Calendario: orquesta CalendarSync para pendientes/error (intentos<3) ───
 
     public function testCalendarioSincronizaPendientesYErroresConIntentosMenoresA3(): void

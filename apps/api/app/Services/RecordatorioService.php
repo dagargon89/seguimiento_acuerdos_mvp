@@ -86,6 +86,7 @@ final class RecordatorioService
         $builder = $this->db->table('acuerdos');
         $builder->where('estado', 'en_proceso')
             ->where('fecha_compromiso <', $hoy)
+            ->where('revision_estado <>', 'pendiente')
             ->update(['estado' => 'vencido']);
 
         return $this->db->affectedRows();
@@ -104,6 +105,7 @@ final class RecordatorioService
             ->select('a.id, a.estado, a.fecha_compromiso, a.recordatorio_dias, a.responsable_id, a.area_id, a.tema, a.accion, r.nombre AS responsable_nombre')
             ->join('usuarios r', 'r.id = a.responsable_id', 'left')
             ->whereIn('a.estado', ['en_proceso', 'vencido'])
+            ->where('a.revision_estado <>', 'pendiente')
             ->get()->getResultArray();
 
         foreach ($acuerdos as $acuerdo) {
@@ -417,6 +419,7 @@ final class RecordatorioService
             ->select('a.id, a.tema, a.accion, a.fecha_compromiso, a.estado, a.area_id, a.responsable_id, r.nombre AS responsable_nombre')
             ->join('usuarios r', 'r.id = a.responsable_id', 'left')
             ->whereIn('a.estado', ['en_proceso', 'vencido'])
+            ->where('a.revision_estado <>', 'pendiente')
             ->get()->getResultArray();
 
         if ($acuerdos === []) {
