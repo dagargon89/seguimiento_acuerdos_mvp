@@ -51,6 +51,12 @@ final class NotificadorRevision
         $this->avisarResponsables($acuerdoId, static fn (PlantillaCorreo $p, array $ac, array $d) => $p->conclusionAprobada($ac, $d));
     }
 
+    /** Rechazo → responsable + corresponsables activos, con el motivo. */
+    public function avisarRechazo(int $acuerdoId, string $motivo): void
+    {
+        $this->avisarResponsables($acuerdoId, static fn (PlantillaCorreo $p, array $ac, array $d) => $p->conclusionRechazada($ac, $d, $motivo));
+    }
+
     /** @param callable(PlantillaCorreo, array, array): array{asunto:string,html:string} $construir */
     private function avisarResponsables(int $acuerdoId, callable $construir): void
     {

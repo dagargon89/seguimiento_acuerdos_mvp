@@ -273,6 +273,25 @@ final class PlantillaCorreo
     }
 
     /**
+     * Conclusión rechazada (spec 2026-07-29, revisión de conclusión): admin o
+     * coordinación del área rechazó la solicitud de conclusión con un motivo;
+     * se avisa al responsable y a los corresponsables activos.
+     *
+     * @param array<string,mixed> $acuerdo
+     * @param array<string,mixed> $destinatario
+     */
+    public function conclusionRechazada(array $acuerdo, array $destinatario, string $motivo): array
+    {
+        $accion = (string) ($acuerdo['accion'] ?? '');
+        $html   = '<p>Hola ' . esc((string) $destinatario['nombre']) . ',</p>'
+            . '<p>Tu solicitud de conclusión fue <strong>rechazada</strong>. Motivo:</p>'
+            . '<blockquote>' . esc($motivo) . '</blockquote>'
+            . '<p>Acuerdo: ' . esc($accion) . '. Puedes corregirlo y volver a solicitar la conclusión.</p>';
+
+        return ['asunto' => 'Conclusión rechazada: ' . mb_substr($accion, 0, 60), 'html' => $html];
+    }
+
+    /**
      * Bloque de datos de UN acuerdo (tema, acción, responsable, fecha, estado),
      * réplica del `<FilaEmail>` de `EmailModal.tsx`. Todo escapado.
      *

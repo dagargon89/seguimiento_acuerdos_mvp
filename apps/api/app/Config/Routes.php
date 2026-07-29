@@ -51,6 +51,8 @@ $routes->group('api/v1', ['filter' => ['cors', 'firebaseauth', 'throttle']], sta
     $routes->options('acuerdos/(:num)/reabrir', 'AcuerdosController::reabrir/$1');
     $routes->post('acuerdos/(:num)/solicitar-conclusion', 'AcuerdosController::solicitarConclusion/$1');
     $routes->options('acuerdos/(:num)/solicitar-conclusion', 'AcuerdosController::solicitarConclusion/$1');
+    $routes->post('acuerdos/(:num)/rechazar-conclusion', 'AcuerdosController::rechazarConclusion/$1');
+    $routes->options('acuerdos/(:num)/rechazar-conclusion', 'AcuerdosController::rechazarConclusion/$1');
 
     // Checklist de validación (Tarea 7 / S1.6) — solo Dirección.
     $routes->get('checklist', 'AcuerdosController::checklist');

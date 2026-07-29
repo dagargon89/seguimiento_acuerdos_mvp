@@ -131,4 +131,41 @@ final class RevisionConclusionTest extends CIUnitTestCase
         $r2 = $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/4/solicitar-conclusion', []);
         $r2->assertStatus(409);
     }
+
+    public function testCoordinadorRechazaConMotivo(): void
+    {
+        $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/4/solicitar-conclusion', []);
+
+        // Carla (coordinadora, área 1) rechaza el acuerdo 4 (área 1).
+        $r = $this->como('coordinacion.operativa@demo.test')->post('api/v1/acuerdos/4/rechazar-conclusion', ['motivo' => 'Falta la evidencia firmada.']);
+        $r->assertStatus(200);
+        $data = $this->cuerpo($r)['data'];
+        $this->assertSame('rechazada', $data['revision_estado']);
+        $this->assertSame('Falta la evidencia firmada.', $data['revision_motivo_rechazo']);
+        $this->assertNotSame('concluido', $data['estado']);
+        $this->assertCount(1, $this->auditoriaDe('rechazar_conclusion', 4));
+    }
+
+    public function testRechazarSinPendienteEs409(): void
+    {
+        // Acuerdo 4 sin solicitud (sin_solicitud) → 409.
+        $r = $this->como('direccion@demo.test')->post('api/v1/acuerdos/4/rechazar-conclusion', ['motivo' => 'x']);
+        $r->assertStatus(409);
+    }
+
+    public function testRechazarSinMotivoEs422(): void
+    {
+        $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/4/solicitar-conclusion', []);
+        $r = $this->como('direccion@demo.test')->post('api/v1/acuerdos/4/rechazar-conclusion', ['motivo' => '   ']);
+        $r->assertStatus(422);
+        $this->assertArrayHasKey('motivo', $this->cuerpo($r)['campos']);
+    }
+
+    public function testResponsableRechazarEs403Auditado(): void
+    {
+        $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/4/solicitar-conclusion', []);
+        $r = $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/4/rechazar-conclusion', ['motivo' => 'x']);
+        $r->assertStatus(403);
+        $this->assertCount(1, $this->auditoriaDe('intento_rechazar_conclusion', 4));
+    }
 }

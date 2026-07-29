@@ -741,6 +741,7 @@ class AcuerdosController extends BaseController
             'revision_estado'            => 'sin_solicitud',
             'revision_solicitada_por_id' => null,
             'revision_solicitada_at'     => null,
+            'revision_motivo_rechazo'    => null,
         ]);
         (new AvanceModel())->insert([
             'acuerdo_id'  => (int) $id,
@@ -832,6 +833,60 @@ class AcuerdosController extends BaseController
             (new NotificadorRevision())->avisarSolicitud((int) $id, (int) $actor['id']);
         } catch (Throwable $e) {
             log_message('error', 'Aviso de solicitud de conclusión falló (acuerdo {id}): {msg}', ['id' => $id, 'msg' => $e->getMessage()]);
+        }
+
+        return $this->response->setJSON(['data' => $this->cargarAcuerdoCompleto((int) $id, $hoy)->aArray()]);
+    }
+
+    /**
+     * POST /acuerdos/{id}/rechazar-conclusion (spec 2026-07-29) — admin o
+     * coordinación del área rechaza una solicitud pendiente con motivo. Deja el
+     * flag en 'rechazada' (el acuerdo sigue activo y editable), audita y avisa a
+     * responsable + corresponsables. Mismo permiso que concluir (ADR-012).
+     */
+    public function rechazarConclusion(string $id): ResponseInterface
+    {
+        $actor = service('usuarioActual')->obtener();
+        $hoy   = $this->hoy();
+
+        $fila = (new AcuerdoModel())->builderConJoins($hoy)->where('acuerdos.id', (int) $id)->get()->getFirstRow('array');
+        if ($fila === null) {
+            return $this->noEncontrado();
+        }
+
+        if (! $this->puedeConcluir($actor, $fila)) {
+            (new AuditoriaModel())->registrar((int) $actor['id'], 'intento_rechazar_conclusion', 'acuerdo', (int) $id, ['rol' => $actor['rol'], 'resultado' => 'denegado'], $this->request->getIPAddress());
+
+            return $this->sinPermiso('No tienes permiso para rechazar esta solicitud.');
+        }
+
+        if ($fila['revision_estado'] !== 'pendiente') {
+            return $this->conflictoEstado('El acuerdo no tiene una solicitud de conclusión pendiente.');
+        }
+
+        $body   = $this->cuerpoJson() ?? [];
+        $motivo = is_string($body['motivo'] ?? null) ? trim($body['motivo']) : '';
+        if ($motivo === '') {
+            return $this->errorValidacion('Indica el motivo del rechazo.', ['motivo' => 'Requerido']);
+        }
+
+        $db = Database::connect();
+        $db->transException(true)->transStart();
+        (new AcuerdoModel())->update((int) $id, [
+            'revision_estado'         => 'rechazada',
+            'revision_motivo_rechazo' => $motivo,
+        ]);
+        (new AuditoriaModel())->registrar((int) $actor['id'], 'rechazar_conclusion', 'acuerdo', (int) $id, ['motivo' => $motivo], $this->request->getIPAddress());
+        $db->transComplete();
+
+        if (! $db->transStatus()) {
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'error_interno', 'mensaje' => 'No se pudo registrar el rechazo.']);
+        }
+
+        try {
+            (new NotificadorRevision())->avisarRechazo((int) $id, $motivo);
+        } catch (Throwable $e) {
+            log_message('error', 'Aviso de rechazo falló (acuerdo {id}): {msg}', ['id' => $id, 'msg' => $e->getMessage()]);
         }
 
         return $this->response->setJSON(['data' => $this->cargarAcuerdoCompleto((int) $id, $hoy)->aArray()]);
