@@ -349,6 +349,17 @@ final class AcuerdosLecturaTest extends CIUnitTestCase
         $this->assertSame('Rafael Responsable', $data['avances'][0]['usuario']['nombre']);
     }
 
+    public function testDetalleIncluyeCamposDeRevision(): void
+    {
+        $r = $this->como('direccion@demo.test')->get('api/v1/acuerdos/4');
+        $r->assertStatus(200);
+        $data = $this->cuerpo($r)['data'];
+        $this->assertArrayHasKey('revision_estado', $data);
+        $this->assertSame('sin_solicitud', $data['revision_estado']);
+        $this->assertArrayHasKey('revision_motivo_rechazo', $data);
+        $this->assertNull($data['revision_motivo_rechazo']);
+    }
+
     public function testDetalleIncluyeAvancesEnOrdenDescendentePorFecha(): void
     {
         // Acuerdo 3 tiene 1 avance en el seed; agregamos uno más reciente para

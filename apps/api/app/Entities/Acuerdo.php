@@ -32,6 +32,8 @@ final class Acuerdo
         public readonly ?array $recordatorioDias,
         public readonly ?UsuarioRef $concluidoPor,
         public readonly ?string $concluidoAt,
+        public readonly string $revision_estado,
+        public readonly ?string $revision_motivo_rechazo,
         public readonly string $createdAt,
         public readonly ?string $updatedAt,
     ) {
@@ -73,6 +75,8 @@ final class Acuerdo
             $recordatorioDias,
             $fila['concluido_por__id'] === null ? null : UsuarioRef::desdeFila(self::sub($fila, 'concluido_por')),
             $fila['concluido_at'],
+            (string) $fila['revision_estado'],
+            $fila['revision_motivo_rechazo'],
             (string) $fila['created_at'],
             $fila['updated_at'],
         );
@@ -112,6 +116,8 @@ final class Acuerdo
             'recordatorio_dias' => $this->recordatorioDias,
             'concluido_por'     => $this->concluidoPor?->aArray(),
             'concluido_at'      => $this->concluidoAt,
+            'revision_estado'         => $this->revision_estado,
+            'revision_motivo_rechazo' => $this->revision_motivo_rechazo,
             'created_at'        => $this->createdAt,
             'updated_at'        => $this->updatedAt,
         ];

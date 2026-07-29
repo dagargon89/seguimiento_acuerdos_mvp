@@ -27,6 +27,7 @@ class AcuerdoModel extends Model
         'reunion_id', 'area_id', 'tema', 'accion', 'responsable_id', 'capturado_por_id',
         'fecha_compromiso', 'estado', 'enlace', 'enlaces', 'observaciones', 'recordatorio_dias',
         'concluido_por_id', 'concluido_at',
+        'revision_estado', 'revision_solicitada_por_id', 'revision_solicitada_at', 'revision_motivo_rechazo',
     ];
 
     /**
@@ -63,7 +64,9 @@ class AcuerdoModel extends Model
                 acuerdos.responsable_id, acuerdos.capturado_por_id, acuerdos.fecha_compromiso,
                 acuerdos.estado AS estado_real, ({$estadoExpr}) AS estado,
                 acuerdos.enlace, acuerdos.enlaces, acuerdos.observaciones, acuerdos.recordatorio_dias,
-                acuerdos.concluido_por_id, acuerdos.concluido_at, acuerdos.created_at, acuerdos.updated_at,
+                acuerdos.concluido_por_id, acuerdos.concluido_at,
+                acuerdos.revision_estado, acuerdos.revision_solicitada_por_id, acuerdos.revision_solicitada_at, acuerdos.revision_motivo_rechazo,
+                acuerdos.created_at, acuerdos.updated_at,
                 reuniones.id AS reunion__id, reuniones.nombre AS reunion__nombre, reuniones.fecha AS reunion__fecha,
                 areas.id AS area__id, areas.nombre AS area__nombre, areas.activa AS area__activa,
                 resp.id AS responsable__id, resp.nombre AS responsable__nombre, resp.email AS responsable__email, resp.avatar_color AS responsable__avatar_color,
