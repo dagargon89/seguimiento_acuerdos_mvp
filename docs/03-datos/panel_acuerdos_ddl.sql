@@ -62,6 +62,10 @@ CREATE TABLE acuerdos (
   recordatorio_dias JSON         NULL,
   concluido_por_id  INT UNSIGNED NULL,
   concluido_at      DATETIME     NULL,
+  revision_estado         ENUM('sin_solicitud','pendiente','rechazada') NOT NULL DEFAULT 'sin_solicitud',
+  revision_solicitada_por_id INT UNSIGNED NULL,
+  revision_solicitada_at  DATETIME     NULL,
+  revision_motivo_rechazo TEXT         NULL,
   created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -74,6 +78,7 @@ CREATE TABLE acuerdos (
   CONSTRAINT fk_acuerdos_responsable  FOREIGN KEY (responsable_id)   REFERENCES usuarios (id),
   CONSTRAINT fk_acuerdos_capturado    FOREIGN KEY (capturado_por_id) REFERENCES usuarios (id),
   CONSTRAINT fk_acuerdos_concluido    FOREIGN KEY (concluido_por_id) REFERENCES usuarios (id),
+  CONSTRAINT fk_acuerdos_revision_solicitante FOREIGN KEY (revision_solicitada_por_id) REFERENCES usuarios (id),
   CONSTRAINT chk_concluido_consistente CHECK (
     (estado = 'concluido' AND concluido_por_id IS NOT NULL AND concluido_at IS NOT NULL)
     OR (estado <> 'concluido' AND concluido_por_id IS NULL AND concluido_at IS NULL)
