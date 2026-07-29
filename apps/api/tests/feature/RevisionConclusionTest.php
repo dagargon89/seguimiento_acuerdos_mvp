@@ -104,12 +104,31 @@ final class RevisionConclusionTest extends CIUnitTestCase
         $this->assertCount(1, $this->auditoriaDe('intento_solicitar_conclusion', 4));
     }
 
-    public function testSolicitarSobreConcluidoEs409(): void
+    public function testSolicitarSobreConcluidoSinPermisoNoQuedaPendiente(): void
     {
         // Acuerdo 1: concluido en el seed. Aun así, probamos con su responsable.
         $r = $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/1/solicitar-conclusion', []);
         // responsable.dos no es responsable de 1 → 403; para el 409 usamos un acuerdo suyo ya concluido no hay en seed,
         // así que validamos el 409 tras aprobar en Task 4. Aquí solo exigimos que NO quede 'pendiente'.
         $this->assertNotSame('pendiente', Database::connect()->table('acuerdos')->where('id', 1)->get()->getRowArray()['revision_estado']);
+    }
+
+    public function testAprobarConclusionLimpiaRevisionYAudita(): void
+    {
+        // Solicitud previa sobre el acuerdo 4 (responsable id 5).
+        $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/4/solicitar-conclusion', []);
+
+        // Dirección aprueba concluyendo.
+        $r = $this->como('direccion@demo.test')->patch('api/v1/acuerdos/4/concluir', ['nota' => 'Aprobado.']);
+        $r->assertStatus(200);
+        $data = $this->cuerpo($r)['data'];
+        $this->assertSame('concluido', $data['estado']);
+        $this->assertSame('sin_solicitud', $data['revision_estado']);
+
+        $this->assertCount(1, $this->auditoriaDe('aprobar_conclusion', 4));
+
+        // Solicitar sobre el ya concluido → 409 (cierra el caso pendiente de Task 3).
+        $r2 = $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/4/solicitar-conclusion', []);
+        $r2->assertStatus(409);
     }
 }

@@ -727,13 +727,20 @@ class AcuerdosController extends BaseController
         $nota      = is_string($notaCruda) ? trim($notaCruda) : '';
         $descripcionAvance = $nota !== '' ? $nota : 'Validado desde el checklist.';
 
+        // Si venía de una solicitud (spec 2026-07-29), concluir funciona como
+        // APROBACIÓN: limpia el flag y avisa a responsable+corresponsables.
+        $veniaDeSolicitud = $fila['revision_estado'] === 'pendiente';
+
         $db = Database::connect();
         $db->transException(true)->transStart();
 
         (new AcuerdoModel())->update((int) $id, [
-            'estado'           => 'concluido',
-            'concluido_por_id' => (int) $actor['id'],
-            'concluido_at'     => Time::now()->toDateTimeString(),
+            'estado'                     => 'concluido',
+            'concluido_por_id'           => (int) $actor['id'],
+            'concluido_at'               => Time::now()->toDateTimeString(),
+            'revision_estado'            => 'sin_solicitud',
+            'revision_solicitada_por_id' => null,
+            'revision_solicitada_at'     => null,
         ]);
         (new AvanceModel())->insert([
             'acuerdo_id'  => (int) $id,
@@ -744,6 +751,9 @@ class AcuerdosController extends BaseController
         ]);
         (new GoogleSyncModel())->marcarPendientePorAcuerdo((int) $id);
         (new AuditoriaModel())->registrar((int) $actor['id'], 'concluir', 'acuerdo', (int) $id, ['nota' => $nota], $this->request->getIPAddress());
+        if ($veniaDeSolicitud) {
+            (new AuditoriaModel())->registrar((int) $actor['id'], 'aprobar_conclusion', 'acuerdo', (int) $id, [], $this->request->getIPAddress());
+        }
 
         $db->transComplete();
 
@@ -752,6 +762,14 @@ class AcuerdosController extends BaseController
         }
 
         $this->sincronizarCalendarioAhora((int) $id);
+
+        if ($veniaDeSolicitud) {
+            try {
+                (new NotificadorRevision())->avisarAprobacion((int) $id);
+            } catch (Throwable $e) {
+                log_message('error', 'Aviso de aprobación falló (acuerdo {id}): {msg}', ['id' => $id, 'msg' => $e->getMessage()]);
+            }
+        }
 
         return $this->response->setJSON(['data' => $this->cargarAcuerdoCompleto((int) $id, $hoy)->aArray()]);
     }
