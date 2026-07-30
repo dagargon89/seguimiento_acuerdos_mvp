@@ -69,8 +69,8 @@ php spark recordatorios:procesar                # corrida real del día
 ## 7. Cron (producción)
 
 ```cron
-# Diario 8:30 America/Ciudad_Juarez (los correos salen "a las 9:00" según doc 02)
-30 8 * * * cd /ruta/apps/api && php spark recordatorios:procesar >> writable/logs/recordatorios-cron.log 2>&1
+# El cron corre a las 08:00 (America/Ciudad_Juarez): `0 8 * * *`
+0 8 * * * cd /ruta/apps/api && php spark recordatorios:procesar >> writable/logs/recordatorios-cron.log 2>&1
 ```
 
 Asegurar `TZ=America/Ciudad_Juarez` en el entorno del cron o usar `CRON_TZ=America/Ciudad_Juarez` (regla №6 de CLAUDE.md).

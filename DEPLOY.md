@@ -14,7 +14,7 @@
    └─ /api/v1/*    → PHP-FPM 8.3+ → apps/api/public (CI4)
                         ├── MySQL 8.4  (Docker, sin puertos publicados)
                         └── Redis 7    (Docker, sin puertos publicados)
-[cron 8:30 America/Ciudad_Juarez] → php spark recordatorios:procesar → Gmail API + Calendar API
+[cron 08:00 America/Ciudad_Juarez] → php spark recordatorios:procesar → Gmail API + Calendar API
 ```
 
 Requisitos del servidor: Linux con Docker + Docker Compose, PHP **8.3+** con extensiones `intl`, `mysqli`, `redis` (o predis vía composer), Composer 2, Node 20+ (solo para el build del frontend; puede hacerse en otra máquina), nginx (o equivalente) con TLS.
@@ -197,8 +197,8 @@ curl -sI https://tu-dominio.org/assets/index-*.js | grep -i cache-control  # →
 ### 2.5 Cron del job diario
 
 ```cron
-# 8:30 America/Ciudad_Juarez — ajustar la hora si el TZ del servidor es otro
-30 8 * * * cd /var/www/panel/apps/api && php spark recordatorios:procesar >> writable/logs/recordatorios-cron.log 2>&1
+# El cron corre a las 08:00 (America/Ciudad_Juarez): `0 8 * * *` — ajustar la hora si el TZ del servidor es otro
+0 8 * * * cd /var/www/panel/apps/api && php spark recordatorios:procesar >> writable/logs/recordatorios-cron.log 2>&1
 ```
 
 Si el servidor no está en TZ de Ciudad Juárez, convertir la hora (la app internamente SIEMPRE trabaja en `America/Ciudad_Juarez`, regla №6 de CLAUDE.md).
@@ -246,5 +246,5 @@ Luego en el navegador: login con Google → capturar un acuerdo de prueba con fe
 - [ ] nginx con TLS sirviendo SPA + API; `CI_ENVIRONMENT=production` y `forceGlobalSecureRequests=true`
 - [ ] Headers de cache de la PWA (2.4.1): `sw.js` e `index.html` en `no-cache`, `/assets/` inmutable
 - [ ] `CORS_ALLOWED_ORIGINS` con el dominio real
-- [ ] Cron 8:30 (hora Juárez) instalado y `google:verificar` en verde
+- [ ] Cron a las 08:00 (hora Juárez, `0 8 * * *`) instalado y `google:verificar` en verde
 - [ ] Backup diario programado y restauración probada

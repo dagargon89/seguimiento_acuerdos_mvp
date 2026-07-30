@@ -42,7 +42,7 @@ flowchart TB
         GAPI["Google APIs<br/>Gmail · Calendar (· Tasks post-MVP)"]
         FBA["Firebase Auth (Google)"]
     end
-    CRON["cron diario 07:00<br/>spark recordatorios:procesar"]
+    CRON["cron diario 08:00 (0 8 * * *)<br/>spark recordatorios:procesar"]
 
     SPA --> FB --> FBA
     SPA -- "Bearer idToken" --> FIL --> CTRL --> SVC --> MOD --> MY
@@ -127,7 +127,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant CR as cron 07:00 (TZ Juárez)
+    participant CR as cron 08:00 (0 8 * * *, TZ Juárez)
     participant J as spark recordatorios:procesar
     participant DB as MySQL
     participant GM as Gmail API
@@ -283,7 +283,7 @@ export const api: ApiClient =
 
 ## 7. Estrategia de despliegue
 
-Desarrollo: `docker compose up -d` (mysql:8.4, redis:7) + `php spark serve` + `npm run dev` con `VITE_USE_MOCK` a elección. Producción: build de Vite servido como estáticos (mismo dominio que la API o CORS restringido), CI4 detrás del webserver del hosting con HTTPS forzado, `.env` de producción con credenciales (Firebase project, service account Google), cron del sistema: `0 7 * * * php /ruta/spark recordatorios:procesar >> log 2>&1`. Migraciones con `php spark migrate`; datos iniciales con `InitialSeeder` (siembra desde `db.json`).
+Desarrollo: `docker compose up -d` (mysql:8.4, redis:7) + `php spark serve` + `npm run dev` con `VITE_USE_MOCK` a elección. Producción: build de Vite servido como estáticos (mismo dominio que la API o CORS restringido), CI4 detrás del webserver del hosting con HTTPS forzado, `.env` de producción con credenciales (Firebase project, service account Google), cron del sistema (el cron corre a las 08:00, America/Ciudad_Juarez: `0 8 * * *`): `0 8 * * * php /ruta/spark recordatorios:procesar >> log 2>&1`. Migraciones con `php spark migrate`; datos iniciales con `InitialSeeder` (siembra desde `db.json`).
 
 ## 8. Decisiones pendientes y riesgos
 
