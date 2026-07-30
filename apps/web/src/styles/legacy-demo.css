@@ -410,6 +410,8 @@ body {
 .rich-text p { margin: 0 0 8px; line-height: 1.6; }
 .rich-text p:last-child { margin-bottom: 0; }
 .rich-text ul, .rich-text ol { margin: 0 0 8px; padding-left: 22px; line-height: 1.6; }
+.rich-text ul { list-style: disc outside; }
+.rich-text ol { list-style: decimal outside; }
 .rich-text ul:last-child, .rich-text ol:last-child { margin-bottom: 0; }
 .rich-text li { margin-bottom: 2px; }
 .rich-text a { color: var(--teal); }
@@ -430,6 +432,8 @@ body {
 .editor-html__area p { margin: 0 0 6px; }
 .editor-html__area p:last-child { margin-bottom: 0; }
 .editor-html__area ul, .editor-html__area ol { margin: 0 0 6px; padding-left: 22px; }
+.editor-html__area ul { list-style: disc outside; }
+.editor-html__area ol { list-style: decimal outside; }
 .editor-html__area a { color: var(--teal); }
 .editor-html__toolbar .btn.is-active { background: var(--teal); color: var(--on-teal, #fff); }
 /* Placeholder (extension-placeholder) sobre el nodo vacío */

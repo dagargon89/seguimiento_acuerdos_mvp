@@ -55,6 +55,7 @@ export function EditorHtml({
     <button
       type="button"
       aria-label={aria}
+      title={aria}
       aria-pressed={activo}
       className={`btn btn--ghost-teal btn--sm${activo ? ' is-active' : ''}`}
       onMouseDown={(e) => e.preventDefault()}
@@ -80,9 +81,9 @@ export function EditorHtml({
       <div className="editor-html__toolbar" style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
         {boton(editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'N', 'Negrita')}
         {boton(editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'I', 'Cursiva')}
-        {boton(editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), '•', 'Lista con viñetas')}
-        {boton(editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), '1.', 'Lista numerada')}
-        {boton(editor.isActive('link'), editarEnlace, '🔗', 'Enlace')}
+        {boton(editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), '• Viñetas', 'Lista con viñetas')}
+        {boton(editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), '1. Números', 'Lista numerada')}
+        {boton(editor.isActive('link'), editarEnlace, '🔗 Enlace', 'Insertar enlace')}
       </div>
       <EditorContent editor={editor} />
     </div>
