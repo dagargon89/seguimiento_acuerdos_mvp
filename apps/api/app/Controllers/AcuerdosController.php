@@ -127,6 +127,13 @@ class AcuerdosController extends BaseController
         $estadoFiltro = $this->request->getGet('estado');
         $this->aplicarFiltroEstado($builder, $estadoExpr, $estadoFiltro);
 
+        // Filtro por estado de solicitud de revisión (spec 2026-07-30): lista
+        // blanca {pendiente, rechazada}; cualquier otro valor/ausente = sin filtro.
+        $revisionFiltro = $this->request->getGet('revision_estado');
+        if (in_array($revisionFiltro, ['pendiente', 'rechazada'], true)) {
+            $builder->where('acuerdos.revision_estado', $revisionFiltro);
+        }
+
         $responsableId = $this->request->getGet('responsable_id');
         if ($responsableId !== null && $responsableId !== '') {
             $builder->where('acuerdos.responsable_id', (int) $responsableId);
@@ -1092,6 +1099,15 @@ class AcuerdosController extends BaseController
         // El coordinador solo valida los acuerdos de su área (mismo criterio que puedeConcluir).
         if ($actor['rol'] === 'coordinador') {
             $builder->where('acuerdos.area_id', (int) $actor['area_id']);
+        }
+
+        // Partición por vista (spec 2026-07-30): 'revision' = solicitudes de
+        // conclusión pendientes de aprobar/rechazar; por defecto = cola de
+        // validación normal (acuerdos abiertos SIN solicitud pendiente).
+        if ($this->request->getGet('vista') === 'revision') {
+            $builder->where('acuerdos.revision_estado', 'pendiente');
+        } else {
+            $builder->where('acuerdos.revision_estado <>', 'pendiente');
         }
 
         $filas = $builder

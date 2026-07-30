@@ -9,6 +9,7 @@ import { fmtF } from '../lib/fechas';
 import { EST, mensajeError, truncar, vencimientoRelativo } from '../components/EstadoHelpers';
 import { Avatar } from '../components/Avatar';
 import { Drawer } from '../components/Drawer';
+import { RevisionBadge } from '../components/RevisionBadge';
 import { useToast } from '../components/Toast';
 
 export function Checklist() {
@@ -17,8 +18,9 @@ export function Checklist() {
   const [confirmando, setConfirmando] = useState<number | null>(null);
   const [nota, setNota] = useState('');
   const [selId, setSelId] = useState<number | null>(null);
+  const [vista, setVista] = useState<'validar' | 'revision'>('validar');
 
-  const checklistQ = useQuery({ queryKey: ['checklist'], queryFn: () => api.getChecklist() });
+  const checklistQ = useQuery({ queryKey: ['checklist', vista], queryFn: () => api.getChecklist(vista) });
 
   const concluirMut = useMutation({
     mutationFn: ({ id, nota: n }: { id: number; nota: string }) => api.concluirAcuerdo(id, n),
@@ -42,9 +44,27 @@ export function Checklist() {
         <div className="section-header__eyebrow">Validación de acuerdos</div>
         <h2 className="section-header__title">Checklist de validación</h2>
         <p className="section-header__subtitle">
-          Dirección valida cualquier acuerdo; una coordinación valida los de su área. Revisa el último avance de
-          cada compromiso y valídalo; al concluirlo desaparece del panel y se detienen sus recordatorios.
+          {vista === 'validar'
+            ? 'Dirección valida cualquier acuerdo; una coordinación valida los de su área. Revisa el último avance y concluye; al hacerlo desaparece del panel y se detienen sus recordatorios.'
+            : 'Solicitudes de conclusión enviadas por responsables/corresponsables, pendientes de tu aprobación o rechazo. Abre el acuerdo para aprobar (concluir) o rechazar con motivo.'}
         </p>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+        <button
+          type="button"
+          className={`btn btn--sm ${vista === 'validar' ? 'btn--accent' : 'btn--ghost'}`}
+          onClick={() => setVista('validar')}
+        >
+          Por validar
+        </button>
+        <button
+          type="button"
+          className={`btn btn--sm ${vista === 'revision' ? 'btn--accent' : 'btn--ghost'}`}
+          onClick={() => setVista('revision')}
+        >
+          Solicitudes de revisión
+        </button>
       </div>
 
       {checklistQ.isError && (
@@ -89,8 +109,9 @@ export function Checklist() {
                     if (e.key === 'Enter') setSelId(a.id);
                   }}
                 >
-                  <div className="tema-label" style={{ display: 'block', marginBottom: 4 }}>
-                    {a.tema ?? 'Sin tema'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span className="tema-label">{a.tema ?? 'Sin tema'}</span>
+                    <RevisionBadge estado={a.revision_estado} />
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>{a.accion}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 8, flexWrap: 'wrap' }}>
@@ -122,7 +143,7 @@ export function Checklist() {
                   </div>
                 </div>
                 <div style={{ flex: 'none' }}>
-                  {confirmando !== a.id && (
+                  {vista === 'validar' && confirmando !== a.id && (
                     <button
                       type="button"
                       className="btn btn--accent"
@@ -133,6 +154,15 @@ export function Checklist() {
                       }}
                     >
                       Concluir
+                    </button>
+                  )}
+                  {vista === 'revision' && (
+                    <button
+                      type="button"
+                      className="btn btn--ghost-teal btn--sm"
+                      onClick={() => setSelId(a.id)}
+                    >
+                      Revisar →
                     </button>
                   )}
                 </div>
@@ -184,7 +214,7 @@ export function Checklist() {
         })}
         {items.length === 0 && !checklistQ.isLoading && (
           <div className="panel-card" style={{ padding: 28, fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
-            No hay acuerdos pendientes de validar.
+            {vista === 'validar' ? 'No hay acuerdos pendientes de validar.' : 'No hay solicitudes de revisión pendientes.'}
           </div>
         )}
         {checklistQ.isLoading && (

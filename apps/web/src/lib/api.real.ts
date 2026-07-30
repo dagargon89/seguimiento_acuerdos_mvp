@@ -53,7 +53,7 @@ export const realClient: ApiClient = {
 
   listAcuerdos: (f: FiltrosAcuerdos) =>
     req<Paginado<Acuerdo>>('GET', `/acuerdos${qs({
-      estado: f.estado, responsable_id: f.responsable_id, mios: f.mios ? 1 : undefined, q: f.q,
+      estado: f.estado, revision_estado: f.revision_estado, responsable_id: f.responsable_id, mios: f.mios ? 1 : undefined, q: f.q,
       desde: f.desde, hasta: f.hasta, page: f.page, per_page: f.per_page,
     })}`),
   getAcuerdo: async (id) => (await req<{ data: AcuerdoDetalle }>('GET', `/acuerdos/${id}`)).data,
@@ -86,7 +86,8 @@ export const realClient: ApiClient = {
   getConfigRecordatorios: () => req<ConfigRecordatorios>('GET', '/configuracion/recordatorios'),
   setConfigRecordatorios: (config) => req<ConfigRecordatorios>('PUT', '/configuracion/recordatorios', config),
 
-  getChecklist: async () => (await req<{ data: ChecklistItem[] }>('GET', '/checklist')).data,
+  getChecklist: async (vista) =>
+    (await req<{ data: ChecklistItem[] }>('GET', `/checklist${vista === 'revision' ? '?vista=revision' : ''}`)).data,
   getCalendario: (mes, incluirConcluidos) =>
     req<CalendarioMes>('GET', `/calendario${qs({ mes, incluir_concluidos: incluirConcluidos })}`),
   getResumen: () => req<Resumen>('GET', '/resumen'),

@@ -19,6 +19,7 @@ import { Avatar } from '../components/Avatar';
 import { Badge } from '../components/Badge';
 import { Drawer } from '../components/Drawer';
 import { Paginacion } from '../components/Paginacion';
+import { RevisionBadge } from '../components/RevisionBadge';
 import { Select } from '../components/Select';
 import { StatCard } from '../components/StatCard';
 import { useSesion } from '../components/SessionContext';
@@ -31,6 +32,7 @@ export function MisAcuerdos() {
   const { sesion } = useSesion();
   const uid = sesion?.usuario.id ?? 0;
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos_abiertos');
+  const [filtroRevision, setFiltroRevision] = useState<'' | 'pendiente' | 'rechazada'>('');
   const [selId, setSelId] = useState<number | null>(null);
 
   // Prefijo ['acuerdos'] para heredar la invalidación del Drawer; segmento
@@ -40,8 +42,9 @@ export function MisAcuerdos() {
     queryFn: () => api.listAcuerdos({ mios: true, estado: 'todos_abiertos', per_page: 200 }),
   });
   const vistaQ = useQuery({
-    queryKey: ['acuerdos', 'mios', filtroEstado],
-    queryFn: () => api.listAcuerdos({ mios: true, estado: filtroEstado, per_page: 200 }),
+    queryKey: ['acuerdos', 'mios', filtroEstado, filtroRevision],
+    queryFn: () =>
+      api.listAcuerdos({ mios: true, estado: filtroEstado, revision_estado: filtroRevision || undefined, per_page: 200 }),
   });
   const concluidosQ = useQuery({
     queryKey: ['acuerdos', 'mios', 'concluido', 'total'],
@@ -96,6 +99,18 @@ export function MisAcuerdos() {
             { value: 'en_proceso', label: 'En proceso' },
             { value: 'vencido', label: 'Vencido' },
             { value: 'concluido', label: 'Concluido' },
+          ]}
+        />
+        <Select
+          variante="toolbar"
+          ariaLabel="Filtrar por revisión"
+          buscable={false}
+          value={filtroRevision}
+          onChange={(v) => setFiltroRevision(v as '' | 'pendiente' | 'rechazada')}
+          opciones={[
+            { value: '', label: 'Revisión: todas' },
+            { value: 'pendiente', label: 'En revisión' },
+            { value: 'rechazada', label: 'Rechazado' },
           ]}
         />
         <div className="toolbar__spacer" />
@@ -192,7 +207,10 @@ function TablaMisAcuerdos({
                     <div style={{ fontSize: 11.5, marginTop: 3, color }}>{rel}</div>
                   </td>
                   <td>
+                    <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
                     <Badge variant={est.variant} size="sm" label={est.label} />
+                    <RevisionBadge estado={a.revision_estado} />
+                  </span>
                   </td>
                 </tr>
               );
@@ -236,7 +254,10 @@ function TablaMisAcuerdos({
                 </span>
                 <span style={{ fontSize: 11.5, color }}>{rel}</span>
                 <span style={{ marginLeft: 'auto' }}>
-                  <Badge variant={est.variant} size="sm" label={est.label} />
+                  <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                    <Badge variant={est.variant} size="sm" label={est.label} />
+                    <RevisionBadge estado={a.revision_estado} />
+                  </span>
                 </span>
               </div>
             </div>

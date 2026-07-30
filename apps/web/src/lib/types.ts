@@ -246,6 +246,7 @@ export interface AcuerdoDetalle extends Acuerdo {
 
 export interface FiltrosAcuerdos {
   estado?: EstadoAcuerdo | 'todos_abiertos';
+  revision_estado?: 'pendiente' | 'rechazada'; // spec 2026-07-30: filtra por estado de la solicitud de revisión
   responsable_id?: number;
   mios?: boolean; // ADR-013: solo acuerdos donde el actor es responsable o corresponsable (wire: mios=1)
   q?: string;

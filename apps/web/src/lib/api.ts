@@ -56,7 +56,7 @@ export interface ApiClient {
   setConfigRecordatorios(config: ConfigRecordatorios): Promise<ConfigRecordatorios>; // solo dirección
 
   // checklist / calendario / resumen
-  getChecklist(): Promise<ChecklistItem[]>; // solo dirección
+  getChecklist(vista?: 'validar' | 'revision'): Promise<ChecklistItem[]>; // dirección/coordinación del área; vista 'revision' = solicitudes de conclusión pendientes
   getCalendario(mes: string, incluirConcluidos: boolean): Promise<CalendarioMes>;
   getResumen(): Promise<Resumen>;
 

@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Documento | 05 — Especificación de API REST |
-| Versión | 1.13 — **CONGELADA** (2026-07-30, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). v1.8 añade el filtro `mios=1` a `GET /acuerdos` / `FiltrosAcuerdos.mios` (ADR-013). v1.9 añade `solicitud_avances_activa` (bool) a `ConfigRecordatorios` y el literal `'solicitud_avance'` a `TipoRecordatorio`: el job envía periódicamente (misma frecuencia que el resumen) una solicitud de avances a responsables/corresponsables de acuerdos abiertos, condicionada por esa bandera global. v1.10 añade `invitaciones_calendario_activas` (bool) a `ConfigRecordatorios`: controla si Google Calendar manda la invitación nativa por correo al crear/actualizar el evento (la sincronización del acuerdo al calendario no cambia). v1.11 añade `avatar_color` (string hex `#RRGGBB` o null) a `Usuario`/`UsuarioRef` y a `ActualizacionPerfil`: color de identidad del avatar, editable por el propio usuario vía `PATCH /me` (nombre y/o avatar_color, ambos opcionales). v1.12 añade `GET /acuerdos/{id}/actividad` / `actividadAcuerdo(id)`: bitácora unificada de avances + auditoría de ciclo de vida del acuerdo (quick win #3, "Bitácora"). v1.13 añade el ciclo de revisión de conclusión (spec 2026-07-29): `revision_estado` (`'sin_solicitud'\|'pendiente'\|'rechazada'`) y `revision_motivo_rechazo` en `Acuerdo`; `POST /acuerdos/{id}/solicitar-conclusion` / `solicitarConclusion(id)` (responsable/corresponsable) y `POST /acuerdos/{id}/rechazar-conclusion` / `rechazarConclusion(id, motivo)` (dirección o coordinación del área, mismo permiso que `concluir`, ADR-012); `concluirAcuerdo` sigue siendo la aprobación (sin endpoint nuevo). |
+| Versión | 1.14 — **CONGELADA** (2026-07-30, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). v1.8 añade el filtro `mios=1` a `GET /acuerdos` / `FiltrosAcuerdos.mios` (ADR-013). v1.9 añade `solicitud_avances_activa` (bool) a `ConfigRecordatorios` y el literal `'solicitud_avance'` a `TipoRecordatorio`: el job envía periódicamente (misma frecuencia que el resumen) una solicitud de avances a responsables/corresponsables de acuerdos abiertos, condicionada por esa bandera global. v1.10 añade `invitaciones_calendario_activas` (bool) a `ConfigRecordatorios`: controla si Google Calendar manda la invitación nativa por correo al crear/actualizar el evento (la sincronización del acuerdo al calendario no cambia). v1.11 añade `avatar_color` (string hex `#RRGGBB` o null) a `Usuario`/`UsuarioRef` y a `ActualizacionPerfil`: color de identidad del avatar, editable por el propio usuario vía `PATCH /me` (nombre y/o avatar_color, ambos opcionales). v1.12 añade `GET /acuerdos/{id}/actividad` / `actividadAcuerdo(id)`: bitácora unificada de avances + auditoría de ciclo de vida del acuerdo (quick win #3, "Bitácora"). v1.13 añade el ciclo de revisión de conclusión (spec 2026-07-29): `revision_estado` (`'sin_solicitud'\|'pendiente'\|'rechazada'`) y `revision_motivo_rechazo` en `Acuerdo`; `POST /acuerdos/{id}/solicitar-conclusion` / `solicitarConclusion(id)` (responsable/corresponsable) y `POST /acuerdos/{id}/rechazar-conclusion` / `rechazarConclusion(id, motivo)` (dirección o coordinación del área, mismo permiso que `concluir`, ADR-012); `concluirAcuerdo` sigue siendo la aprobación (sin endpoint nuevo). v1.14 añade la vista `?vista=revision` a `GET /checklist` / `getChecklist(vista?)` (cola de solicitudes de conclusión pendientes; el checklist pasa a Dirección **y** coordinación del área) y el filtro `revision_estado` (`pendiente\|rechazada`) a `GET /acuerdos` / `FiltrosAcuerdos.revision_estado` (spec 2026-07-30). |
 | Fecha | 2026-07-30 |
 | Depende de | 01_SRS, 02_arquitectura, 03_modelo_de_datos |
 
@@ -79,7 +79,7 @@
 
 | Método/Ruta | Roles | Descripción |
 |---|---|---|
-| `GET /acuerdos` | Todos | Listado visible para el actor. Query: `estado` (`en_proceso\|vencido\|concluido\|todos_abiertos`), `responsable_id`, `mios=1` (solo acuerdos donde el actor es responsable o corresponsable; únicamente el literal `1` activa el filtro — ADR-013, v1.8), `q` (busca en tema+acción+responsable), `desde`/`hasta` (rango de `fecha_compromiso`, para la vista calendario), `page`, `per_page`. **Default sin `estado`: solo abiertos (`en_proceso`+`vencido`) — los concluidos exigen filtro explícito** (RF-03.3) |
+| `GET /acuerdos` | Todos | Listado visible para el actor. Query: `estado` (`en_proceso\|vencido\|concluido\|todos_abiertos`), `responsable_id`, `mios=1` (solo acuerdos donde el actor es responsable o corresponsable; únicamente el literal `1` activa el filtro — ADR-013, v1.8), `revision_estado` (`pendiente\|rechazada`; filtra por estado de la solicitud de revisión — v1.14), `q` (busca en tema+acción+responsable), `desde`/`hasta` (rango de `fecha_compromiso`, para la vista calendario), `page`, `per_page`. **Default sin `estado`: solo abiertos (`en_proceso`+`vencido`) — los concluidos exigen filtro explícito** (RF-03.3) |
 | `GET /acuerdos/{id}` | Visibilidad | Detalle con corresponsables, avances y recordatorios del acuerdo |
 | `POST /acuerdos/lote` | Todos | Captura transaccional de 1..N acuerdos (RF-02) |
 | `PATCH /acuerdos/{id}` | Dirección, coordinación del área o quien lo capturó (ADR-011) | Editar tema/acción/área/responsable/`enlaces`/observaciones/`recordatorio_dias` |
@@ -220,7 +220,7 @@ export interface EventoActividad {
 
 | Método/Ruta | Roles | Descripción |
 |---|---|---|
-| `GET /checklist` | **Solo Dirección** | Acuerdos abiertos priorizados (vencidos primero, luego por fecha) con evidencia resumida (nº avances, último avance, `enlaces`) |
+| `GET /checklist` | **Dirección y coordinación del área** | Acuerdos abiertos priorizados (vencidos primero, luego por fecha) con evidencia resumida (nº avances, último avance, `enlaces`). Query `?vista=revision` = solicitudes de conclusión pendientes de aprobar/rechazar; por defecto = cola de validación (abiertos **sin** solicitud pendiente) — v1.14 |
 
 ### 2.5 Calendario
 
@@ -267,7 +267,7 @@ export interface EventoActividad {
 
 ## 3. Interfaz del cliente (`lib/api.ts` — CONGELADA)
 
-> **CONGELADA (v1.13, 2026-07-30).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005). v1.4 añade `registrarme` (ADR-006). v1.5 añade el parámetro `todas` a `listAreas` (ADR-008). v1.8 añade el filtro `mios` a `listAcuerdos` (ADR-013). v1.12 añade `actividadAcuerdo(id)` (bitácora unificada de avances + auditoría). v1.13 añade `solicitarConclusion(id)` y `rechazarConclusion(id, motivo)` (ciclo de revisión de conclusión).
+> **CONGELADA (v1.13, 2026-07-30).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005). v1.4 añade `registrarme` (ADR-006). v1.5 añade el parámetro `todas` a `listAreas` (ADR-008). v1.8 añade el filtro `mios` a `listAcuerdos` (ADR-013). v1.12 añade `actividadAcuerdo(id)` (bitácora unificada de avances + auditoría). v1.13 añade `solicitarConclusion(id)` y `rechazarConclusion(id, motivo)` (ciclo de revisión de conclusión). v1.14 añade el parámetro `vista` a `getChecklist` y el filtro `revision_estado` a `listAcuerdos`/`FiltrosAcuerdos` (spec 2026-07-30).
 
 ```typescript
 export interface ApiClient {
@@ -297,7 +297,7 @@ export interface ApiClient {
   setConfigRecordatorios(config: ConfigRecordatorios): Promise<ConfigRecordatorios>; // solo dirección
 
   // checklist / calendario / resumen
-  getChecklist(): Promise<ChecklistItem[]>; // solo dirección
+  getChecklist(vista?: 'validar' | 'revision'): Promise<ChecklistItem[]>; // dirección/coordinación del área; vista 'revision' = solicitudes de conclusión pendientes
   getCalendario(mes: string, incluirConcluidos: boolean): Promise<CalendarioMes>;
   getResumen(): Promise<Resumen>;
 

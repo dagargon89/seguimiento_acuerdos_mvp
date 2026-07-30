@@ -225,4 +225,45 @@ final class RevisionConclusionTest extends CIUnitTestCase
             $this->resetFechaTest();
         }
     }
+
+    // ── Checklist: partición 'validar' vs 'revision' (spec 2026-07-30) ─────
+
+    public function testChecklistParticionValidarVsRevision(): void
+    {
+        // Acuerdo 4 (área 1, responsable id 5) pasa a 'pendiente' vía solicitud.
+        $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/4/solicitar-conclusion', []);
+
+        // Vista por defecto (validar): NO incluye el pendiente 4.
+        $validar    = $this->cuerpo($this->como('direccion@demo.test')->get('api/v1/checklist'));
+        $idsValidar = array_map(static fn (array $i) => (int) $i['acuerdo']['id'], $validar['data']);
+        $this->assertNotContains(4, $idsValidar);
+
+        // Vista 'revision': solo pendientes → contiene 4 y todos son 'pendiente'.
+        $revision    = $this->cuerpo($this->como('direccion@demo.test')->get('api/v1/checklist?vista=revision'));
+        $idsRevision = array_map(static fn (array $i) => (int) $i['acuerdo']['id'], $revision['data']);
+        $this->assertContains(4, $idsRevision);
+        foreach ($revision['data'] as $item) {
+            $this->assertSame('pendiente', $item['acuerdo']['revision_estado']);
+        }
+    }
+
+    // ── Índice: filtro por revision_estado (spec 2026-07-30) ──────────────
+
+    public function testIndexFiltroRevisionEstado(): void
+    {
+        $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/4/solicitar-conclusion', []);
+
+        // ?revision_estado=pendiente → solo pendientes (incluye 4).
+        $pend    = $this->cuerpo($this->como('direccion@demo.test')->get('api/v1/acuerdos?revision_estado=pendiente&per_page=200'));
+        $idsPend = array_map(static fn (array $a) => (int) $a['id'], $pend['data']);
+        $this->assertContains(4, $idsPend);
+        foreach ($pend['data'] as $a) {
+            $this->assertSame('pendiente', $a['revision_estado']);
+        }
+
+        // ?revision_estado=rechazada → no incluye 4 (que está pendiente).
+        $rech    = $this->cuerpo($this->como('direccion@demo.test')->get('api/v1/acuerdos?revision_estado=rechazada&per_page=200'));
+        $idsRech = array_map(static fn (array $a) => (int) $a['id'], $rech['data']);
+        $this->assertNotContains(4, $idsRech);
+    }
 }

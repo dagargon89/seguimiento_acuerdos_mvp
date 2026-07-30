@@ -19,6 +19,7 @@ import { ejecutarLote, notaReprogramacion, resumenLote } from '../lib/loteAccion
 import type { MotivoFallo } from '../lib/loteAcciones';
 import { markdownAPlano } from '../lib/markdown';
 import { EST, mensajeError, nombreCorto, truncar, vencimientoRelativo } from '../components/EstadoHelpers';
+import { RevisionBadge } from '../components/RevisionBadge';
 import { useToast } from '../components/Toast';
 import { Avatar } from '../components/Avatar';
 import { Badge } from '../components/Badge';
@@ -50,6 +51,7 @@ export function Panel() {
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos_abiertos');
   const [filtroResp, setFiltroResp] = useState<number>(0);
   const [filtroArea, setFiltroArea] = useState<number>(0);
+  const [filtroRevision, setFiltroRevision] = useState<'' | 'pendiente' | 'rechazada'>('');
   const [fDesde, setFDesde] = useState('');
   const [fHasta, setFHasta] = useState('');
   const [selId, setSelId] = useState<number | null>(null);
@@ -68,8 +70,9 @@ export function Panel() {
     queryFn: () => api.listAcuerdos({ estado: 'todos_abiertos', per_page: 200 }),
   });
   const vistaQ = useQuery({
-    queryKey: ['acuerdos', filtroEstado],
-    queryFn: () => api.listAcuerdos({ estado: filtroEstado, per_page: 200 }),
+    queryKey: ['acuerdos', filtroEstado, filtroRevision],
+    queryFn: () =>
+      api.listAcuerdos({ estado: filtroEstado, revision_estado: filtroRevision || undefined, per_page: 200 }),
   });
   const concluidosQ = useQuery({
     queryKey: ['acuerdos', 'concluido', 'total'],
@@ -234,6 +237,18 @@ export function Panel() {
             { value: 'en_proceso', label: 'En proceso' },
             { value: 'vencido', label: 'Vencido' },
             { value: 'concluido', label: 'Concluido' },
+          ]}
+        />
+        <Select
+          variante="toolbar"
+          ariaLabel="Filtrar por revisión"
+          buscable={false}
+          value={filtroRevision}
+          onChange={(v) => setFiltroRevision(v as '' | 'pendiente' | 'rechazada')}
+          opciones={[
+            { value: '', label: 'Revisión: todas' },
+            { value: 'pendiente', label: 'En revisión' },
+            { value: 'rechazada', label: 'Rechazado' },
           ]}
         />
         <Select
@@ -473,7 +488,10 @@ function VistaTabla({
                   <div style={{ fontSize: 11.5, marginTop: 3, color }}>{rel}</div>
                 </td>
                 <td>
-                  <Badge variant={est.variant} size="sm" label={est.label} />
+                  <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                    <Badge variant={est.variant} size="sm" label={est.label} />
+                    <RevisionBadge estado={a.revision_estado} />
+                  </span>
                 </td>
                 <td style={{ fontSize: 12.5, color: 'var(--muted)' }}>{prox ? fmtF(prox) : '—'}</td>
                 <td>
@@ -540,7 +558,10 @@ function VistaTabla({
               </span>
               <span style={{ fontSize: 11.5, color }}>{rel}</span>
               <span style={{ marginLeft: 'auto' }}>
-                <Badge variant={est.variant} size="sm" label={est.label} />
+                <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                    <Badge variant={est.variant} size="sm" label={est.label} />
+                    <RevisionBadge estado={a.revision_estado} />
+                  </span>
               </span>
             </div>
           </div>
