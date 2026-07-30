@@ -13,9 +13,9 @@ import { Avatar } from './Avatar';
 import { Badge } from './Badge';
 import { CorresponsablesPicker } from './CorresponsablesPicker';
 import { DatePicker } from './DatePicker';
-import { EditorMarkdown } from './EditorMarkdown';
+import { EditorHtml } from './EditorHtml';
 import { EnlacesInput } from './EnlacesInput';
-import { Markdown } from './Markdown';
+import { RichText } from './RichText';
 import { Select } from './Select';
 import { chipEnvio, tipoRecordatorioLabel } from './recordatorioVm';
 import { useSesion } from './SessionContext';
@@ -356,7 +356,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
                   <label className="field__label" htmlFor="ed-accion">
                     Acuerdo / acción <span className="req">*</span>
                   </label>
-                  <EditorMarkdown
+                  <EditorHtml
                     id="ed-accion"
                     value={form.accion}
                     onChange={(v) => setForm((f) => ({ ...f, accion: v }))}
@@ -453,7 +453,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
             <div>
               <div className="detail-label">Acuerdo / acción</div>
               <div style={{ fontSize: 15, fontWeight: 500 }}>
-                <Markdown source={sel.accion} />
+                <RichText html={sel.accion} />
               </div>
             </div>
 

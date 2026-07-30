@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib';
 import type { Acuerdo, FiltrosAcuerdos } from '../lib';
 import { diasDesdeHoy, fmtF } from '../lib/fechas';
-import { markdownAPlano } from '../lib/markdown';
+import { htmlAPlano } from '../lib/html';
 import { EST, mensajeError, nombreCorto, truncar, vencimientoRelativo } from '../components/EstadoHelpers';
 import { Avatar } from '../components/Avatar';
 import { Badge } from '../components/Badge';
@@ -187,7 +187,7 @@ function TablaMisAcuerdos({
                   <td style={{ maxWidth: 340 }}>
                     <TooltipAccion accion={a.accion}>
                       <span className="celda-accion" style={{ fontWeight: 500, lineHeight: 1.45 }}>
-                        {markdownAPlano(a.accion)}
+                        {htmlAPlano(a.accion)}
                       </span>
                     </TooltipAccion>
                   </td>

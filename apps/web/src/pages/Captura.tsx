@@ -15,7 +15,7 @@ import { camposError, mensajeError } from '../components/EstadoHelpers';
 import { CorresponsablesPicker } from '../components/CorresponsablesPicker';
 import { EnlacesInput } from '../components/EnlacesInput';
 import { DatePicker } from '../components/DatePicker';
-import { EditorMarkdown } from '../components/EditorMarkdown';
+import { EditorHtml } from '../components/EditorHtml';
 import { ModeSwitch } from '../components/ModeSwitch';
 import { Select } from '../components/Select';
 import { useSesion } from '../components/SessionContext';
@@ -228,7 +228,7 @@ export function Captura() {
             <label className="field__label" htmlFor={`f-accion-${i}`}>
               Acuerdo / acción <span className="req">*</span>
             </label>
-            <EditorMarkdown
+            <EditorHtml
               id={`f-accion-${i}`}
               value={f.accion}
               onChange={(v) => setCampo(i, 'accion', v)}

@@ -17,7 +17,7 @@ import { filtrarAcuerdos } from '../lib/filtrosPanel';
 import { descargarAcuerdosXlsx } from '../lib/exportarXlsx';
 import { ejecutarLote, notaReprogramacion, resumenLote } from '../lib/loteAcciones';
 import type { MotivoFallo } from '../lib/loteAcciones';
-import { markdownAPlano } from '../lib/markdown';
+import { htmlAPlano } from '../lib/html';
 import { EST, mensajeError, nombreCorto, truncar, vencimientoRelativo } from '../components/EstadoHelpers';
 import { RevisionBadge } from '../components/RevisionBadge';
 import { useToast } from '../components/Toast';
@@ -464,7 +464,7 @@ function VistaTabla({
                 <td style={{ maxWidth: 340 }}>
                   <TooltipAccion accion={a.accion}>
                     <span className="celda-accion" style={{ fontWeight: 500, lineHeight: 1.45 }}>
-                      {markdownAPlano(a.accion)}
+                      {htmlAPlano(a.accion)}
                     </span>
                   </TooltipAccion>
                 </td>

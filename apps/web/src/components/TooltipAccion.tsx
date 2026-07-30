@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Markdown } from './Markdown';
+import { RichText } from './RichText';
 
 const ANCHO_TOOLTIP = 420;
 const MARGEN_VIEWPORT = 12;
@@ -142,7 +142,7 @@ export function TooltipAccion({ accion, children }: { accion: string; children: 
               whiteSpace: 'normal',
             }}
           >
-            <Markdown source={accion} />
+            <RichText html={accion} />
           </span>,
           document.body,
         )}
