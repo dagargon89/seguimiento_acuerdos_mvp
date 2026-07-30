@@ -346,7 +346,7 @@ INSERT INTO configuracion (clave, valor) VALUES (
 6. **Índices**: `(estado, fecha_compromiso)` cubre el job diario y el panel default (abiertos ordenados por fecha); `(responsable_id, estado)` y `(area_id, estado)` cubren la visibilidad por rol; FKs indexadas para joins de corresponsables.
 7. **`usuario_google_tokens` desde el MVP**: la fase Tasks (ADR-003) no requerirá migración; la tabla vacía no cuesta nada.
 8. **Baja lógica de usuarios** (`activo`): los acuerdos históricos conservan FK válidas; jamás se hace DELETE de usuarios.
-9. **DATE (no DATETIME) para `fecha_compromiso` y `programado_para`**: el dominio habla de días, no horas; evita la clase de bug de TZ detectado en Portal BQS. La hora de envío (9:00) es del job, no del dato.
+9. **DATE (no DATETIME) para `fecha_compromiso` y `programado_para`**: el dominio habla de días, no horas; evita la clase de bug de TZ detectado en Portal BQS. La hora de envío (08:00, cron `0 8 * * *`) es del job, no del dato.
 
 ## 5. Modelo de servicios externos
 

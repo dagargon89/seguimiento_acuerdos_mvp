@@ -29,7 +29,7 @@ El ciclo de vida `en_proceso` → `vencido` → `concluido` (regla del núcleo d
 
 ```sql
 revision_estado             ENUM('sin_solicitud','pendiente','rechazada') NOT NULL DEFAULT 'sin_solicitud'
-revision_solicitada_por_id  BIGINT UNSIGNED NULL   -- FK usuarios(id) ON DELETE SET NULL
+revision_solicitada_por_id  INT UNSIGNED NULL   -- FK usuarios(id)
 revision_solicitada_at      DATETIME NULL
 revision_motivo_rechazo     TEXT NULL
 ```
