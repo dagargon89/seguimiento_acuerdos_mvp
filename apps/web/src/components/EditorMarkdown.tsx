@@ -7,10 +7,12 @@ export function EditorMarkdown({
   value,
   onChange,
   id,
+  placeholder,
 }: {
   value: string;
   onChange: (v: string) => void;
   id?: string;
+  placeholder?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [preview, setPreview] = useState(false);
@@ -62,6 +64,7 @@ export function EditorMarkdown({
           className="textarea"
           style={{ minHeight: 84 }}
           value={value}
+          placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
         />
       )}

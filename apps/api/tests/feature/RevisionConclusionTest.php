@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Database\Seeds\InitialSeeder;
+use CodeIgniter\I18n\Time;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
@@ -10,6 +11,7 @@ use CodeIgniter\Test\TestResponse;
 use Config\Database;
 use Config\Services;
 use Tests\Support\FakeTokenVerifier;
+use Tests\Support\FechaFijaTrait;
 
 /**
  * Solicitud de conclusión (spec 2026-07-29, revisión de conclusión): un
@@ -26,6 +28,7 @@ final class RevisionConclusionTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
     use FeatureTestTrait;
+    use FechaFijaTrait;
 
     protected $refresh   = true;
     protected $namespace = 'App';
@@ -167,5 +170,59 @@ final class RevisionConclusionTest extends CIUnitTestCase
         $r = $this->como('responsable.dos@demo.test')->post('api/v1/acuerdos/4/rechazar-conclusion', ['motivo' => 'x']);
         $r->assertStatus(403);
         $this->assertCount(1, $this->auditoriaDe('intento_rechazar_conclusion', 4));
+    }
+
+    /**
+     * El estado derivado "vencido" (RF-05.2) debe congelarse mientras hay una
+     * solicitud de conclusión pendiente: un acuerdo `en_proceso` con fecha
+     * pasada y `revision_estado='pendiente'` se sigue leyendo 'en_proceso'.
+     * Al perder ese estado 'pendiente' (rechazo), vuelve a leerse 'vencido'.
+     */
+    public function testAcuerdoEnRevisionPendienteSeCongelaYNoSeLeeVencido(): void
+    {
+        $this->fijarFechaTest(); // hoy congelado en 2026-07-09 09:00:00
+
+        try {
+            $db   = Database::connect();
+            $ayer = Time::now()->subDays(1)->toDateString();
+
+            $db->table('acuerdos')->insert([
+                'reunion_id'       => 1,
+                'area_id'          => 1,
+                'tema'             => 'Prueba congelación en revisión',
+                'accion'           => 'Acuerdo de prueba revisión congelada',
+                'responsable_id'   => 5, // responsable.dos
+                'capturado_por_id' => 1,
+                'fecha_compromiso' => $ayer,
+                'estado'           => 'en_proceso',
+                'revision_estado'  => 'sin_solicitud',
+                'created_at'       => Time::now()->toDateTimeString(),
+            ]);
+            $id = (int) $db->insertID();
+
+            // Caso de control: ANTES de solicitar conclusión (revision_estado
+            // != 'pendiente'), el detalle sí se lee 'vencido'.
+            $antes = $this->cuerpo($this->como('direccion@demo.test')->get("api/v1/acuerdos/{$id}"));
+            $this->assertSame('vencido', $antes['data']['estado']);
+
+            // El responsable solicita la conclusión → revision_estado='pendiente'.
+            $solicitud = $this->como('responsable.dos@demo.test')->post("api/v1/acuerdos/{$id}/solicitar-conclusion", []);
+            $solicitud->assertStatus(200);
+            $this->assertSame('pendiente', $this->cuerpo($solicitud)['data']['revision_estado']);
+
+            // Mientras está pendiente, el detalle se lee 'en_proceso' (congelado), NO 'vencido'.
+            $pendiente = $this->cuerpo($this->como('direccion@demo.test')->get("api/v1/acuerdos/{$id}"));
+            $this->assertSame('en_proceso', $pendiente['data']['estado']);
+
+            // Dirección rechaza la solicitud → revision_estado='rechazada' (ya no 'pendiente').
+            $rechazo = $this->como('direccion@demo.test')->post("api/v1/acuerdos/{$id}/rechazar-conclusion", ['motivo' => 'Falta evidencia.']);
+            $rechazo->assertStatus(200);
+
+            // Al salir de 'pendiente', vuelve a leerse 'vencido'.
+            $despues = $this->cuerpo($this->como('direccion@demo.test')->get("api/v1/acuerdos/{$id}"));
+            $this->assertSame('vencido', $despues['data']['estado']);
+        } finally {
+            $this->resetFechaTest();
+        }
     }
 }

@@ -228,7 +228,12 @@ export function Captura() {
             <label className="field__label" htmlFor={`f-accion-${i}`}>
               Acuerdo / acción <span className="req">*</span>
             </label>
-            <EditorMarkdown id={`f-accion-${i}`} value={f.accion} onChange={(v) => setCampo(i, 'accion', v)} />
+            <EditorMarkdown
+              id={`f-accion-${i}`}
+              value={f.accion}
+              onChange={(v) => setCampo(i, 'accion', v)}
+              placeholder="Qué se acordó hacer, en una frase accionable"
+            />
           </div>
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <span className="field__label">Corresponsables</span>

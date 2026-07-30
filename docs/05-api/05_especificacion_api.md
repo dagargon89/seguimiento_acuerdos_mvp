@@ -167,7 +167,7 @@
 { "data": { "id": 11, "...": "acuerdo completo", "revision_estado": "pendiente", "revision_motivo_rechazo": null } }
 
 // 409 — ya concluido o ya con una solicitud pendiente
-{ "error": "conflicto_estado", "mensaje": "El acuerdo ya tiene una solicitud de conclusión pendiente." }
+{ "error": "estado_invalido", "mensaje": "El acuerdo ya tiene una solicitud de conclusión pendiente." }
 
 // 403 — actor no es responsable ni corresponsable (se audita intento_solicitar_conclusion)
 { "error": "sin_permiso", "mensaje": "No puedes solicitar la conclusión de este acuerdo." }
@@ -182,7 +182,7 @@
 { "error": "validacion", "mensaje": "Indica el motivo del rechazo.", "campos": { "motivo": "Requerido" } }
 
 // 409 — no hay una solicitud pendiente que rechazar
-{ "error": "conflicto_estado", "mensaje": "El acuerdo no tiene una solicitud de conclusión pendiente." }
+{ "error": "estado_invalido", "mensaje": "El acuerdo no tiene una solicitud de conclusión pendiente." }
 
 // 403 — actor no es dirección ni coordinación del área (se audita intento_rechazar_conclusion)
 { "error": "sin_permiso", "mensaje": "No tienes permiso para rechazar esta solicitud." }
@@ -288,7 +288,7 @@ export interface ApiClient {
   concluirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // solo dirección
   reabrirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // solo dirección
   solicitarConclusion(id: number): Promise<AcuerdoDetalle>; // responsable/corresponsable pide concluir → 'pendiente'
-  rechazarConclusion(id: number, motivo: string): Promise<Acuerdo>; // admin/coordinación del área
+  rechazarConclusion(id: number, motivo: string): Promise<Acuerdo>; // dirección/coordinación del área
 
   // recordatorios
   listRecordatoriosProximos(): Promise<RecordatorioVista[]>;

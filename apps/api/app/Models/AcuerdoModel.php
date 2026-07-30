@@ -44,6 +44,7 @@ class AcuerdoModel extends Model
         $hoyEscapado = Database::connect()->escape($hoy);
 
         return "CASE WHEN acuerdos.estado = 'en_proceso' AND acuerdos.fecha_compromiso < {$hoyEscapado} "
+            . "AND acuerdos.revision_estado <> 'pendiente' "
             . 'THEN \'vencido\' ELSE acuerdos.estado END';
     }
 
