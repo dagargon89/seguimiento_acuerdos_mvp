@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib';
 import type { Acuerdo, FiltrosAcuerdos } from '../lib';
 import { diasDesdeHoy, fmtF } from '../lib/fechas';
+import { markdownAPlano } from '../lib/markdown';
 import { EST, mensajeError, nombreCorto, truncar, vencimientoRelativo } from '../components/EstadoHelpers';
 import { Avatar } from '../components/Avatar';
 import { Badge } from '../components/Badge';
@@ -21,6 +22,7 @@ import { Paginacion } from '../components/Paginacion';
 import { Select } from '../components/Select';
 import { StatCard } from '../components/StatCard';
 import { useSesion } from '../components/SessionContext';
+import { TooltipAccion } from '../components/TooltipAccion';
 import { usePaginacion } from '../lib/usePaginacion';
 
 type FiltroEstado = NonNullable<FiltrosAcuerdos['estado']>;
@@ -168,7 +170,11 @@ function TablaMisAcuerdos({
                     <span className="tema-label">{a.tema ?? 'Sin tema'}</span>
                   </td>
                   <td style={{ maxWidth: 340 }}>
-                    <span style={{ fontWeight: 500, lineHeight: 1.45 }}>{a.accion}</span>
+                    <TooltipAccion accion={a.accion}>
+                      <span className="celda-accion" style={{ fontWeight: 500, lineHeight: 1.45 }}>
+                        {markdownAPlano(a.accion)}
+                      </span>
+                    </TooltipAccion>
                   </td>
                   <td>
                     <BadgeMiRol acuerdo={a} uid={uid} />

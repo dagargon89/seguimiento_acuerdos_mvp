@@ -17,6 +17,7 @@ import { filtrarAcuerdos } from '../lib/filtrosPanel';
 import { descargarAcuerdosXlsx } from '../lib/exportarXlsx';
 import { ejecutarLote, notaReprogramacion, resumenLote } from '../lib/loteAcciones';
 import type { MotivoFallo } from '../lib/loteAcciones';
+import { markdownAPlano } from '../lib/markdown';
 import { EST, mensajeError, nombreCorto, truncar, vencimientoRelativo } from '../components/EstadoHelpers';
 import { useToast } from '../components/Toast';
 import { Avatar } from '../components/Avatar';
@@ -28,6 +29,7 @@ import { ReasignarLoteModal } from '../components/ReasignarLoteModal';
 import { ReprogramarLoteModal } from '../components/ReprogramarLoteModal';
 import { Select } from '../components/Select';
 import { StatCard } from '../components/StatCard';
+import { TooltipAccion } from '../components/TooltipAccion';
 import { usePaginacion } from '../lib/usePaginacion';
 
 type Modo = 'tabla' | 'kanban' | 'reunion' | 'gantt' | 'calendario';
@@ -445,7 +447,11 @@ function VistaTabla({
                   <span className="tema-label">{a.tema ?? 'Sin tema'}</span>
                 </td>
                 <td style={{ maxWidth: 340 }}>
-                  <span style={{ fontWeight: 500, lineHeight: 1.45 }}>{a.accion}</span>
+                  <TooltipAccion accion={a.accion}>
+                    <span className="celda-accion" style={{ fontWeight: 500, lineHeight: 1.45 }}>
+                      {markdownAPlano(a.accion)}
+                    </span>
+                  </TooltipAccion>
                 </td>
                 <td>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
