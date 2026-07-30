@@ -49,6 +49,11 @@ class AcuerdosController extends BaseController
         'tema', 'accion', 'responsable_id', 'area_id', 'enlace', 'enlaces', 'observaciones', 'recordatorio_dias',
     ];
 
+    /** Campos "de contenido" editables por cualquier participante (responsable/corresponsable). */
+    private const CAMPOS_CONTENIDO_ACUERDO = ['tema', 'accion', 'enlace', 'enlaces', 'observaciones'];
+    /** Campos "estructurales": solo Dirección / coordinación del área / capturador. */
+    private const CAMPOS_ESTRUCTURA_ACUERDO = ['responsable_id', 'area_id', 'recordatorio_dias'];
+
     /** Tope defensivo de enlaces de productos por acuerdo. */
     private const MAX_ENLACES = 20;
 
@@ -369,7 +374,7 @@ class AcuerdosController extends BaseController
             return $this->noEncontrado();
         }
 
-        if (! $this->puedeEditarEstructura($actor, $fila)) {
+        if (! $this->puedeEditarContenido($actor, $fila, $esCorresponsable)) {
             return $this->sinPermiso('No puedes editar este acuerdo.');
         }
 
@@ -385,6 +390,11 @@ class AcuerdosController extends BaseController
         $camposDesconocidos = $this->camposDesconocidos($body, self::CAMPOS_EDICION_ACUERDO);
         if ($camposDesconocidos !== []) {
             return $this->errorCampoNoPermitido($camposDesconocidos);
+        }
+
+        $tocaEstructura = array_intersect(array_keys($body), self::CAMPOS_ESTRUCTURA_ACUERDO) !== [];
+        if ($tocaEstructura && ! $this->puedeEditarEstructura($actor, $fila)) {
+            return $this->sinPermiso('Solo Dirección, la coordinación del área o quien capturó el acuerdo pueden cambiar responsable, área o recordatorios.');
         }
 
         $usuariosActivos = $this->idsUsuariosActivos();
@@ -1653,6 +1663,22 @@ class AcuerdosController extends BaseController
         }
 
         return $actor['rol'] === 'coordinador' && ((int) $acuerdo['area_id']) === (int) $actor['area_id'];
+    }
+
+    /**
+     * Editar contenido (spec 2026-07-29): además de quien puede editar estructura,
+     * el responsable y los corresponsables del acuerdo pueden corregir texto/enlaces.
+     *
+     * @param array<string, mixed> $actor
+     * @param array<string, mixed> $acuerdo Fila con al menos responsable_id, area_id, capturado_por_id.
+     */
+    private function puedeEditarContenido(array $actor, array $acuerdo, bool $esCorresponsable): bool
+    {
+        if ($this->puedeEditarEstructura($actor, $acuerdo)) {
+            return true;
+        }
+
+        return ((int) $acuerdo['responsable_id']) === (int) $actor['id'] || $esCorresponsable;
     }
 
     /**

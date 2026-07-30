@@ -424,16 +424,19 @@ final class AcuerdosEscrituraTest extends CIUnitTestCase
 
     public function testAU04CoordinadorEditaAcuerdoDeOtraAreaEs403(): void
     {
-        // Camilo (coordinador, área 2) ES RESPONSABLE del acuerdo 2 (área 1) — por
-        // eso lo VE (visibilidad por participación, no por área) — pero como el
-        // acuerdo es de otra área, editarlo debe seguir siendo 403 (no es Dirección
-        // ni coordinación DEL ÁREA del acuerdo). Usamos un acuerdo abierto: el 4 no
-        // sirve (área 1, Camilo no participa); insertamos uno controlado para no
-        // depender de que el único caso del seed esté concluido.
+        // Camilo (coordinador, área 2) NO participa en este acuerdo (ni
+        // responsable, ni corresponsable, ni capturador) y el acuerdo es de
+        // OTRA área (1) — la sola coordinación de área ajena (ADR-007
+        // visibilidad abierta aparte) no da permiso de edición, ni de
+        // contenido (spec 2026-07-29: contenido lo edita el participante,
+        // Camilo no lo es) ni de estructura. Nota: si Camilo fuera el
+        // `responsable_id`, desde la Tarea 7 SÍ podría editar contenido —
+        // por eso aquí el responsable/capturador son otros usuarios, para
+        // aislar el caso "coordinador de área ajena sin participación".
         $db  = Database::connect();
         $db->table('acuerdos')->insert([
             'reunion_id' => 1, 'area_id' => 1, 'accion' => 'Acuerdo AU-04 de prueba',
-            'responsable_id' => 3, 'capturado_por_id' => 1,
+            'responsable_id' => 2, 'capturado_por_id' => 1,
             'fecha_compromiso' => $this->manana(), 'estado' => 'en_proceso',
             'created_at' => Time::now()->toDateTimeString(),
         ]);

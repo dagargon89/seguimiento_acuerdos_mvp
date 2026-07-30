@@ -158,4 +158,28 @@ final class AcuerdosEliminarEdicionTest extends CIUnitTestCase
 
         $r->assertStatus(403);
     }
+
+    // ── EDC-03: el responsable de un acuerdo (ni capturador ni coordinador de
+    // su área) SÍ puede corregir contenido (spec 2026-07-29) ───────────────
+
+    public function testResponsableEditaContenidoDeSuAcuerdo(): void
+    {
+        // responsable.dos (id 5) es responsable del acuerdo 4 (seed) pero no lo
+        // capturó (capturado_por_id = 2) ni es coordinador (sin área).
+        $r = $this->como('responsable.dos@demo.test')->patch('api/v1/acuerdos/4', ['accion' => 'Texto corregido', 'observaciones' => 'nota']);
+
+        $r->assertStatus(200);
+        $this->assertSame('Texto corregido', $this->cuerpo($r)['data']['accion']);
+    }
+
+    // ── EDC-04: ese mismo responsable NO puede tocar campos estructurales ───
+
+    public function testResponsableNoPuedeCambiarResponsableEs403(): void
+    {
+        $r = $this->como('responsable.dos@demo.test')->patch('api/v1/acuerdos/4', ['responsable_id' => 3]);
+
+        $r->assertStatus(403);
+        // No cambió.
+        $this->assertSame(5, (int) Database::connect()->table('acuerdos')->where('id', 4)->get()->getRowArray()['responsable_id']);
+    }
 }
