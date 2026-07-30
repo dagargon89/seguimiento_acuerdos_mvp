@@ -3,8 +3,8 @@
 | Campo | Valor |
 |---|---|
 | Documento | 05 — Especificación de API REST |
-| Versión | 1.8 — **CONGELADA** (2026-07-14, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). v1.8 añade el filtro `mios=1` a `GET /acuerdos` / `FiltrosAcuerdos.mios` (ADR-013). v1.9 añade `solicitud_avances_activa` (bool) a `ConfigRecordatorios` y el literal `'solicitud_avance'` a `TipoRecordatorio`: el job envía periódicamente (misma frecuencia que el resumen) una solicitud de avances a responsables/corresponsables de acuerdos abiertos, condicionada por esa bandera global. v1.10 añade `invitaciones_calendario_activas` (bool) a `ConfigRecordatorios`: controla si Google Calendar manda la invitación nativa por correo al crear/actualizar el evento (la sincronización del acuerdo al calendario no cambia). v1.11 añade `avatar_color` (string hex `#RRGGBB` o null) a `Usuario`/`UsuarioRef` y a `ActualizacionPerfil`: color de identidad del avatar, editable por el propio usuario vía `PATCH /me` (nombre y/o avatar_color, ambos opcionales). v1.12 añade `GET /acuerdos/{id}/actividad` / `actividadAcuerdo(id)`: bitácora unificada de avances + auditoría de ciclo de vida del acuerdo (quick win #3, "Bitácora"). |
-| Fecha | 2026-07-14 |
+| Versión | 1.13 — **CONGELADA** (2026-07-30, Gobernanza v3 §4; interfaz literal de `apps/web/src/lib/api.ts`). v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` / `PATCH /me` (ADR-005). v1.4 añade `registrarme` / `POST /registro` y el rol `pendiente` (ADR-006). v1.5 añade `GET /areas?todas=1` / `listAreas(todas?)` (ADR-008). v1.6 añade el literal `'asignacion'` a `TipoRecordatorio` (ADR-010). v1.7 añade `DELETE /acuerdos/{id}` / `eliminarAcuerdo` y extiende la edición al capturador (ADR-011). v1.8 añade el filtro `mios=1` a `GET /acuerdos` / `FiltrosAcuerdos.mios` (ADR-013). v1.9 añade `solicitud_avances_activa` (bool) a `ConfigRecordatorios` y el literal `'solicitud_avance'` a `TipoRecordatorio`: el job envía periódicamente (misma frecuencia que el resumen) una solicitud de avances a responsables/corresponsables de acuerdos abiertos, condicionada por esa bandera global. v1.10 añade `invitaciones_calendario_activas` (bool) a `ConfigRecordatorios`: controla si Google Calendar manda la invitación nativa por correo al crear/actualizar el evento (la sincronización del acuerdo al calendario no cambia). v1.11 añade `avatar_color` (string hex `#RRGGBB` o null) a `Usuario`/`UsuarioRef` y a `ActualizacionPerfil`: color de identidad del avatar, editable por el propio usuario vía `PATCH /me` (nombre y/o avatar_color, ambos opcionales). v1.12 añade `GET /acuerdos/{id}/actividad` / `actividadAcuerdo(id)`: bitácora unificada de avances + auditoría de ciclo de vida del acuerdo (quick win #3, "Bitácora"). v1.13 añade el ciclo de revisión de conclusión (spec 2026-07-29): `revision_estado` (`'sin_solicitud'\|'pendiente'\|'rechazada'`) y `revision_motivo_rechazo` en `Acuerdo`; `POST /acuerdos/{id}/solicitar-conclusion` / `solicitarConclusion(id)` (responsable/corresponsable) y `POST /acuerdos/{id}/rechazar-conclusion` / `rechazarConclusion(id, motivo)` (dirección o coordinación del área, mismo permiso que `concluir`, ADR-012); `concluirAcuerdo` sigue siendo la aprobación (sin endpoint nuevo). |
+| Fecha | 2026-07-30 |
 | Depende de | 01_SRS, 02_arquitectura, 03_modelo_de_datos |
 
 ## 1. Convenciones
@@ -87,7 +87,9 @@
 | `PUT /acuerdos/{id}/corresponsables` | Dirección, coordinación del área | Reemplaza el conjunto de corresponsables |
 | `POST /acuerdos/{id}/avances` | Responsable, corresponsables, coordinación, dirección | Avance; con `nueva_fecha` = reprogramación (vencido→en_proceso) |
 | `GET /acuerdos/{id}/actividad` | Visibilidad (ADR-007; `pendiente` → 403 `cuenta_pendiente`) | Bitácora unificada del acuerdo: fusiona `avances` (avance/reprogramación/validación/reapertura) y eventos de auditoría de ciclo de vida (crear/editar/corresponsables), orden descendente por `created_at` (v1.12) |
-| `PATCH /acuerdos/{id}/concluir` | **Solo Dirección** | Concluir con nota (RF-06) |
+| `PATCH /acuerdos/{id}/concluir` | Dirección; coordinación del área (ADR-012) | Concluir con nota (RF-06). Si el acuerdo tenía una solicitud pendiente, concluir funciona además como **aprobación**: limpia `revision_estado` → `sin_solicitud` y avisa a responsable+corresponsables |
+| `POST /acuerdos/{id}/solicitar-conclusion` | Responsable o corresponsable del acuerdo (v1.13) | Solicita marcarlo concluido: `revision_estado` → `pendiente` (congela vencimiento y silencia recordatorios); body opcional `{ "comentario": string }`; avisa a dirección + coordinación del área |
+| `POST /acuerdos/{id}/rechazar-conclusion` | Dirección; coordinación del área (mismo permiso que `concluir`, v1.13) | Rechaza una solicitud pendiente con motivo obligatorio: `revision_estado` → `rechazada` (el acuerdo sigue `en_proceso`/`vencido`, editable); body `{ "motivo": string }`; avisa a responsable+corresponsables |
 | `PATCH /acuerdos/{id}/reabrir` | **Solo Dirección** | Reabrir con nota obligatoria |
 
 ```json
@@ -111,7 +113,7 @@
   "campos": { "acuerdos.0.fecha_compromiso": "Debe ser hoy o futura",
               "acuerdos.2.responsable_id": "Requerido" } }
 ```
-*Seguridad:* `estado` NO es aceptado en ningún request de creación/edición (422 `campo_no_permitido`); `concluir` desde rol distinto a dirección → 403 con registro en auditoría.
+*Seguridad:* `estado` NO es aceptado en ningún request de creación/edición (422 `campo_no_permitido`); `concluir`/`rechazar-conclusion` desde un rol o área sin permiso (ADR-012) → 403 `sin_permiso` con registro en auditoría (`intento_concluir`/`intento_rechazar_conclusion`); `solicitar-conclusion` desde alguien que no es responsable ni corresponsable → 403 `sin_permiso` (`intento_solicitar_conclusion`).
 
 ```json
 // 200 GET /acuerdos/11 (detalle)
@@ -126,6 +128,7 @@
     "fecha_compromiso": "2026-07-20", "estado": "en_proceso",
     "enlaces": ["https://drive.example/minuta"], "observaciones": null, "recordatorio_dias": [5, 1],
     "concluido_por": null, "concluido_at": null,
+    "revision_estado": "sin_solicitud", "revision_motivo_rechazo": null,
     "avances": [ {"id": 7, "usuario": {"id": 5, "nombre": "Responsable Demo Dos"},
                   "tipo": "avance", "descripcion": "Se cargó junio semana 1", "nueva_fecha": null,
                   "created_at": "2026-07-10 10:12:00"} ],
@@ -157,6 +160,34 @@
 }
 ```
 *Notas:* `usuario` es `null` cuando el evento lo genera el sistema (p. ej. el job de `vencido`, que no se audita como evento de bitácora). Sin duplicados: `concluir`/`reabrir` **no** aparecen como eventos de `auditoria` porque ya llegan representados como avance (`tipo: 'validacion'`/`'reapertura'`) — la fusión evita contar dos veces la misma acción. `id` es una key compuesta (`"avance:N"` / `"auditoria:N"`) única entre ambas fuentes, pensada para `key` de listas en React, no para referenciar el registro por separado.
+
+```json
+// 200 POST /acuerdos/11/solicitar-conclusion  (request opcional) { "comentario": "Ya se entregó todo" }
+// respuesta: detalle completo del acuerdo (mismo shape que GET /acuerdos/{id})
+{ "data": { "id": 11, "...": "acuerdo completo", "revision_estado": "pendiente", "revision_motivo_rechazo": null } }
+
+// 409 — ya concluido o ya con una solicitud pendiente
+{ "error": "conflicto_estado", "mensaje": "El acuerdo ya tiene una solicitud de conclusión pendiente." }
+
+// 403 — actor no es responsable ni corresponsable (se audita intento_solicitar_conclusion)
+{ "error": "sin_permiso", "mensaje": "No puedes solicitar la conclusión de este acuerdo." }
+```
+
+```json
+// 200 POST /acuerdos/11/rechazar-conclusion  (request)  { "motivo": "Falta evidencia de la entrega" }
+// respuesta: detalle completo del acuerdo
+{ "data": { "id": 11, "...": "acuerdo completo", "revision_estado": "rechazada", "revision_motivo_rechazo": "Falta evidencia de la entrega" } }
+
+// 422 — motivo vacío o ausente
+{ "error": "validacion", "mensaje": "Indica el motivo del rechazo.", "campos": { "motivo": "Requerido" } }
+
+// 409 — no hay una solicitud pendiente que rechazar
+{ "error": "conflicto_estado", "mensaje": "El acuerdo no tiene una solicitud de conclusión pendiente." }
+
+// 403 — actor no es dirección ni coordinación del área (se audita intento_rechazar_conclusion)
+{ "error": "sin_permiso", "mensaje": "No tienes permiso para rechazar esta solicitud." }
+```
+*Notas:* la **aprobación** de una solicitud pendiente reutiliza `PATCH /acuerdos/{id}/concluir` (sin endpoint nuevo): si `revision_estado` era `'pendiente'`, concluir limpia el flag a `'sin_solicitud'` y avisa a responsable+corresponsables. `revision_solicitada_por_id`/`revision_solicitada_at` (columnas del DDL) no se exponen en el DTO `Acuerdo`; solo `revision_estado` y `revision_motivo_rechazo` viajan al cliente.
 
 ```typescript
 export type TipoEventoActividad =
@@ -236,7 +267,7 @@ export interface EventoActividad {
 
 ## 3. Interfaz del cliente (`lib/api.ts` — CONGELADA)
 
-> **CONGELADA (v1.8, 2026-07-14).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005). v1.4 añade `registrarme` (ADR-006). v1.5 añade el parámetro `todas` a `listAreas` (ADR-008). v1.8 añade el filtro `mios` a `listAcuerdos` (ADR-013). v1.12 añade `actividadAcuerdo(id)` (bitácora unificada de avances + auditoría).
+> **CONGELADA (v1.13, 2026-07-30).** Este bloque es copia literal de `apps/web/src/lib/api.ts`. Cualquier cambio posterior actualiza ambos archivos en la misma sesión (regla №3 de CLAUDE.md) vía ADR corto. v1.2 añadió `crearArea`/`editarArea` (ADR-004). v1.3 añade `editarMiPerfil` (ADR-005). v1.4 añade `registrarme` (ADR-006). v1.5 añade el parámetro `todas` a `listAreas` (ADR-008). v1.8 añade el filtro `mios` a `listAcuerdos` (ADR-013). v1.12 añade `actividadAcuerdo(id)` (bitácora unificada de avances + auditoría). v1.13 añade `solicitarConclusion(id)` y `rechazarConclusion(id, motivo)` (ciclo de revisión de conclusión).
 
 ```typescript
 export interface ApiClient {
@@ -254,8 +285,10 @@ export interface ApiClient {
   setCorresponsables(id: number, usuarioIds: number[]): Promise<AcuerdoDetalle>;
   registrarAvance(id: number, avance: NuevoAvance): Promise<AcuerdoDetalle>;
   actividadAcuerdo(id: number): Promise<EventoActividad[]>; // bitácora unificada (avances + auditoría de ciclo de vida)
-  concluirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // solo dirección
+  concluirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // dirección, coordinación del área (ADR-012)
   reabrirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // solo dirección
+  solicitarConclusion(id: number): Promise<AcuerdoDetalle>; // responsable/corresponsable pide concluir → 'pendiente'
+  rechazarConclusion(id: number, motivo: string): Promise<Acuerdo>; // admin/coordinación del área
 
   // recordatorios
   listRecordatoriosProximos(): Promise<RecordatorioVista[]>;
@@ -280,4 +313,4 @@ export interface ApiClient {
 
 ## 4. Notas transversales de seguridad
 
-Todos los endpoints pasan por `FirebaseAuthFilter` + Throttle; los de escritura auditan en `auditoria`; los 403 de `concluir/reabrir` también se auditan (intento de abuso); ningún endpoint acepta `estado` del cliente; los ids de usuario en payloads se validan contra usuarios **activos**. `POST /registro` es la única excepción a "lista blanca": corre con `firebaseauth:sin_lista` (token verificado, usuario aún no exigido) — ver ADR-006. La guardia `cuenta_pendiente` aplica a **todo** el resto de la API (salvo `GET/PATCH /me`): un rol `pendiente` no tiene acceso funcional hasta que Dirección le asigna rol.
+Todos los endpoints pasan por `FirebaseAuthFilter` + Throttle; los de escritura auditan en `auditoria`; los 403 de `concluir`/`reabrir`/`solicitar-conclusion`/`rechazar-conclusion` también se auditan (intento de abuso); ningún endpoint acepta `estado` ni `revision_estado` del cliente; los ids de usuario en payloads se validan contra usuarios **activos**. `POST /registro` es la única excepción a "lista blanca": corre con `firebaseauth:sin_lista` (token verificado, usuario aún no exigido) — ver ADR-006. La guardia `cuenta_pendiente` aplica a **todo** el resto de la API (salvo `GET/PATCH /me`): un rol `pendiente` no tiene acceso funcional hasta que Dirección le asigna rol.

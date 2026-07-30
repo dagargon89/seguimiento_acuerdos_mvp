@@ -10,6 +10,7 @@ export type TipoAvance = 'avance' | 'reprogramacion' | 'validacion' | 'reapertur
 export type TipoRecordatorio = 'previo' | 'dia' | 'vencido' | 'resumen' | 'asignacion' | 'solicitud_avance';
 export type EstadoEnvio = 'enviado' | 'fallido';
 export type EstadoSync = 'pendiente' | 'sincronizado' | 'error';
+export type RevisionEstado = 'sin_solicitud' | 'pendiente' | 'rechazada';
 
 // ── Filas espejo del DDL (db.json) ──
 export interface AreaRow {
@@ -57,6 +58,10 @@ export interface AcuerdoRow {
   concluido_at: string | null;
   created_at: string;
   updated_at: string | null;
+  revision_estado: RevisionEstado;
+  revision_solicitada_por_id: number | null;
+  revision_solicitada_at: string | null;
+  revision_motivo_rechazo: string | null;
 }
 
 export interface AcuerdoCorresponsableRow {
@@ -201,6 +206,8 @@ export interface Acuerdo {
   concluido_at: string | null;
   created_at: string;
   updated_at: string | null;
+  revision_estado: RevisionEstado;
+  revision_motivo_rechazo: string | null;
 }
 
 export interface Avance {

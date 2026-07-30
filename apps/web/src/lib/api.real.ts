@@ -74,6 +74,10 @@ export const realClient: ApiClient = {
     (await req<{ data: Acuerdo }>('PATCH', `/acuerdos/${id}/concluir`, { nota })).data,
   reabrirAcuerdo: async (id, nota) =>
     (await req<{ data: Acuerdo }>('PATCH', `/acuerdos/${id}/reabrir`, { nota })).data,
+  solicitarConclusion: async (id) =>
+    (await req<{ data: AcuerdoDetalle }>('POST', `/acuerdos/${id}/solicitar-conclusion`, {})).data,
+  rechazarConclusion: async (id, motivo) =>
+    (await req<{ data: Acuerdo }>('POST', `/acuerdos/${id}/rechazar-conclusion`, { motivo })).data,
 
   listRecordatoriosProximos: async () =>
     (await req<{ data: RecordatorioVista[] }>('GET', '/recordatorios/proximos')).data,

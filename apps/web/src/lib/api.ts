@@ -46,6 +46,8 @@ export interface ApiClient {
   actividadAcuerdo(id: number): Promise<EventoActividad[]>; // bitácora unificada (avances + auditoría de ciclo de vida)
   concluirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // solo dirección
   reabrirAcuerdo(id: number, nota: string): Promise<Acuerdo>; // solo dirección
+  solicitarConclusion(id: number): Promise<AcuerdoDetalle>; // responsable/corresponsable pide concluir → 'pendiente'
+  rechazarConclusion(id: number, motivo: string): Promise<Acuerdo>; // admin/coordinación del área
 
   // recordatorios
   listRecordatoriosProximos(): Promise<RecordatorioVista[]>;
