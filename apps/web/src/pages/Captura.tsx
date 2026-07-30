@@ -15,6 +15,7 @@ import { camposError, mensajeError } from '../components/EstadoHelpers';
 import { CorresponsablesPicker } from '../components/CorresponsablesPicker';
 import { EnlacesInput } from '../components/EnlacesInput';
 import { DatePicker } from '../components/DatePicker';
+import { EditorMarkdown } from '../components/EditorMarkdown';
 import { ModeSwitch } from '../components/ModeSwitch';
 import { Select } from '../components/Select';
 import { useSesion } from '../components/SessionContext';
@@ -227,14 +228,7 @@ export function Captura() {
             <label className="field__label" htmlFor={`f-accion-${i}`}>
               Acuerdo / acción <span className="req">*</span>
             </label>
-            <textarea
-              className="textarea"
-              id={`f-accion-${i}`}
-              placeholder="Qué se acordó hacer, en una frase accionable"
-              style={{ minHeight: 84 }}
-              value={f.accion}
-              onChange={(e) => setCampo(i, 'accion', e.target.value)}
-            />
+            <EditorMarkdown id={`f-accion-${i}`} value={f.accion} onChange={(v) => setCampo(i, 'accion', v)} />
           </div>
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <span className="field__label">Corresponsables</span>

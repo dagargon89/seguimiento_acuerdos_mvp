@@ -15,10 +15,12 @@ export function EditorMarkdown({
   const ref = useRef<HTMLTextAreaElement>(null);
   const [preview, setPreview] = useState(false);
 
-  const btn = (formato: Formato, etiqueta: string) => (
+  const btn = (formato: Formato, etiqueta: string, ariaLabel: string) => (
     <button
       type="button"
       className="btn btn--ghost-teal btn--sm"
+      aria-label={ariaLabel}
+      disabled={preview}
       onClick={() => {
         const el = ref.current;
         if (!el) return;
@@ -37,14 +39,15 @@ export function EditorMarkdown({
   return (
     <div className="editor-md">
       <div className="editor-md__toolbar" style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-        {btn('negrita', 'N')}
-        {btn('cursiva', 'I')}
-        {btn('lista', '•')}
-        {btn('enlace', '🔗')}
+        {btn('negrita', 'N', 'Negrita')}
+        {btn('cursiva', 'I', 'Cursiva')}
+        {btn('lista', '•', 'Lista')}
+        {btn('enlace', '🔗', 'Enlace')}
         <button
           type="button"
           className="btn btn--ghost-teal btn--sm"
           style={{ marginLeft: 'auto' }}
+          aria-label={preview ? 'Editar' : 'Vista previa'}
           onClick={() => setPreview((p) => !p)}
         >
           {preview ? 'Editar' : 'Vista previa'}
