@@ -41,8 +41,8 @@ export function Checklist() {
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto' }}>
       <div className="anim-in" style={{ marginBottom: 28 }}>
-        <div className="section-header__eyebrow">Validación de acuerdos</div>
-        <h2 className="section-header__title">Checklist de validación</h2>
+        <div className="section-header__eyebrow">Revisión y validación</div>
+        <h2 className="section-header__title">Validaciones</h2>
         <p className="section-header__subtitle">
           {vista === 'validar'
             ? 'Dirección valida cualquier acuerdo; una coordinación valida los de su área. Revisa el último avance y concluye; al hacerlo desaparece del panel y se detienen sus recordatorios.'

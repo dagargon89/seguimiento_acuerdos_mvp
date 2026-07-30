@@ -264,7 +264,7 @@ const NAV_GENERAL = [
   { to: '/captura', label: 'Capturar acuerdo', Icono: IconoCaptura },
 ];
 const NAV_ADMIN = [
-  { to: '/checklist', label: 'Checklist', Icono: IconoChecklist },
+  { to: '/checklist', label: 'Validaciones', Icono: IconoChecklist },
   { to: '/recordatorios', label: 'Recordatorios', Icono: IconoRecordatorios },
   { to: '/usuarios', label: 'Usuarios', Icono: IconoUsuarios },
   { to: '/areas', label: 'Áreas', Icono: IconoAreas },
