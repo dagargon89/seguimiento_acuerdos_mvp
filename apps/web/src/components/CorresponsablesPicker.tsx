@@ -16,6 +16,8 @@ interface CorresponsablesPickerProps {
   excluirId?: number | null;
   onChange: (ids: number[]) => void;
   compacto?: boolean;
+  /** Solo lectura: muestra los chips actuales sin permitir agregar/quitar (edición estructural restringida). */
+  disabled?: boolean;
 }
 
 export function CorresponsablesPicker({
@@ -25,6 +27,7 @@ export function CorresponsablesPicker({
   excluirId = null,
   onChange,
   compacto = false,
+  disabled = false,
 }: CorresponsablesPickerProps) {
   const [modo, setModo] = useState<'persona' | 'area'>('persona');
 
@@ -76,6 +79,9 @@ export function CorresponsablesPicker({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compacto ? 4 : 8 }}>
+      {chips.length === 0 && disabled && (
+        <span style={{ fontSize: compacto ? 11 : 12.5, color: 'var(--text-muted)' }}>Sin corresponsables.</span>
+      )}
       {chips.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {chips.map((u) => (
@@ -96,76 +102,82 @@ export function CorresponsablesPicker({
             >
               <Avatar nombre={u.nombre} size="sm" tono="blue" />
               {u.nombre}
-              <button
-                type="button"
-                aria-label={`Quitar a ${u.nombre}`}
-                onClick={() => quitar(u.id)}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'inherit',
-                  cursor: 'pointer',
-                  fontSize: compacto ? 10 : 11,
-                  lineHeight: 1,
-                  padding: 2,
-                }}
-              >
-                ✕
-              </button>
+              {!disabled && (
+                <button
+                  type="button"
+                  aria-label={`Quitar a ${u.nombre}`}
+                  onClick={() => quitar(u.id)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    fontSize: compacto ? 10 : 11,
+                    lineHeight: 1,
+                    padding: 2,
+                  }}
+                >
+                  ✕
+                </button>
+              )}
             </span>
           ))}
         </div>
       )}
 
-      {/* Toggle Persona / Área */}
-      <div
-        role="tablist"
-        aria-label="Agregar corresponsables por"
-        style={{
-          display: 'inline-flex',
-          alignSelf: 'flex-start',
-          gap: 2,
-          padding: 2,
-          borderRadius: 999,
-          border: '1px solid var(--border)',
-          background: 'var(--surface-2, rgba(255,255,255,.03))',
-        }}
-      >
-        {(['persona', 'area'] as const).map((m) => {
-          const activo = modo === m;
-          return (
-            <button
-              key={m}
-              type="button"
-              role="tab"
-              aria-selected={activo}
-              onClick={() => setModo(m)}
-              style={{
-                border: 'none',
-                cursor: 'pointer',
-                borderRadius: 999,
-                padding: compacto ? '2px 10px' : '3px 12px',
-                fontSize: compacto ? 11 : 12,
-                fontWeight: 600,
-                background: activo ? 'var(--blue)' : 'transparent',
-                color: activo ? '#fff' : 'var(--text-muted, inherit)',
-                transition: 'background .12s ease, color .12s ease',
-              }}
-            >
-              {m === 'persona' ? 'Persona' : 'Área'}
-            </button>
-          );
-        })}
-      </div>
+      {!disabled && (
+        <>
+          {/* Toggle Persona / Área */}
+          <div
+            role="tablist"
+            aria-label="Agregar corresponsables por"
+            style={{
+              display: 'inline-flex',
+              alignSelf: 'flex-start',
+              gap: 2,
+              padding: 2,
+              borderRadius: 999,
+              border: '1px solid var(--border)',
+              background: 'var(--surface-2, rgba(255,255,255,.03))',
+            }}
+          >
+            {(['persona', 'area'] as const).map((m) => {
+              const activo = modo === m;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={activo}
+                  onClick={() => setModo(m)}
+                  style={{
+                    border: 'none',
+                    cursor: 'pointer',
+                    borderRadius: 999,
+                    padding: compacto ? '2px 10px' : '3px 12px',
+                    fontSize: compacto ? 11 : 12,
+                    fontWeight: 600,
+                    background: activo ? 'var(--blue)' : 'transparent',
+                    color: activo ? '#fff' : 'var(--text-muted, inherit)',
+                    transition: 'background .12s ease, color .12s ease',
+                  }}
+                >
+                  {m === 'persona' ? 'Persona' : 'Área'}
+                </button>
+              );
+            })}
+          </div>
 
-      <Select
-        variante={compacto ? 'cell' : 'normal'}
-        value=""
-        ariaLabel={modo === 'persona' ? 'Agregar corresponsable' : 'Agregar toda un área'}
-        placeholder={placeholder}
-        opciones={opciones}
-        onChange={modo === 'persona' ? agregarPersona : agregarArea}
-      />
+          <Select
+            variante={compacto ? 'cell' : 'normal'}
+            value=""
+            ariaLabel={modo === 'persona' ? 'Agregar corresponsable' : 'Agregar toda un área'}
+            placeholder={placeholder}
+            opciones={opciones}
+            onChange={modo === 'persona' ? agregarPersona : agregarArea}
+          />
+        </>
+      )}
     </div>
   );
 }

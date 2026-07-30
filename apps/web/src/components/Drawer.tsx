@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib';
 import type { AcuerdoDetalle, EdicionAcuerdo, TipoEventoActividad } from '../lib';
 import { fmtF, fmtL, hoyISO, shiftISO } from '../lib/fechas';
-import { EST, mensajeError, vencimientoRelativo } from './EstadoHelpers';
+import { EST, mensajeError, revisionMeta, vencimientoRelativo } from './EstadoHelpers';
 import { Avatar } from './Avatar';
 import { Badge } from './Badge';
 import { CorresponsablesPicker } from './CorresponsablesPicker';
@@ -84,6 +84,23 @@ export function Drawer({ id, onClose }: DrawerProps) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const sel: AcuerdoDetalle | undefined = detalleQ.data;
+  const u = sesion?.usuario;
+  const esDireccion = u?.rol === 'direccion';
+  // Edición ESTRUCTURAL (responsable/área/corresponsables): Dirección, coordinación
+  // del área o quien capturó (ADR-011); el backend (`puedeEditarEstructura`) exige
+  // exactamente esta misma condición, tanto para PATCH /acuerdos/{id} (campos
+  // responsable_id/area_id) como para PUT /acuerdos/{id}/corresponsables.
+  const puedeEditarEstructura =
+    sel !== undefined &&
+    u !== undefined &&
+    (esDireccion || u.id === sel.capturado_por.id || (u.rol === 'coordinador' && u.area_id === sel.area.id));
+  // Participante = responsable o corresponsable del acuerdo.
+  const esParticipante =
+    sel !== undefined &&
+    u !== undefined &&
+    (u.id === sel.responsable.id || sel.corresponsables.some((c) => c.id === u.id));
+
   const invalidar = () => {
     void queryClient.invalidateQueries({ queryKey: ['acuerdo', id] });
     void queryClient.invalidateQueries({ queryKey: ['acuerdos'] });
@@ -127,22 +144,49 @@ export function Drawer({ id, onClose }: DrawerProps) {
     onError: (e) => toast(mensajeError(e), 'error'),
   });
 
+  const solicitarMut = useMutation({
+    mutationFn: () => api.solicitarConclusion(id),
+    onSuccess: () => {
+      toast('Se solicitó la conclusión del acuerdo; queda en revisión.');
+      invalidar();
+    },
+    onError: (e) => toast(mensajeError(e), 'error'),
+  });
+
+  const rechazarMut = useMutation({
+    mutationFn: (motivo: string) => api.rechazarConclusion(id, motivo),
+    onSuccess: () => {
+      toast('Se rechazó la solicitud de conclusión.');
+      invalidar();
+    },
+    onError: (e) => toast(mensajeError(e), 'error'),
+  });
+
   const editarMut = useMutation({
     mutationFn: async () => {
       const cambios: EdicionAcuerdo = {
         tema: form.tema.trim() ? form.tema.trim() : null,
         accion: form.accion.trim(),
-        responsable_id: Number(form.responsable_id),
-        area_id: Number(form.area_id),
         enlaces: form.enlaces.map((e) => e.trim()).filter((e) => e !== ''),
         observaciones: form.observaciones.trim() ? form.observaciones.trim() : null,
       };
+      // Campos estructurales (responsable/área): el backend (`puedeEditarEstructura`)
+      // rechaza el PATCH si la clave está presente y quien edita no tiene permiso,
+      // sin importar si el valor cambió — por eso solo se envían cuando corresponde.
+      if (puedeEditarEstructura) {
+        cambios.responsable_id = Number(form.responsable_id);
+        cambios.area_id = Number(form.area_id);
+      }
       await api.editarAcuerdo(id, cambios);
 
-      const actuales = (detalleQ.data?.corresponsables ?? []).map((c) => c.id);
-      const sinCambios =
-        actuales.length === form.corresponsables.length && actuales.every((x) => form.corresponsables.includes(x));
-      if (!sinCambios) await api.setCorresponsables(id, form.corresponsables);
+      // Corresponsables (PUT /acuerdos/{id}/corresponsables) requiere el mismo
+      // permiso estructural; un participante-solo-contenido no puede tocarlos.
+      if (puedeEditarEstructura) {
+        const actuales = (detalleQ.data?.corresponsables ?? []).map((c) => c.id);
+        const sinCambios =
+          actuales.length === form.corresponsables.length && actuales.every((x) => form.corresponsables.includes(x));
+        if (!sinCambios) await api.setCorresponsables(id, form.corresponsables);
+      }
     },
     onSuccess: () => {
       toast('El acuerdo se actualizó.');
@@ -195,20 +239,34 @@ export function Drawer({ id, onClose }: DrawerProps) {
     reabrirMut.mutate(nota);
   };
 
-  const sel: AcuerdoDetalle | undefined = detalleQ.data;
-  const u = sesion?.usuario;
-  const esDireccion = u?.rol === 'direccion';
-  // Edición estructural: Dirección, coordinación del área o quien capturó (ADR-011).
-  const puedeEditar =
-    sel !== undefined &&
-    u !== undefined &&
-    (esDireccion || u.id === sel.capturado_por.id || (u.rol === 'coordinador' && u.area_id === sel.area.id));
-  // Concluir: Dirección (cualquiera) o coordinación del área del acuerdo (ADR-012).
-  // Reabrir sigue siendo solo Dirección.
+  const solicitar = () => {
+    solicitarMut.mutate();
+  };
+
+  const rechazar = () => {
+    const motivo = window.prompt('Motivo del rechazo (obligatorio):', '');
+    if (motivo === null) return;
+    if (!motivo.trim()) {
+      toast('El motivo de rechazo no puede quedar vacío.', 'error');
+      return;
+    }
+    rechazarMut.mutate(motivo.trim());
+  };
+
+  // Edición de CONTENIDO (tema/acción/enlaces/observaciones): además de quien edita
+  // estructura, cualquier participante (spec 2026-07-29). El propio formulario
+  // deshabilita los campos estructurales para quien no cumple `puedeEditarEstructura`.
+  const puedeEditar = puedeEditarEstructura || esParticipante;
+  // Concluir/aprobar/rechazar: Dirección (cualquiera) o coordinación del área del
+  // acuerdo (ADR-012). Reabrir sigue siendo solo Dirección.
   const puedeConcluir =
     sel !== undefined &&
     u !== undefined &&
     (esDireccion || (u.rol === 'coordinador' && u.area_id === sel.area.id));
+  // Solicitar conclusión: participante, acuerdo no concluido y sin una solicitud ya pendiente.
+  const puedeSolicitar =
+    esParticipante && sel !== undefined && sel.estado !== 'concluido' && sel.revision_estado !== 'pendiente';
+  const enRevision = sel !== undefined && sel.revision_estado === 'pendiente';
   const usuariosActivos = (usuariosQ.data ?? []).filter((x) => x.activo);
   const areas = areasQ.data ?? [];
   // Bitácora: la actividad ya viene ordenada desc del backend; reforzamos el orden
@@ -250,9 +308,11 @@ export function Drawer({ id, onClose }: DrawerProps) {
             {(() => {
               const est = EST[sel.estado];
               const { rel, color: relColor } = vencimientoRelativo(sel.fecha_compromiso, sel.estado);
+              const rm = revisionMeta(sel.revision_estado);
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Badge variant={est.variant} size="md" label={est.label} />
+                  {rm && <Badge variant={rm.variant} size="md" label={rm.label} />}
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: relColor }}>{rel}</span>
                   {puedeEditar && !editando && (
                     <button
@@ -267,6 +327,14 @@ export function Drawer({ id, onClose }: DrawerProps) {
                 </div>
               );
             })()}
+
+            {sel.revision_estado === 'rechazada' && sel.revision_motivo_rechazo && (
+              <div className="alert alert--error">
+                <div className="alert__body">
+                  <strong>Se rechazó la solicitud de conclusión.</strong> Motivo: {sel.revision_motivo_rechazo}
+                </div>
+              </div>
+            )}
 
             {editando ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -302,6 +370,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
                     id="ed-resp"
                     value={form.responsable_id}
                     placeholder="Selecciona…"
+                    disabled={!puedeEditarEstructura}
                     opciones={usuariosActivos.map((x) => ({ value: String(x.id), label: x.nombre }))}
                     onChange={(v) =>
                       setForm((f) => ({
@@ -311,6 +380,11 @@ export function Drawer({ id, onClose }: DrawerProps) {
                       }))
                     }
                   />
+                  {!puedeEditarEstructura && (
+                    <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--text-muted)' }}>
+                      Solo Dirección, la coordinación del área o quien capturó pueden cambiar el responsable.
+                    </p>
+                  )}
                 </div>
                 <div className="field">
                   <span className="field__label">Corresponsables</span>
@@ -320,6 +394,7 @@ export function Drawer({ id, onClose }: DrawerProps) {
                     seleccionados={form.corresponsables}
                     excluirId={form.responsable_id ? Number(form.responsable_id) : null}
                     onChange={(ids) => setForm((f) => ({ ...f, corresponsables: ids }))}
+                    disabled={!puedeEditarEstructura}
                   />
                 </div>
                 <div className="field">
@@ -330,9 +405,15 @@ export function Drawer({ id, onClose }: DrawerProps) {
                     id="ed-area"
                     value={form.area_id}
                     placeholder="Selecciona…"
+                    disabled={!puedeEditarEstructura}
                     opciones={areas.map((a) => ({ value: String(a.id), label: a.nombre }))}
                     onChange={(v) => setForm((f) => ({ ...f, area_id: v }))}
                   />
+                  {!puedeEditarEstructura && (
+                    <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--text-muted)' }}>
+                      Solo Dirección, la coordinación del área o quien capturó pueden cambiar el área.
+                    </p>
+                  )}
                 </div>
                 <div className="field">
                   <span className="field__label">Enlaces a productos</span>
@@ -593,7 +674,41 @@ export function Drawer({ id, onClose }: DrawerProps) {
               </form>
             )}
 
-            {sel.estado !== 'concluido' && puedeConcluir && (
+            {sel.estado !== 'concluido' && puedeSolicitar && (
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+                <button
+                  type="button"
+                  className="btn btn--ghost-teal btn--md btn--full"
+                  onClick={solicitar}
+                  disabled={solicitarMut.isPending}
+                >
+                  {solicitarMut.isPending ? 'Solicitando…' : 'Solicitar conclusión'}
+                </button>
+              </div>
+            )}
+
+            {sel.estado !== 'concluido' && enRevision && puedeConcluir && (
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20, display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn btn--ghost-teal btn--md btn--full"
+                  onClick={concluir}
+                  disabled={concluirMut.isPending}
+                >
+                  {concluirMut.isPending ? 'Aprobando…' : 'Aprobar'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--ghost-rojo btn--md btn--full"
+                  onClick={rechazar}
+                  disabled={rechazarMut.isPending}
+                >
+                  {rechazarMut.isPending ? 'Rechazando…' : 'Rechazar'}
+                </button>
+              </div>
+            )}
+
+            {sel.estado !== 'concluido' && !enRevision && puedeConcluir && (
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20 }}>
                 <button
                   type="button"

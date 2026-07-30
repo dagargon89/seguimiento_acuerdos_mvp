@@ -2,7 +2,7 @@
  * Mapa estado→presentación (máquina de estados v2: SOLO 3 estados) y
  * helpers de vista portados del demo (`vm()`), más utilidades de error de API.
  */
-import type { EstadoAcuerdo, Rol } from '../lib';
+import type { EstadoAcuerdo, RevisionEstado, Rol } from '../lib';
 import { diasDesdeHoy } from '../lib/fechas';
 
 export type BadgeVariant = 'brand' | 'success' | 'error' | 'neutral';
@@ -19,6 +19,13 @@ export const EST: Record<EstadoAcuerdo, EstadoMeta> = {
   vencido: { label: 'Vencido', variant: 'error', color: 'var(--red)', dot: 'var(--red)' },
   concluido: { label: 'Concluido', variant: 'success', color: 'var(--teal)', dot: 'var(--teal)' },
 };
+
+/** Presentación del estado de revisión de conclusión (badge junto al de estado). */
+export function revisionMeta(estado: RevisionEstado): { label: string; variant: BadgeVariant } | null {
+  if (estado === 'pendiente') return { label: 'En revisión', variant: 'neutral' };
+  if (estado === 'rechazada') return { label: 'Rechazado', variant: 'error' };
+  return null;
+}
 
 export const ROL_LABEL: Record<Rol, string> = {
   direccion: 'Dirección',
